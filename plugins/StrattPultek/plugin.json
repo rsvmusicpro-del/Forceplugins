@@ -34,7 +34,7 @@
     },
     {
       "parameter": 12,
-      "label": "Drive Mix"
+      "label": "Drv Mix"
     }
   ],
   "file32": "VST/strattpultek-arm32.so",
