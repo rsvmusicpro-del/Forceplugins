@@ -4,9 +4,9 @@
 
 | Section | Choices / range | DSP stage |
 |---|---|---|
-| LF frequency | 20, 30, 60, 100 Hz | Selects LF shelf and LF attenuation interaction centre |
-| LF boost | 0–10 dB | Cascaded low shelf (55% of setting) + resonant bell at the selected frequency (72.5%; compensates for the shelf's half-gain corner response); creates a broad low-end shoulder rather than a monotonic shelf |
-| LF attenuation | 0–10 dB | Broad resonant bell dip at 1.65 × selected LF frequency (clamped to 25–250 Hz); cascades with boost to create the LF interaction |
+| LF frequency | 20, 30, 60, 100 Hz | Selects both LF shelves; attenuation corner is offset above the boost corner |
+| LF boost | 0–10 dB | Low-frequency shelving boost at the selected frequency |
+| LF attenuation | 0–10 dB | Low-frequency shelving cut at 1.414 × selected frequency (half-octave corner offset); cascades with boost to create the LF lift/dip interaction |
 | HF boost frequency | 3, 4, 5, 8, 10, 12, 16 kHz | Peaking bell |
 | HF boost | 0–10 dB | Peaking bell gain |
 | Bandwidth | 0–100% | Q from 1.60 (narrow) to 0.45 (broad) |
@@ -15,11 +15,11 @@
 | Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Output / Mix | -12…+12 dB / 0–100% | Output trim and parallel blend |
 
-These are EQP-1A-inspired operating ranges and a digital curve approximation. The revised LF boost now combines a shelf and resonant bell, which is closer to the broad resonant shoulder of the passive network than a shelf alone. It remains a deliberately tunable approximation, not a measured plot of a particular hardware serial number. Different Pultec revisions and component tolerances differ; exact reproduction requires a selected reference unit and measured sweeps.
+These are EQP-1A-inspired operating ranges and a digital curve approximation. Both LF controls are implemented as shelves, with the attenuation corner offset higher than the boost corner; this follows the documented passive-filter topology and produces the characteristic combined lift/dip. The 1.414 corner ratio is a practical half-octave approximation, not a measured plot of a particular hardware serial number. Different Pultec revisions and component tolerances differ; exact reproduction requires a selected reference unit and measured sweeps.
 
 ## CPU design
 
-- Five biquad sections per channel (LF shelf, LF resonant boost, LF attenuation dip, HF bell boost, HF shelf attenuation); coefficients computed once per process block.
+- Four biquad sections per channel (LF boost shelf, offset LF attenuation shelf, HF bell boost, HF shelf attenuation); coefficients computed once per process block.
 - All eight EQ controls use a 15 ms block-size-compensated glide before coefficient recalculation, avoiding abrupt filter jumps while keeping the coefficient work out of the sample loop.
 - One-pole 15 ms smoothing for output, grain, drive and mix.
 - The colour stage uses first-order antiderivative antialiasing (ADAA). Its polynomial clip and squared-clip asymmetric component both have closed-form integrals, so the divided difference adds controlled even-order harmonics while reducing high-frequency foldback without per-sample log/exp/tanh or oversampling. A 3 Hz one-pole DC blocker removes the asymmetry's bias. Drive at 0% bypasses its contribution and Grain at 0% is fully clean.
@@ -38,7 +38,7 @@ The first parameter remains Output trim, intentionally harmless under the MPC pr
 
 1. SDK build for native, ARM32 and ARM64; generated UI and tools/validate.py must pass.
 2. host_sim test at 44.1, 48 and 96 kHz with 32-, 128- and 512-frame blocks; the simulator exercises parameter changes, state round-trip, in-place processing and silence pass-through.
-3. Frequency sweeps at all LF/HF selections; verify finite output, the LF shoulder (shelf plus resonant peak), the LF attenuation dip, HF bell/shelf directions and no instability.
-4. Compare level-matched response plots with the published EQP-1A curves, then tune the LF split, dip offset/Q and HF Q using a serviced reference unit. Do not label the response hardware-matched until that measurement exists.
+3. Frequency sweeps at all LF/HF selections; verify finite output, the combined LF shelf lift/dip, HF bell/shelf directions and no instability.
+4. Compare level-matched response plots with the published EQP-1A curves, then tune the LF shelf corner ratio and gain curves, HF Q using a serviced reference unit. Do not label the response hardware-matched until that measurement exists.
 5. Measure CPU on Force hardware; host_sim desktop timing is not a substitute for ARM timing.
 6. Level-matched listening against a serviced EQP-1A reference before describing the response as hardware-matched.
