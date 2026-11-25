@@ -1,5 +1,11 @@
 # Changelog
 
+## StrattPultek 1.9.1
+
+- Bound finite input samples to ±16.0 (24 dBFS) before recursive DSP to prevent pathological host values from overflowing filter or ADAA state while preserving normal programme headroom.
+- Added final non-finite output containment with per-channel DSP-state recovery; NaN/Inf cannot propagate into the MPC mix bus.
+- Preserved parameter IDs/order, presets, UI and MPC Sample knob assignments.
+
 ## StrattPultek 1.9.0
 
 - Retained the first-order Cleansweep HP/LP topology and moved coefficient design to double precision with prewarped analog-prototype documentation.
