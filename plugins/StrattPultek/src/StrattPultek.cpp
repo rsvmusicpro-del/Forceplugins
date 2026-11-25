@@ -32,13 +32,39 @@ static float dbToGain(float db)
     return std::pow(10.0f, db * 0.05f);
 }
 
-// Fast rational tanh approximation. The bounded input avoids overflow and
-// the function is called only in the colour stage, once per sample.
-static inline float fastTanh(float x)
+// C1-continuous polynomial soft clip. It is linear around zero, transitions
+// smoothly from unity slope at |x|=1 to zero slope at |x|=3, then remains
+// bounded at 1.5. Its closed-form antiderivative makes first-order ADAA cheap:
+// no transcendental functions, allocations, or extra oversampling buffers.
+static inline float softClip(float x)
 {
-    x = mpc::clamp(x, -3.0f, 3.0f);
-    const float x2 = x * x;
-    return x * (27.0f + x2) / (27.0f + 9.0f * x2);
+    const float a = std::fabs(x);
+    if (a <= 1.0f) return x;
+    if (a >= 3.0f) return std::copysign(1.5f, x);
+    const float t = 0.5f * (a - 1.0f);
+    const float y = 1.0f + 2.0f * t - 2.5f * t * t + t * t * t;
+    return std::copysign(y, x);
+}
+
+// Even antiderivative of softClip(). The ADAA divided difference averages
+// the waveshaper over the previous/current input interval, suppressing
+// harmonics above Nyquist before they fold back as audible aliasing.
+static inline float softClipIntegral(float x)
+{
+    const float a = std::fabs(x);
+    if (a <= 1.0f) return 0.5f * a * a;
+    if (a >= 3.0f) return (4.0f / 3.0f) + 1.5f * (a - 3.0f);
+    const float t = 0.5f * (a - 1.0f);
+    const float t2 = t * t;
+    return 0.5f + 2.0f * t - (5.0f / 3.0f) * t * t2 + 0.5f * t2 * t2;
+}
+
+static inline float adaaSoftClip(float x, float previousX)
+{
+    const float delta = x - previousX;
+    if (std::fabs(delta) < 1.0e-4f)
+        return softClip(0.5f * (x + previousX));
+    return (softClipIntegral(x) - softClipIntegral(previousX)) / delta;
 }
 
 // Smooth a control once per block while preserving the same time constant for
@@ -49,6 +75,19 @@ static float smoothBlock(float current, float target, int frames, double sampleR
     const float timeSamples = 0.015f * static_cast<float>(sampleRate);
     const float alpha = 1.0f - std::exp(-static_cast<float>(frames) / timeSamples);
     return current + alpha * (target - current);
+}
+
+// Frequency controls are smoothed in log space so octave-sized movements
+// have a consistent perceptual glide instead of spending most of the glide
+// near one end of a large linear-Hz interval.
+static float smoothFrequency(float current, float target, int frames, double sampleRate)
+{
+    if (frames <= 0 || sampleRate <= 0.0) return target;
+    const float timeSamples = 0.015f * static_cast<float>(sampleRate);
+    const float alpha = 1.0f - std::exp(-static_cast<float>(frames) / timeSamples);
+    const float safeCurrent = mpc::clamp(current, 1.0f, 192000.0f);
+    const float safeTarget = mpc::clamp(target, 1.0f, 192000.0f);
+    return std::exp(std::log(safeCurrent) + alpha * (std::log(safeTarget) - std::log(safeCurrent)));
 }
 
 static float lowFrequency(int index)
@@ -71,10 +110,12 @@ static float attenuationFrequency(int index)
 struct Channel
 {
     Biquad lowBoost, lowDip, highBoost, highAtten;
+    float previousDriveInput = 0.0f;
     void reset()
     {
         lowBoost.reset(); lowDip.reset();
         highBoost.reset(); highAtten.reset();
+        previousDriveInput = 0.0f;
     }
 };
 } // namespace
@@ -170,7 +211,9 @@ public:
 
                 // Drive=0 is exactly clean. Grain controls the colour blend;
                 // both controls therefore reach a genuinely neutral setting.
-                const float saturated = fastTanh(wet * driveGain) / driveGain;
+                const float driveInput = wet * driveGain;
+                const float saturated = adaaSoftClip(driveInput, channels_[ch].previousDriveInput) / driveGain;
+                channels_[ch].previousDriveInput = driveInput;
                 wet += (saturated - wet) * (colour * drive);
                 const float processed = dry + (wet - dry) * mix;
                 ctx.outputs[ch][i] = processed * outGain;
@@ -195,13 +238,13 @@ private:
 
     void smoothEq(int frames)
     {
-        eqLowFreq_ = smoothBlock(eqLowFreq_, lowFrequency(getInt(kLowFreq)), frames, sampleRate_);
+        eqLowFreq_ = smoothFrequency(eqLowFreq_, lowFrequency(getInt(kLowFreq)), frames, sampleRate_);
         eqLowBoost_ = smoothBlock(eqLowBoost_, get(kLowBoost), frames, sampleRate_);
         eqLowAtten_ = smoothBlock(eqLowAtten_, get(kLowAtten), frames, sampleRate_);
-        eqHighFreq_ = smoothBlock(eqHighFreq_, highFrequency(getInt(kHighFreq)), frames, sampleRate_);
+        eqHighFreq_ = smoothFrequency(eqHighFreq_, highFrequency(getInt(kHighFreq)), frames, sampleRate_);
         eqHighBoost_ = smoothBlock(eqHighBoost_, get(kHighBoost), frames, sampleRate_);
         eqBandwidth_ = smoothBlock(eqBandwidth_, get(kBandwidth), frames, sampleRate_);
-        eqHighAttenFreq_ = smoothBlock(eqHighAttenFreq_, attenuationFrequency(getInt(kHighAttenFreq)), frames, sampleRate_);
+        eqHighAttenFreq_ = smoothFrequency(eqHighAttenFreq_, attenuationFrequency(getInt(kHighAttenFreq)), frames, sampleRate_);
         eqHighAtten_ = smoothBlock(eqHighAtten_, get(kHighAtten), frames, sampleRate_);
     }
 
