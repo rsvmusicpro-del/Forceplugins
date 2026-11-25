@@ -1,4 +1,4 @@
-# StrattPultek 1.7.0 DSP notes and verification plan
+# StrattPultek 1.7.1 DSP notes and verification plan
 
 ## EQ control coverage
 
