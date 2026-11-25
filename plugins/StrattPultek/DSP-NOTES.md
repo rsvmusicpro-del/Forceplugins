@@ -1,4 +1,4 @@
-# StrattPultek 1.9.1 DSP notes and verification plan
+# StrattPultek 1.9.4 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
@@ -103,3 +103,8 @@ The 1.7.0 transfer refinement requires a fresh CI build and host-simulator run; 
 ## Transfer refinement in 1.7.0
 
 The ADAA architecture remains first-order, while the underlying transfer changed to a C2-continuous knee: \(F_a(x)=F(x)+\eta F(x)^2\). Its primitive is \(I_a(x)=I_F(x)+\eta I_{F^2}(x)\), where both component primitives are evaluated in double precision. The sample-to-sample output remains the first-order divided difference \((I_a(x_n)-I_a(x_{n-1}))/(x_n-x_{n-1})\). For intervals shorter than \(10^{-4}\max(1,|x_n|,|x_{n-1}|)\) that stay inside one polynomial branch, a symmetric local expansion evaluates the interval average as \(F_a(m)+F_a''(m)\Delta x^2/24+F_a^{(4)}(m)\Delta x^4/1920\). The linear branch is exact, the knee includes the fourth-derivative correction, and the plateau is constant. Short intervals crossing a knee retain the exact piecewise primitive difference. The new primitives are exact for the updated piecewise polynomial; this reduces subtractive cancellation while preserving public controls, saved parameter identity and realtime allocation behaviour. It is a numerical-accuracy improvement, not a claim of exact valve-circuit emulation.
+
+
+## Host automation boundary (1.9.4)
+
+Every parameter consumed by the audio path is read through a finite-value guard and clamped to its declared range. NaN/Inf values fall back to the control's documented default; choice parameters are bounded before integer conversion. This prevents malformed host automation from contaminating a smoother or selector. Normal finite automation is unchanged and the guard adds only a predictable finite check and clamp at block/control rate.
