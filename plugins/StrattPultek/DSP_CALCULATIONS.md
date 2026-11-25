@@ -89,3 +89,8 @@ Pour limiter l'annulation soustractive lorsque les deux échantillons sont proch
 
 
 En 1.7.0, la primitive de F dans la zone de transition (t=|x|-1) est \\(I_F=1/2+t+t^2/2-t^4/4+t^5/10\\), et celle de F² est \\(I_{F^2}=1/3+t+t^2+t^3/3-t^4/2-t^5/5+t^6/6+t^7/7-t^8/8+t^9/36\\). Les raccords extérieurs sont obtenus par intégration exacte des branches linéaire et constante. Le choix du polynôme garantit \\(F'(1)=1, F''(1)=0, F'(2)=0, F''(2)=0\\), donc une continuité C2 du transfert. Les dérivées numériques des deux primitives ont été contrôlées sur les deux frontières et dans l'intervalle de transition. Le gain d'attaque du modèle est passé de 1.35 à 1.15 pour compenser la réduction de largeur de genou; l'asymétrie reste 0.045.
+
+
+## Stabilisation locale du quotient ADAA (raffinement 1.7.1)
+
+Pour un intervalle court entièrement contenu dans une branche polynomiale, la moyenne exacte de la fonction est évaluée par symétrie autour de \\(m=(x_n+x_{n-1})/2\\) : \\(F_a(m)+F_a''(m)\\Delta x^2/24+F_a^{(4)}(m)\\Delta x^4/1920+O(\\Delta x^6)\\). Dans la branche linéaire \\(F_a=x+\\eta x^2\\), cette expression est exacte après le terme quadratique. Dans le genou, le terme d'ordre quatre est inclus ; le polynôme \\(F_a\\) est de degré huit, donc le reste est d'ordre six. Le seuil relatif est \\(10^{-4}\\max(1,|x_n|,|x_{n-1}|)\\). Si l'intervalle touche ou traverse une frontière de branche, le calcul revient à la différence des primitives analytiques, sans approximation locale. Cette branche locale réduit l'annulation soustractive sans augmenter le nombre d'échantillons ni introduire de fonction transcendante dans la boucle audio.
