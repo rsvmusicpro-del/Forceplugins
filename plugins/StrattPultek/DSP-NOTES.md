@@ -23,7 +23,7 @@ Both filters are independent per stereo channel, cascaded HP then LP before the 
 | HF attenuation | 0–20 dB | First-order high shelf cut (6 dB/oct) |
 | Grain / Drive | 0–100% each | C2 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Drive Mix | 0–100% | Independent post-EQ saturation dry/wet blend, unity-sum to avoid correlated-signal gain bumps |
-| Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Output trim, global EQ wet/dry blend, then a separate final master fader at the very end of the chain |
+| Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Post-colour Output master gain, global EQ wet/dry blend, then a separate final master fader at the very end of the chain |
 
 These are EQP-1A-inspired operating ranges and a digital curve approximation. The LF boost and attenuation and HF attenuation are implemented as first-order 6 dB/octave shelves, matching the documented passive-filter topology; the LF attenuation corner is offset higher than the boost corner and produces the characteristic combined lift/dip. The 1.414 LF corner ratio is a practical half-octave approximation. The HF attenuation selector is mapped to the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum) by solving the discrete-time one-pole shelf response for each selected frequency and sample rate. This avoids the large error a fixed analog frequency ratio would create near Nyquist at 20 kHz / 44.1 kHz. The HF boost gain is reduced linearly with the broadness control from +20 dB at the narrow end to +13.5 dB at the broad end, following published Manley EQP-1A behaviour.
 
@@ -70,15 +70,15 @@ Finite host samples are clamped to ±16.0 (24 dBFS) before entering recursive fi
 
 ## Permanent valve-amplifier output stage (1.7.0 transfer refinement)
 
-A fixed, non-adjustable valve-inspired coloration stage remains after the complete EQ / controllable drive / global mix / output-trim path and immediately before the final master fader. It is independent of Drive, Grain and Drive Mix, has no parameter, no UI control and no Q-Link mapping. Version 1.7.0 replaces the C1 knee with a C2-continuous polynomial: F(x)=x for |x|≤1; for 1<|x|<2, with t=|x|-1, F(|x|)=1+t−t³+0.5t⁴; and F(x)=sign(x)·1.5 for |x|≥2. The first and second derivatives join continuously at both boundaries. The stage uses fixed input gain 1.15, asymmetry η=0.045, the exact closed-form primitives of F and F² for first-order ADAA, double-precision divided differences with a relative differential-limit fallback, inverse gain compensation, and an independent per-channel 3 Hz DC blocker. The change smooths the transfer's curvature transitions and retains antiderivative antialiasing without oversampling or per-sample transcendental functions. It remains a low-cost phenomenological valve-amplifier model, not a measured component-level 12AX7/transformer circuit capture.
+A fixed, non-adjustable valve-inspired coloration stage remains after the complete EQ / controllable drive / global mix path and before the post-colour Output master gain and final master fader. It is independent of Drive, Grain and Drive Mix, has no parameter, no UI control and no Q-Link mapping. Version 1.7.0 replaces the C1 knee with a C2-continuous polynomial: F(x)=x for |x|≤1; for 1<|x|<2, with t=|x|-1, F(|x|)=1+t−t³+0.5t⁴; and F(x)=sign(x)·1.5 for |x|≥2. The first and second derivatives join continuously at both boundaries. The stage uses fixed input gain 1.15, asymmetry η=0.045, the exact closed-form primitives of F and F² for first-order ADAA, double-precision divided differences with a relative differential-limit fallback, inverse gain compensation, and an independent per-channel 3 Hz DC blocker. The change smooths the transfer's curvature transitions and retains antiderivative antialiasing without oversampling or per-sample transcendental functions. It remains a low-cost phenomenological valve-amplifier model, not a measured component-level 12AX7/transformer circuit capture.
 
-The final order is: EQ → controllable ADAA drive → global EQ dry/wet → output trim → fixed valve stage → final smoothed master fader. The existing parameter IDs, order, preset arrays and MPC Sample knob assignments are unchanged.
+The final order is: EQ → controllable ADAA drive → global EQ dry/wet → fixed valve stage → post-colour Output master gain (parameter 0) → final smoothed master Fader. The existing parameter IDs, order, preset arrays and MPC Sample knob assignments are unchanged.
 
 ## Q-Link mapping
 
 Normal: Q-Link 1 Low Boost (parameter 2), Q-Link 2 HF Boost (5), Q-Link 3 Grain (9).
 SHIFT: Q-Link 1 Low Atten (3), Q-Link 2 HF Atten (8), Q-Link 3 Fader (13). Drive Mix is parameter 12; global Mix remains parameter 11 on the COLOR page.
-The first parameter remains Output trim, intentionally harmless under the MPC prepare-time parameter-0 nudge. Parameter order and IDs are stable.
+The first parameter remains the post-colour Output master gain, intentionally harmless under the MPC prepare-time parameter-0 nudge. Parameter order and IDs are stable.
 
 ## Validation performed
 
