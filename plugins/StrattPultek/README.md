@@ -1,4 +1,4 @@
-# StrattPultek 1.0.0
+# StrattPultek 1.1.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
