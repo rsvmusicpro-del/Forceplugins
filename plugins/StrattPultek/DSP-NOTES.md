@@ -1,4 +1,4 @@
-# StrattPultek 1.2.0 DSP notes and verification plan
+# StrattPultek 1.4.0 DSP notes and verification plan
 
 ## EQ control coverage
 
@@ -13,7 +13,8 @@
 | HF attenuation frequency | 5, 10, 20 kHz | Selector maps to the approximate mid-attenuation point by solving the discrete-time one-pole response at the current sample rate |
 | HF attenuation | 0–20 dB | First-order high shelf cut (6 dB/oct) |
 | Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
-| Output / Mix | -12…+12 dB / 0–100% | Output trim and parallel blend |
+| Drive Mix | 0–100% | Independent post-EQ saturation dry/wet blend, unity-sum to avoid correlated-signal gain bumps |
+| Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Output trim, global EQ wet/dry blend, then a separate final master fader at the very end of the chain |
 
 These are EQP-1A-inspired operating ranges and a digital curve approximation. The LF boost and attenuation and HF attenuation are implemented as first-order 6 dB/octave shelves, matching the documented passive-filter topology; the LF attenuation corner is offset higher than the boost corner and produces the characteristic combined lift/dip. The 1.414 LF corner ratio is a practical half-octave approximation. The HF attenuation selector is mapped to the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum) by solving the discrete-time one-pole shelf response for each selected frequency and sample rate. This avoids the large error a fixed analog frequency ratio would create near Nyquist at 20 kHz / 44.1 kHz. The HF boost gain is reduced linearly with the broadness control from +20 dB at the narrow end to +13.5 dB at the broad end, following published Manley EQP-1A behaviour.
 
@@ -48,7 +49,7 @@ That work is a useful technical reference and establishes that a more complete c
 
 - One biquad (HF bell) and three first-order shelves per channel (LF boost, offset LF attenuation, HF attenuation); coefficients are updated once per process block.
 - All eight EQ controls use a 15 ms block-size-compensated glide before coefficient recalculation, avoiding abrupt filter jumps while keeping the coefficient work out of the sample loop.
-- One-pole 15 ms smoothing for output, grain, drive and mix.
+- One-pole 15 ms smoothing for output, grain, drive, Drive Mix, global Mix and the final Fader.
 - The colour stage uses first-order antiderivative antialiasing (ADAA). Its polynomial clip and squared-clip asymmetric component both have closed-form integrals, so the divided difference adds controlled even-order harmonics while reducing high-frequency foldback without per-sample log/exp/tanh or oversampling. A 3 Hz one-pole DC blocker removes the asymmetry's bias. Drive at 0% bypasses its contribution and Grain at 0% is fully clean.
 - The ADAA and DC-blocker memories are per channel and reset with the filter state; the previous nonlinear input is not shared between stereo channels.
 - Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide. The three HF attenuation poles are solved once in prepare() for the active sample rate and cached; only the selected cached pole is smoothed in process().
@@ -57,15 +58,15 @@ That work is a useful technical reference and establishes that a more complete c
 ## Q-Link mapping
 
 Normal: Q-Link 1 Low Boost (parameter 2), Q-Link 2 HF Boost (5), Q-Link 3 Grain (9).
-SHIFT: Q-Link 1 Low Atten (3), Q-Link 2 HF Atten (8), Q-Link 3 Mix (11).
+SHIFT: Q-Link 1 Low Atten (3), Q-Link 2 HF Atten (8), Q-Link 3 Fader (13). Drive Mix is parameter 12; global Mix remains parameter 11 on the COLOR page.
 The first parameter remains Output trim, intentionally harmless under the MPC prepare-time parameter-0 nudge. Parameter order and IDs are stable.
 
 ## Validation performed
 
-1. SDK build for native, ARM32 and ARM64; generated UI and tools/validate.py passed in GitHub Actions.
-2. host_sim passed at 44.1, 48 and 96 kHz with 32-, 128- and 512-frame blocks.
-3. Full validation rendered a reference WAV and packaged the installable MPC folder successfully.
-4. Static and runtime validation do not substitute for timing on the physical Force hardware; the plugin is compiled for ARM32 and ARM64, but no live-device CPU benchmark is claimed.
+1. Native, ARM32 and ARM64 builds; generated MPC skins and `tools/validate.py` passed with 0 errors and 0 warnings.
+2. `host_sim` passed at 44.1, 48 and 96 kHz with 32-, 128- and 512-frame blocks, including parameter randomisation, state round-trip, in-place processing, silence and finite-output checks.
+3. The latest GitHub Actions run (`a3f60e8`) passed both validation workflows, rendered stereo WAVs, validated the install folder and packaged the installable ZIP.
+4. Desktop host-simulator timing is only indicative; no physical Force/MPC ARM CPU benchmark or hardware A/B calibration is claimed.
 
 ## Public reference material
 
