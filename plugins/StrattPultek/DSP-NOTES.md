@@ -1,4 +1,4 @@
-# StrattPultek 1.8.0 DSP notes and verification plan
+# StrattPultek 1.9.0 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
@@ -7,7 +7,7 @@
 | HP Freq | 20 Hz–11 kHz | Continuously variable first-order bilinear high-pass, 6 dB/octave |
 | LP Freq | 20 Hz–22 kHz | Continuously variable first-order bilinear low-pass, 6 dB/octave |
 
-Both filters are independent per stereo channel, cascaded HP then LP before the Pultec EQ, smoothed logarithmically over 15 ms, and clamped below Nyquist for sample-rate safety. The original 14 parameter indices are preserved; these controls are appended as indices 14 and 15. This matches the documented bx_cleansweep V2 topology/ranges, not the proprietary Anti-Crush implementation.
+Both filters are independent per stereo channel, cascaded HP then LP before the Pultec EQ, smoothed logarithmically over 15 ms, and clamped below Nyquist for sample-rate safety. The original 14 parameter indices are preserved; these controls are appended as indices 14 and 15. This matches the documented bx_cleansweep V2 topology/ranges, not the proprietary Anti-Crush implementation. Coefficients are designed in double precision; malformed non-finite samples reset the affected filter state. The first-order analog prototype is intentionally retained: Butterworth and Bessel have the same first-order magnitude response, so a named curve blend would not add a distinct response without changing the 6 dB/octave design.
 
 ## EQ control coverage
 
