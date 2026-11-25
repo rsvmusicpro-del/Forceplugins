@@ -1,4 +1,4 @@
-# StrattPultek 1.9.1
+# StrattPultek 1.9.2
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -13,6 +13,7 @@
 - Airwindows PurestDrive-inspired sample-density weighting: the previous/current driven-sample sum dynamically reduces saturation blend around rapid zero-crossings/transients and favours sustained waveform body. This is a fresh implementation using the plugin's existing ADAA polynomial shaper, not copied Airwindows source.
 - Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`), so Drive changes harmonic density rather than acting as a simple output-volume control. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
 - Defensive audio-boundary handling: finite host samples are limited to ±16.0 (24 dBFS) before recursive DSP, and a non-finite final sample clears that channel's DSP history and emits silence for that sample. Ordinary programme levels are unaffected.
+- ADAA startup-state seeding: after prepare/reset or channel recovery, each nonlinear path uses its first live sample as both endpoints of the initial ADAA interval. This prevents a false zero-to-signal averaging interval on the first sample and avoids a startup-dependent transient; stereo channels maintain independent validity flags.
 - Output trim and global EQ wet/dry mix; a separate, smoothed **final master fader** (-60 to +6 dB, 0 dB unity) after every other process; five factory starting programs.
 
 ## Software-emulation design basis
@@ -48,6 +49,10 @@ The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec fre
 One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. The Fader is a separate -60 to +6 dB control applied as the final multiplication after output trim and wet/dry blending; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The added density term is \`d[n] = clamp(2·|x[n] + x[n−1]|, 0, 1)\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
 
 The equations and engineering checks used to review the filter, nonlinear stage, smoothing, gain structure and output path are catalogued in [DSP_CALCULATIONS.md](DSP_CALCULATIONS.md). The list distinguishes analysis equations from the subset implemented in the real-time code.
+
+## Numerical refinement in 1.9.2
+
+Both the controllable drive and fixed valve stage now explicitly seed their previous-sample state on the first valid sample after reset. This preserves the instantaneous transfer at startup instead of averaging the first non-zero sample against an artificial zero. The per-channel flags are cleared with all other DSP history during reset and non-finite-output recovery. Parameter IDs, ordering, presets and the MPC Sample mapping are unchanged.
 
 ## Build and test
 
