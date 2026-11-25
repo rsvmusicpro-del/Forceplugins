@@ -1,5 +1,13 @@
 # Changelog
 
+## StrattPultek 1.9.0
+
+- Retained the first-order Cleansweep HP/LP topology and moved coefficient design to double precision with prewarped analog-prototype documentation.
+- Added non-finite sample/state recovery to the recursive HP/LP filters and guarded incoming host samples before recursive DSP processing.
+- Expanded filter verification across 44.1–192 kHz, -3 dB cutoff calibration, 6 dB/octave slopes, extreme cutoffs, long-run boundedness and NaN recovery.
+- Preserved all 16 parameter IDs and indices, factory programs, MPC Sample 3+3 knob mappings, and the filter-before-EQ signal path.
+
+
 All notable changes to the MPC Plugin SDK are recorded here, newest first.
 
 ## StrattPultek 1.8.0
