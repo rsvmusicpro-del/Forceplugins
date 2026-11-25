@@ -64,11 +64,11 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 49. Filtre bloqueur DC : \(y[n]=x[n]-x[n-1]+p y[n-1]\), avec \(p=e^{-2\pi f_{DC}/f_s}\).
 50. Vérification de crête de sortie : \(P_{out}=\max_n|G_T y[n]|\), puis \(H_{out}=-20\log_{10}(P_{out})\).
 
-## Modèle fixe de coloration à lampe ajouté en 1.5.0 et raffiné en 1.6.0
+## Modèle fixe de coloration à lampe ajouté en 1.5.0, raffiné numériquement en 1.6.0 et lissé en 1.7.0
 
-51. Gain fixe d'attaque du modèle : \\(u[n]=1.35x[n]\\).
-52. Transfert asymétrique normalisé : \\(v[n]=F(u[n])+0.045F(u[n])^2\\), où \\(F\\) est le soft-clip polynomial C1 borné.
-53. Compensation de gain nominal : \\(s[n]=v[n]/1.35\\).
+51. Gain fixe d'attaque du modèle en 1.7.0 : \\(u[n]=1.15x[n]\\).
+52. Transfert C2 borné : pour \\(a=|x|\\), \\(F(x)=x\\) si \\(a\\le1\\), \\(F(x)=\\operatorname{sgn}(x)[1+t-t^3+t^4/2]\\) si \\(1<a<2\\), avec \\(t=a-1\\), et \\(F(x)=1.5\\operatorname{sgn}(x)\\) si \\(a\\ge2\\). Sa pente et sa courbure sont continues aux deux raccords. Transfert asymétrique : \\(F_a=F+0.045F^2\\).
+53. Compensation de gain nominal : \\(s[n]=v[n]/1.15\\).
 54. ADAA ordre 1 : \\(s_{ADAA}[n]=\\frac{I(u[n])-I(u[n-1])}{u[n]-u[n-1]}\\), avec limite différentielle lorsque les entrées sont presque égales.
 55. Blocage DC indépendant par canal : \\(y[n]=s_{ADAA}[n]-s_{ADAA}[n-1]+e^{-2\\pi(3)/f_s}y[n-1]\\).
 56. Position de la lampe dans le graphe : \\(y_{out}[n]=Fader(Valve(OutputTrim(Mix(EQDrive(x[n])))))\\).
@@ -83,6 +83,9 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 Les équations 1–50 sont un catalogue d'analyse et de validation ; les appliquer toutes comme des traitements supplémentaires dégraderait le son ou augmenterait inutilement la charge CPU.
 
 
-## Raffinement numérique ADAA en 1.6.0
+## Raffinement numérique ADAA en 1.6.0 et transfert C2 en 1.7.0
 
 Pour limiter l'annulation soustractive lorsque les deux échantillons sont proches, les primitives \(I_F\), \(I_{F^2}\), leur combinaison \(I_a=I_F+\eta I_{F^2}\), et le quotient de différences sont maintenant calculés en double précision. La limite différentielle est prise au milieu \(m=(x_n+x_{n-1})/2\) lorsque \(|\Delta x|\le10^{-7}\max(1,|x_n|,|x_{n-1}|)\), avec \(F(m)+\eta F(m)^2\). Le transfert et ses primitives analytiques restent identiques ; seul le calcul numérique du quotient est raffiné. Cela améliore la précision numérique, sans transformer ce modèle polynomial en simulation physique exacte d'une triode.
+
+
+En 1.7.0, la primitive de F dans la zone de transition (t=|x|-1) est \\(I_F=1/2+t+t^2/2-t^4/4+t^5/10\\), et celle de F² est \\(I_{F^2}=1/3+t+t^2+t^3/3-t^4/2-t^5/5+t^6/6+t^7/7-t^8/8+t^9/36\\). Les raccords extérieurs sont obtenus par intégration exacte des branches linéaire et constante. Le choix du polynôme garantit \\(F'(1)=1, F''(1)=0, F'(2)=0, F''(2)=0\\), donc une continuité C2 du transfert. Les dérivées numériques des deux primitives ont été contrôlées sur les deux frontières et dans l'intervalle de transition. Le gain d'attaque du modèle est passé de 1.35 à 1.15 pour compenser la réduction de largeur de genou; l'asymétrie reste 0.045.
