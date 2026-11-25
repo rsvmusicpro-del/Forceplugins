@@ -1,0 +1,46 @@
+{
+  "name": "StrattPultek",
+  "manufacturer": "Stratt",
+  "version": "1.0.0",
+  "format": "vst2",
+  "kind": "effect",
+  "uid": "So21",
+  "numInputs": 2,
+  "numOutputs": 2,
+  "category": "Effect",
+  "shortName": "StrattPultek",
+  "knobs": [
+    {
+      "parameter": 2,
+      "label": "LF Boost"
+    },
+    {
+      "parameter": 5,
+      "label": "HF Boost"
+    },
+    {
+      "parameter": 9,
+      "label": "Grain"
+    }
+  ],
+  "shiftKnobs": [
+    {
+      "parameter": 3,
+      "label": "LF Atten"
+    },
+    {
+      "parameter": 8,
+      "label": "HF Atten"
+    },
+    {
+      "parameter": 11,
+      "label": "Mix"
+    }
+  ],
+  "file32": "VST/strattpultek-arm32.so",
+  "file64": "VST/strattpultek-arm64.so",
+  "description": "Pultec-inspired passive EQ curves with low-cost harmonic warmth, stereo processing and native MPC controls.",
+  "author": "Stratt",
+  "url": "",
+  "license": "MIT"
+}
