@@ -1,0 +1,48 @@
+name: StrattPultek build and test
+on:
+  push:
+    branches: ["feature/strattpultek"]
+    paths:
+      - "plugins/StrattPultek/**"
+      - ".github/workflows/strattpultek.yml"
+      - "framework/**"
+      - "tools/**"
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-test-package:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build native, ARM32 and ARM64; generate UI and validate
+        run: python tools/build.py plugins/StrattPultek
+      - name: Run MPC host simulator across sample rates and block sizes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for sr in 44100 48000 96000; do
+            for block in 32 128 512; do
+              echo "::group::host_sim sr=${sr} block=${block}"
+              .sdk-tools/host_sim plugins/StrattPultek/build/native/strattpultek.so test \
+                --seconds 3 --sr "${sr}" --block "${block}" \
+                --wav "plugins/StrattPultek/build/test-${sr}-${block}.wav"
+              echo "::endgroup::"
+            done
+          done
+      - name: Validate deployable plugin folder
+        run: python tools/validate.py plugins/StrattPultek
+      - name: Package installable ZIP
+        run: python tools/package.py plugins/StrattPultek
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StrattPultek-MPC-1.1.0
+          path: |
+            plugins/StrattPultek/dist/*.zip
+            plugins/StrattPultek/build/test-*.wav
+          if-no-files-found: error
