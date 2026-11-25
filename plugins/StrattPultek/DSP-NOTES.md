@@ -5,13 +5,13 @@
 | Section | Choices / range | DSP stage |
 |---|---|---|
 | LF frequency | 20, 30, 60, 100 Hz | Selects both LF shelves; attenuation corner is offset above the boost corner |
-| LF boost | 0–10 dB | Low-frequency shelving boost at the selected frequency |
-| LF attenuation | 0–10 dB | Low-frequency shelving cut at 1.414 × selected frequency (half-octave corner offset); cascades with boost to create the LF lift/dip interaction |
+| LF boost | 0–14 dB | Low-frequency shelving boost at the selected frequency |
+| LF attenuation | 0–18 dB | Low-frequency shelving cut at 1.414 × selected frequency (half-octave corner offset); cascades with boost to create the LF lift/dip interaction |
 | HF boost frequency | 3, 4, 5, 8, 10, 12, 16 kHz | Peaking bell |
-| HF boost | 0–10 dB | Peaking bell gain |
+| HF boost | 0–20 dB | Peaking bell gain |
 | Bandwidth | 0–100% | Q from 1.60 (narrow) to 0.45 (broad) |
 | HF attenuation frequency | 5, 10, 20 kHz | High shelf |
-| HF attenuation | 0–10 dB | High shelf cut |
+| HF attenuation | 0–20 dB | High shelf cut |
 | Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Output / Mix | -12…+12 dB / 0–100% | Output trim and parallel blend |
 
