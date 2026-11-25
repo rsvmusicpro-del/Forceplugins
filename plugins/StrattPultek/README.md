@@ -36,7 +36,7 @@ Airwindows informed the design in two specific ways: the density-dependent wet w
 
 ## UI organization
 
-The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec frequency, gain, bandwidth and output-trim controls), and CIRCUIT (Grain, Drive, Drive Mix, global Mix and final Fader). The original 14 parameter IDs and indices remain unchanged; HP Freq and LP Freq are appended as parameters 14 and 15.
+The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec frequency, gain, bandwidth and output-trim controls), and CIRCUIT (Grain, Drive, Drive Mix, global Mix and final Fader). The original 14 parameter IDs and indices remain unchanged; HP Freq and LP Freq are appended as parameters 14 and 15. The MPC Sample's existing 3+3 Knob FX mapping is intentionally preserved, so these two new filter cutoffs remain at their defaults on that device; they are fully adjustable on MPC models with the touch plugin UI.
 
 ## CPU and realtime
 
