@@ -53,10 +53,10 @@ static inline float softClipIntegral(float x)
 {
     const float a = std::fabs(x);
     if (a <= 1.0f) return 0.5f * a * a;
-    if (a >= 3.0f) return (4.0f / 3.0f) + 1.5f * (a - 3.0f);
+    if (a >= 3.0f) return (10.0f / 3.0f) + 1.5f * (a - 3.0f);
     const float t = 0.5f * (a - 1.0f);
     const float t2 = t * t;
-    return 0.5f + 2.0f * t - (5.0f / 3.0f) * t * t2 + 0.5f * t2 * t2;
+    return 0.5f + 2.0f * t + 2.0f * t2 - (5.0f / 3.0f) * t * t2 + 0.5f * t2 * t2;
 }
 
 static inline float adaaSoftClip(float x, float previousX)
