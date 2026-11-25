@@ -9,7 +9,8 @@
 - First-order high-frequency shelf attenuation (5, 10, 20 kHz); the selector is calibrated near the documented mid-attenuation point rather than the -3 dB pole, using a sample-rate-aware digital response solve.
 - Low-cost asymmetric polynomial saturation with first-order antiderivative antialiasing (ADAA), adding controllable even-order harmonic content; independent Drive intensity, Grain blend and **Drive Mix** controls, with a 3 Hz DC blocker. Drive Mix is a dedicated post-EQ saturation dry/wet control and is smoothed over 15 ms.
 - Airwindows PurestDrive-inspired sample-density weighting: the previous/current driven-sample sum dynamically reduces saturation blend around rapid zero-crossings/transients and favours sustained waveform body. This is a fresh implementation using the plugin's existing ADAA polynomial shaper, not copied Airwindows source.
-- Output trim and wet/dry mix; five factory starting programs.
+- Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`), so Drive changes harmonic density rather than acting as a simple output-volume control. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
+- Output trim and global EQ wet/dry mix; five factory starting programs.
 
 ## Software-emulation design basis
 
