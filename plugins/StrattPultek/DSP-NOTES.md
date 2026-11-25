@@ -5,7 +5,7 @@
 | Section | Choices / range | DSP stage |
 |---|---|---|
 | LF frequency | 20, 30, 60, 100 Hz | Selects LF shelf and LF attenuation interaction centre |
-| LF boost | 0–10 dB | Cascaded low shelf (55% of setting) + resonant bell at the selected frequency (45%); creates a broad low-end shoulder rather than a monotonic shelf |
+| LF boost | 0–10 dB | Cascaded low shelf (55% of setting) + resonant bell at the selected frequency (72.5%; compensates for the shelf's half-gain corner response); creates a broad low-end shoulder rather than a monotonic shelf |
 | LF attenuation | 0–10 dB | Broad resonant bell dip at 1.65 × selected LF frequency (clamped to 25–250 Hz); cascades with boost to create the LF interaction |
 | HF boost frequency | 3, 4, 5, 8, 10, 12, 16 kHz | Peaking bell |
 | HF boost | 0–10 dB | Peaking bell gain |
