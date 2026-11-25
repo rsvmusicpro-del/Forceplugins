@@ -10,7 +10,7 @@ source = (project / "src" / "StrattPultek.cpp").read_text(encoding="utf-8")
 ui = json.loads((project / "ui.json").read_text(encoding="utf-8"))
 manifest = json.loads((project / "plugin.json").read_text(encoding="utf-8"))
 
-ids = re.findall(r'addParam\\(\\w+Param\\("([^"]+)"', source)
+ids = re.findall(r'addParam\(\w+Param\("([^"]+)"', source)
 expected = [
     "output", "low_freq", "low_boost", "low_atten", "high_freq", "high_boost",
     "bandwidth", "hf_att_freq", "hf_atten", "grain", "drive", "mix",
@@ -24,7 +24,7 @@ pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
     raise SystemExit(f"Unexpected page layout: {pages!r}")
 
-display_names = set(re.findall(r'addParam\\(\\w+Param\\("[^"]+",\\s*"([^"]+)"', source))
+display_names = set(re.findall(r'addParam\(\w+Param\("[^"]+",\s*"([^"]+)"', source))
 referenced = {
     control["param"]
     for page in ui["pages"]
@@ -33,7 +33,7 @@ referenced = {
 }
 if not referenced.issubset(display_names):
     raise SystemExit(f"UI references undeclared parameters: {sorted(referenced - display_names)}")
-programs = re.findall(r'addProgram\\("[^"]+",\\s*\\{([^}]+)\\}\\)', source)
+programs = re.findall(r'addProgram\("[^"]+",\s*\{([^}]+)\}\)', source)
 if not programs or any(len(values.split(",")) != len(expected) for values in programs):
     raise SystemExit("Factory program values do not match the 16-parameter contract")
 expected_knobs = {"knobs": [2, 5, 9], "shiftKnobs": [3, 8, 13]}
