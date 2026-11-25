@@ -1,4 +1,4 @@
-# StrattPultek 1.9.3
+# StrattPultek 1.9.4
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -12,6 +12,7 @@
 - Low-cost asymmetric polynomial saturation with first-order antiderivative antialiasing (ADAA), adding controllable even-order harmonic content; independent Drive intensity, Grain blend and **Drive Mix** controls, with a 3 Hz DC blocker. Drive Mix is a dedicated post-EQ saturation dry/wet control and is smoothed over 15 ms.
 - Airwindows PurestDrive-inspired sample-density weighting: the previous/current driven-sample sum dynamically reduces saturation blend around rapid zero-crossings/transients and favours sustained waveform body. This is a fresh implementation using the plugin's existing ADAA polynomial shaper, not copied Airwindows source.
 - Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`), so Drive changes harmonic density rather than acting as a simple output-volume control. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
+- Host-automation boundary handling: every DSP parameter read is checked for NaN/Inf and clamped to its declared range before reaching smoothers, frequency selectors or coefficient design; malformed automation falls back to the documented default without poisoning DSP state.
 - Defensive audio-boundary handling: finite host samples are limited to ±16.0 (24 dBFS) before recursive DSP, and a non-finite final sample clears that channel's DSP history and emits silence for that sample. Ordinary programme levels are unaffected.
 - ADAA startup-state seeding: after prepare/reset or channel recovery, each nonlinear path uses its first live sample as both endpoints of the initial ADAA interval. This prevents a false zero-to-signal averaging interval on the first sample and avoids a startup-dependent transient; stereo channels maintain independent validity flags.
 - Output trim and global EQ wet/dry mix; a separate, smoothed **final master fader** (-60 to +6 dB, 0 dB unity) after every other process; five factory starting programs.
@@ -81,3 +82,8 @@ The UI uses the SDK's MPC amber widget kit and generated Q-Link skin; no externa
 ## Numerical refinement in 1.9.3
 
 The first-order ADAA quotient now has a dedicated path for very short sample intervals that cross one of the transfer's polynomial knees (±1 or ±2). Instead of subtracting nearly equal global antiderivatives, the interval is split at the knee and integrated with five-point Gauss-Legendre quadrature. The asymmetric transfer is degree eight within each segment, and this quadrature is exact through degree nine. Intervals wholly inside one branch retain the existing symmetric local expansion; ordinary and longer intervals retain the closed-form primitive quotient. This is a numerical conditioning improvement, not a change to the static transfer, tone controls or steady-state target curve.
+
+
+## Host-parameter hardening in 1.9.4
+
+All audio-thread parameter reads now pass through finite-value and range guards. This closes the malformed-host automation path where a NaN could enter a one-pole smoother and persist after the host returned to valid values. Choice values are bounded before integer conversion, preventing invalid selector indices. Valid parameter values and all established parameter identities, presets and MPC Sample mappings are unchanged.
