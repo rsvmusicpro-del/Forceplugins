@@ -16,6 +16,7 @@
 #include "dsp/biquad.h"
 #include "dsp/smoother.h"
 #include "dsp/onepole.h"
+#include "dsp/cleansweep_filter.h"
 
 #include <cmath>
 
@@ -27,7 +28,8 @@ enum Params
     kOutput = 0, kLowFreq, kLowBoost, kLowAtten,
     kHighFreq, kHighBoost, kBandwidth,
     kHighAttenFreq, kHighAtten,
-    kGrain, kDrive, kMix, kDriveMix, kFader, kNumParams
+    kGrain, kDrive, kMix, kDriveMix, kFader,
+    kHpFreq, kLpFreq, kNumParams
 };
 
 static float dbToGain(float db)
@@ -214,6 +216,8 @@ static float highAttenuationPole(float selectorHz, double sampleRate)
 
 struct Channel
 {
+    CleansweepOnePole highpass{CleansweepOnePole::Mode::Highpass};
+    CleansweepOnePole lowpass{CleansweepOnePole::Mode::Lowpass};
     OnePoleLP lowBoost, lowAtten, highAtten;
     Biquad highBoost;
     float previousDriveInput = 0.0f;
@@ -224,6 +228,7 @@ struct Channel
     float previousTubeDcInput = 0.0f, previousTubeDcOutput = 0.0f;
     void reset()
     {
+        highpass.reset(); lowpass.reset();
         lowBoost.reset(); lowAtten.reset();
         highBoost.reset(); highAtten.reset();
         previousDriveInput = previousDcInput = previousDcOutput = 0.0f;
@@ -282,12 +287,15 @@ public:
         addParam(floatParam("drive_mix", "Drive Mix", 0.0f, 100.0f, 100.0f, "%", 0));
         // Dedicated post-chain master fader; appended to preserve saved projects.
         addParam(floatParam("fader", "Fader", -60.0f, 6.0f, 0.0f, "dB", 1));
+        // Appended only: preserve the established 0..13 parameter contract.
+        addParam(logParam("hp_freq", "HP Freq", 20.0f, 11000.0f, 20.0f, "Hz", 0));
+        addParam(logParam("lp_freq", "LP Freq", 20.0f, 22000.0f, 22000.0f, "Hz", 0));
 
-        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f, 0.0f});
-        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f, 0.0f});
-        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f, 0.0f});
-        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f, 0.0f});
-        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f, 0.0f});
+        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
+        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
+        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
+        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
+        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
     }
 
     void prepare(double sampleRate, int /*maxBlockSize*/) override
@@ -326,6 +334,8 @@ public:
         eqBandwidth_ = get(kBandwidth);
         eqHighAttenPole_ = highAttenPoleChoices_[mpc::clamp(getInt(kHighAttenFreq), 0, 2)];
         eqHighAtten_ = get(kHighAtten);
+        hpFreq_ = get(kHpFreq);
+        lpFreq_ = get(kLpFreq);
         updateEq();
     }
 
@@ -360,7 +370,11 @@ public:
                                     ? ctx.inputs[ch][i] : 0.0f;
                 // The original LF boost and attenuation, plus HF attenuation,
                 // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
-                float wet = dry + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(dry);
+                // bx_cleansweep V2-style first-order 6 dB/octave filters, HP then LP.
+                // The global EQ Mix remains the final parallel blend against dry.
+                float filtered = channels_[ch].highpass.process(dry);
+                filtered = channels_[ch].lowpass.process(filtered);
+                float wet = filtered + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(filtered);
                 wet += (lowAttenGain_ - 1.0f) * channels_[ch].lowAtten.process(wet);
                 wet = channels_[ch].highBoost.process(wet);
                 const float hfLow = channels_[ch].highAtten.process(wet);
@@ -405,7 +419,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1701;
+        i.version = 1800;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -415,6 +429,8 @@ private:
 
     void smoothEq(int frames)
     {
+        hpFreq_ = smoothFrequency(hpFreq_, get(kHpFreq), frames, sampleRate_);
+        lpFreq_ = smoothFrequency(lpFreq_, get(kLpFreq), frames, sampleRate_);
         eqLowFreq_ = smoothFrequency(eqLowFreq_, lowFrequency(getInt(kLowFreq)), frames, sampleRate_);
         eqLowBoost_ = smoothBlock(eqLowBoost_, get(kLowBoost), frames, sampleRate_);
         eqLowAtten_ = smoothBlock(eqLowAtten_, get(kLowAtten), frames, sampleRate_);
@@ -449,6 +465,8 @@ private:
         highAttenGain_ = dbToGain(-eqHighAtten_);
         for (Channel& c : channels_)
         {
+            c.highpass.setCutoff(hpFreq_, sampleRate_);
+            c.lowpass.setCutoff(lpFreq_, sampleRate_);
             c.lowBoost.setCutoff(eqLowFreq_, sampleRate_);
             c.lowAtten.setCutoff(lowAttenCorner, sampleRate_);
             c.highBoost.setCoeffs(hb);
@@ -463,6 +481,7 @@ private:
     float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
     float highAttenPoleChoices_[3] = { 1120.0f, 1911.0f, 2635.0f };
     float eqHighAttenPole_ = 1911.0f, eqHighAtten_ = 0.0f;
+    float hpFreq_ = 20.0f, lpFreq_ = 22000.0f;
     Channel channels_[2];
     Smoother output_, grain_, drive_, mix_, driveMix_, fader_;
 };
