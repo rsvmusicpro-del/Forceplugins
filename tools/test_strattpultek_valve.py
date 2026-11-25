@@ -90,11 +90,17 @@ def simpson_average(x, previous, steps=200):
 class ValveTransferTests(unittest.TestCase):
     def test_c2_join_values_and_derivatives(self):
         # F, F' and F'' agree at the linear/knee and knee/plateau joins.
-        self.assertAlmostEqual(1.0, 1.0)
-        self.assertAlmostEqual(1.5, 1.0 + 1.0 - 1.0 + 0.5)
-        self.assertAlmostEqual(0.0, 1.0 - 3.0 + 2.0)
-        self.assertAlmostEqual(0.0, -6.0 + 6.0)
-        self.assertAlmostEqual(0.0, -6.0 + 12.0)
+        knee = lambda t: 1.0 + t - t**3 + 0.5*t**4
+        slope = lambda t: 1.0 - 3.0*t*t + 2.0*t**3
+        curvature = lambda t: -6.0*t + 6.0*t*t
+        self.assertAlmostEqual(1.0, knee(0.0))
+        self.assertAlmostEqual(1.0, slope(0.0))
+        self.assertAlmostEqual(0.0, curvature(0.0))
+        self.assertAlmostEqual(1.5, knee(1.0))
+        self.assertAlmostEqual(0.0, slope(1.0))
+        self.assertAlmostEqual(0.0, curvature(1.0))
+        self.assertAlmostEqual(-1.0, transfer(-1.0))
+        self.assertAlmostEqual(-1.5, transfer(-2.0))
 
     def test_primitives_differentiate_to_transfer_and_square(self):
         for x in (-3.0, -1.7, -1.0, -0.4, 0.4, 1.0, 1.7, 3.0):
