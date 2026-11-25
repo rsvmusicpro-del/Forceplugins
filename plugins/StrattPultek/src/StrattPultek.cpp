@@ -88,22 +88,63 @@ static inline double softClipSquareIntegral(double x)
 }
 
 // First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
-// Evaluate the divided difference in double precision and use its differential
-// limit near coincident samples to avoid catastrophic cancellation.
+// For very short intervals wholly inside one polynomial branch, evaluate the
+// interval average with its symmetric Taylor expansion. This avoids subtracting
+// nearly equal global primitives. The fourth-order term is exact through O(d^4);
+// the remaining O(d^6) error is negligible at the 1e-4 relative interval limit.
+// Intervals touching a knee still use the exact piecewise primitive difference.
 static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
     const double xd = static_cast<double>(x);
     const double pd = static_cast<double>(previousX);
     const double delta = xd - pd;
+    const double ad = std::fabs(delta);
     const double scale = std::fmax(1.0, std::fmax(std::fabs(xd), std::fabs(pd)));
+    const double eta = static_cast<double>(asymmetry);
+    const double midpoint = 0.5 * (xd + pd);
 
-    if (std::fabs(delta) <= 1.0e-7 * scale)
+    if (ad <= 1.0e-4 * scale)
     {
-        const float y = softClip(static_cast<float>(0.5 * (xd + pd)));
-        return y + asymmetry * y * y;
+        const double ax = std::fabs(xd);
+        const double ap = std::fabs(pd);
+        const double d2 = delta * delta;
+        const double d4 = d2 * d2;
+
+        // In the linear branch F_a(x)=x+eta*x^2, so its interval
+        // average is available exactly (the second derivative is 2*eta).
+        if (ax <= 1.0 && ap <= 1.0)
+            return static_cast<float>(midpoint + eta * (midpoint * midpoint + d2 / 12.0));
+
+        // The plateau is constant as long as the interval stays on one side.
+        if (ax >= 2.0 && ap >= 2.0 && std::signbit(xd) == std::signbit(pd))
+        {
+            const double y = 1.5 * (std::signbit(xd) ? -1.0 : 1.0);
+            return static_cast<float>(y + eta * y * y);
+        }
+
+        // In the knee, use f(mid) + f''(mid)d^2/24 + f''''(mid)d^4/1920.
+        // The polynomial is degree four; its asymmetric square is degree eight.
+        if (ax > 1.0 && ax < 2.0 && ap > 1.0 && ap < 2.0
+            && std::signbit(xd) == std::signbit(pd))
+        {
+            const double sign = std::signbit(midpoint) ? -1.0 : 1.0;
+            const double t = std::fabs(midpoint) - 1.0;
+            const double t2 = t * t;
+            const double p = 1.0 + t - t * t2 + 0.5 * t2 * t2;
+            const double p1 = 1.0 - 3.0 * t2 + 2.0 * t2 * t;
+            const double p2 = -6.0 * t + 6.0 * t2;
+            const double p3 = -6.0 + 12.0 * t;
+            constexpr double p4 = 12.0;
+            const double f = sign * p;
+            const double f2 = sign * p2;
+            const double f4 = sign * p4;
+            const double fa = f + eta * p * p;
+            const double fa2 = f2 + eta * (2.0 * p1 * p1 + 2.0 * p * p2);
+            const double fa4 = f4 + eta * (2.0 * p * p4 + 8.0 * p1 * p3 + 6.0 * p2 * p2);
+            return static_cast<float>(fa + fa2 * d2 / 24.0 + fa4 * d4 / 1920.0);
+        }
     }
 
-    const double eta = static_cast<double>(asymmetry);
     const double currentIntegral = softClipIntegral(xd)
                                  + eta * softClipSquareIntegral(xd);
     const double previousIntegral = softClipIntegral(pd)
