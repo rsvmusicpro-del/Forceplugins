@@ -1,4 +1,4 @@
-# StrattPultek 1.9.0 DSP notes and verification plan
+# StrattPultek 1.9.1 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
@@ -53,6 +53,10 @@ StrattPultek applies this lesson by keeping the passive-EQ approximation separat
 Barrera, Lizarraga-Seijas and Font (SMC 2024) describe an EQP-1A passive network derived from circuit schematics, LTspice simulation and Wave Digital Filters (WDF). Their paper reports that the optimized WDF implementation is suitable for real-time use and is faster than the compared Faust implementation. It also shows that oversampling is important to preserve high-frequency accuracy: the reported worst-case HF boost magnitude RMSE falls from 1.40 at 48 kHz to 0.22 at 192 kHz. The paper explicitly leaves the tube gain stage and input/output transformers outside its model.
 
 That work is a useful technical reference and establishes that a more complete circuit-derived passive EQ is feasible without a physical unit as the only source of truth. StrattPultek 1.2.0 does not copy the GPL WDF implementation or claim identical WDF behaviour. It retains a compact shelf-plus-biquad model and an independent nonlinear colour stage to stay within the MPC/Force ARM real-time budget. The decision is a product trade-off: recognizable EQP-1A control interaction and musical response, predictable neutral settings, and a lightweight realtime path.
+
+## Audio-boundary safety (1.9.1)
+
+Finite host samples are clamped to ±16.0 (24 dBFS) before entering recursive filters and nonlinear stages. This is deliberately above normal floating-point programme levels and leaves substantial internal headroom, while preventing extreme but finite host values from overflowing polynomial primitives or recursive state. The final sample is checked after the master fader; if it is non-finite, only that channel's DSP memory is reset and silence is emitted for that sample. No allocation, lock, logging or I/O is added to the audio callback.
 
 ## CPU design
 
