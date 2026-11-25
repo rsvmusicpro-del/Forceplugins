@@ -70,7 +70,10 @@
           "param": "Mix",
           "widget": "fader"
         },
-        "empty"
+        {
+          "param": "Fader",
+          "widget": "fader"
+        }
       ]
     }
   ]
