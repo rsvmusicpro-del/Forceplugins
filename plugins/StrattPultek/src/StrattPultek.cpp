@@ -483,10 +483,11 @@ public:
                 // Permanent, invisible valve-amplifier coloration is deliberately
                 // after every EQ/drive/mix/output-trim stage and directly before
                 // the final master fader. It has no parameter or UI mapping.
-                const float preFader = processed * outGain;
-                const float tubeOutput = channels_[ch].tubeStage(preFader, dcPole_);
-                // The fader remains the final operation in the complete signal path.
-                const float outputSample = tubeOutput * finalFader;
+                // Parameter 0 is the host-nudged master output. Apply it after
+                // the nonlinear valve stage so automation/load nudges cannot alter tone.
+                const float tubeOutput = channels_[ch].tubeStage(processed, dcPole_);
+                // The dedicated Fader remains the final operation in the signal path.
+                const float outputSample = tubeOutput * outGain * finalFader;
                 if (std::isfinite(outputSample))
                 {
                     ctx.outputs[ch][i] = outputSample;
@@ -509,7 +510,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1904;
+        i.version = 1905;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
