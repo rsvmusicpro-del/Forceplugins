@@ -111,3 +111,8 @@ Les fréquences sont bornées à \\(0.49f_s\\), les contrôles sont lissés en d
 61. Output containment: \(y_s=y\) when \(y\) is finite; otherwise emit \(0\) and reset only the affected channel's recursive state.
 
 These are defensive bounds for malformed or pathological host values, not a normal programme limiter and not a change to the intended EQ or saturation curves.
+
+
+## ADAA initial-state condition added in 1.9.2
+
+62. First-sample ADAA initialization: after a reset, let the first valid nonlinear input be \\(x_0\\). Set \\(x_{-1}=x_0\\), so the divided-difference limit is \\(y_0=F_a(x_0)\\), rather than the artificial startup average \\([I_a(x_0)-I_a(0)]/x_0\\). Subsequent samples use the ordinary first-order ADAA interval \\([x_{n-1},x_n]\\). The drive and fixed valve stages keep independent per-channel validity flags; reset and numerical recovery clear them. This is an initialization correction, not a change to the nonlinear transfer or steady-state frequency response.
