@@ -3,7 +3,20 @@
   "qlinkGroups": "rows",
   "pages": [
     {
-      "name": "LOW",
+      "name": "FILTER",
+      "controls": [
+        {
+          "param": "HP Freq",
+          "widget": "knob"
+        },
+        {
+          "param": "LP Freq",
+          "widget": "knob"
+        }
+      ]
+    },
+    {
+      "name": "EQ",
       "controls": [
         {
           "param": "Low Freq",
@@ -18,15 +31,6 @@
           "param": "Low Atten",
           "widget": "knob"
         },
-        {
-          "param": "Output",
-          "widget": "fader"
-        }
-      ]
-    },
-    {
-      "name": "HIGH",
-      "controls": [
         {
           "param": "High Freq",
           "widget": "knob",
@@ -48,11 +52,15 @@
         {
           "param": "Bandwidth",
           "widget": "knob"
+        },
+        {
+          "param": "Output",
+          "widget": "fader"
         }
       ]
     },
     {
-      "name": "COLOR",
+      "name": "CIRCUIT",
       "controls": [
         {
           "param": "Grain",
