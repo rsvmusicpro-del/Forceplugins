@@ -1,4 +1,4 @@
-# StrattPultek — 59 calculs mathématiques et physiques (v1.8.0)
+# StrattPultek — 59 calculs mathématiques et physiques (v1.9.0)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -96,9 +96,9 @@ En 1.7.0, la primitive de F dans la zone de transition (t=|x|-1) est \\(I_F=1/2+
 Pour un intervalle court entièrement contenu dans une branche polynomiale, la moyenne exacte de la fonction est évaluée par symétrie autour de \\(m=(x_n+x_{n-1})/2\\) : \\(F_a(m)+F_a''(m)\\Delta x^2/24+F_a^{(4)}(m)\\Delta x^4/1920+O(\\Delta x^6)\\). Dans la branche linéaire \\(F_a=x+\\eta x^2\\), cette expression est exacte après le terme quadratique. Dans le genou, le terme d'ordre quatre est inclus ; le polynôme \\(F_a\\) est de degré huit, donc le reste est d'ordre six. Le seuil relatif est \\(10^{-4}\\max(1,|x_n|,|x_{n-1}|)\\). Si l'intervalle touche ou traverse une frontière de branche, le calcul revient à la différence des primitives analytiques, sans approximation locale. Cette branche locale réduit l'annulation soustractive sans augmenter le nombre d'échantillons ni introduire de fonction transcendante dans la boucle audio.
 
 
-## Filtres HP/LP ajoutés en 1.8.0
+## Filtres HP/LP ajoutés en 1.9.0
 
-57. Pré-guerre bilinéaire : \\(K=\\tan(\\pi f_c/f_s)\\), \\(a_1=(K-1)/(K+1)\\).
+57. Pré-guerre bilinéaire préwarpé : \\(K=\\tan(\\pi f_c/f_s)\\), \\(a_1=(K-1)/(K+1)\\).
 58. Passe-bas : \\(b_0=b_1=K/(1+K)\\), \\(y[n]=b_0x[n]+b_1x[n-1]-a_1y[n-1]\\).
 59. Passe-haut : \\(b_0=1/(1+K), b_1=-b_0\\), même dénominateur; la réponse est à -3.01 dB à \\(f_c\\) et tend vers 6 dB/octave.
 
