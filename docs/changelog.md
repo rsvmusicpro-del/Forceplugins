@@ -2,6 +2,12 @@
 
 All notable changes to the MPC Plugin SDK are recorded here, newest first.
 
+## StrattPultek 1.8.0
+
+- Added stereo 6 dB/octave HP/LP filters on a dedicated FILTER page, with documented bx_cleansweep V2 frequency ranges and sample-rate-safe bilinear coefficients.
+- Reorganized the MPC UI into FILTER, EQ and CIRCUIT pages; appended two parameters without renumbering the existing fourteen.
+- Added a C++ response regression test for the new filter implementation and wired it into the StrattPultek validation workflow.
+
 ## Unreleased (will become 1.1)
 
 ### Added
