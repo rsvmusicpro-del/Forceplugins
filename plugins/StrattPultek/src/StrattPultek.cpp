@@ -233,6 +233,9 @@ public:
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
         dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
+        // The three selector poles are solved once per prepare, never in process().
+        for (int i = 0; i < 3; ++i)
+            highAttenPoleChoices_[i] = highAttenuationPole(attenuationFrequency(i), sampleRate_);
         output_.setTime(15.0f, sampleRate_);
         grain_.setTime(15.0f, sampleRate_);
         drive_.setTime(15.0f, sampleRate_);
@@ -255,7 +258,7 @@ public:
         eqHighFreq_ = highFrequency(getInt(kHighFreq));
         eqHighBoost_ = get(kHighBoost);
         eqBandwidth_ = get(kBandwidth);
-        eqHighAttenFreq_ = attenuationFrequency(getInt(kHighAttenFreq));
+        eqHighAttenPole_ = highAttenPoleChoices_[mpc::clamp(getInt(kHighAttenFreq), 0, 2)];
         eqHighAtten_ = get(kHighAtten);
         updateEq();
     }
@@ -332,7 +335,7 @@ private:
         eqHighFreq_ = smoothFrequency(eqHighFreq_, highFrequency(getInt(kHighFreq)), frames, sampleRate_);
         eqHighBoost_ = smoothBlock(eqHighBoost_, get(kHighBoost), frames, sampleRate_);
         eqBandwidth_ = smoothBlock(eqBandwidth_, get(kBandwidth), frames, sampleRate_);
-        eqHighAttenFreq_ = smoothFrequency(eqHighAttenFreq_, attenuationFrequency(getInt(kHighAttenFreq)), frames, sampleRate_);
+        eqHighAttenPole_ = smoothFrequency(eqHighAttenPole_, highAttenPoleChoices_[mpc::clamp(getInt(kHighAttenFreq), 0, 2)], frames, sampleRate_);
         eqHighAtten_ = smoothBlock(eqHighAtten_, get(kHighAtten), frames, sampleRate_);
     }
 
@@ -349,7 +352,7 @@ private:
         // The selector is near the mid-attenuation point, not the -3 dB pole.
         // Solve the discrete-time first-order shelf at the selected frequency;
         // this matters especially for 20 kHz at the MPC's 44.1 kHz sample rate.
-        const float hfAttenCorner = highAttenuationPole(eqHighAttenFreq_, sampleRate_);
+        const float hfAttenCorner = eqHighAttenPole_;
         // The hardware's HF boost maximum falls from about +20 dB (narrow) to
         // about +13.5 dB (broad). Approximate that bandwidth-dependent headroom.
         const float bandwidthGain = 1.0f - 0.325f * (eqBandwidth_ * 0.01f);
@@ -372,7 +375,8 @@ private:
     float eqLowFreq_ = 60.0f, eqLowBoost_ = 0.0f, eqLowAtten_ = 0.0f;
     float lowBoostGain_ = 1.0f, lowAttenGain_ = 1.0f, highAttenGain_ = 1.0f;
     float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
-    float eqHighAttenFreq_ = 10000.0f, eqHighAtten_ = 0.0f;
+    float highAttenPoleChoices_[3] = { 1120.0f, 1911.0f, 2635.0f };
+    float eqHighAttenPole_ = 1911.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
     Smoother output_, grain_, drive_, mix_;
 };
