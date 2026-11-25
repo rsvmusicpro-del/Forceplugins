@@ -1,4 +1,4 @@
-# StrattPultek 1.4.0
+# StrattPultek 1.5.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -17,6 +17,10 @@
 The design was reviewed against professional Pultec-style plug-ins (Universal Audio, Waves, Softube and Avid), as well as the free Analog Obsession Rare emulation and published software shootouts. Those comparisons show that the perceived identity of a Pultec plug-in is not only its static EQ curve: input-level-dependent harmonics, insertion gain, colour with EQ disengaged, and the way boost and bandwidth interact all materially affect the result. StrattPultek therefore keeps the passive-EQ controls separate from its controllable asymmetric colour stage, while retaining neutral Drive/Grain settings and a predictable host wet/dry path.
 
 A published open-source EQP-1A study using Wave Digital Filters demonstrates that a schematic-derived passive network can be modeled in real time, with improved high-frequency accuracy when oversampled. That work informed the evaluation of the filter topology and the decision to keep the MPC build lightweight: the present implementation uses low-cost shelves and a resonant biquad rather than importing a third-party WDF implementation. This preserves the Force/MPC ARM target and its current CPU profile. It is a deliberate real-time design choice, not a claim that the two filter architectures are mathematically identical.
+
+## Permanent valve output stage
+
+Version 1.5.0 adds a fixed, invisible triode-inspired output coloration stage immediately before the final master fader. It is always active, has no parameter or UI control, and is independent of the existing Drive / Grain saturation controls. A gain-compensated asymmetric polynomial transfer with first-order ADAA introduces restrained even-order harmonics and progressive peak softening; a per-channel 3 Hz DC blocker removes bias. It is intentionally a lightweight musical model, not a claim of component-level hardware measurement. Existing parameter IDs, order, presets and Q-Link assignments are preserved.
 
 ## Modelling note
 
