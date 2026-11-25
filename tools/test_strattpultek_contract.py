@@ -31,9 +31,11 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
+if "i.version = 1904;" not in source:
+    raise SystemExit("PluginInfo version does not match the 1.9.4 manifest")
 if "float readParam(int index, float fallback, float minimum, float maximum) const" not in source:
     raise SystemExit("Finite host-parameter guard is missing")
-if re.search(r"\\bget(?:Int)?\\(k[A-Z]\\w*\\)", source):
+if re.search(r"\bget(?:Int)?\(k[A-Z]\w*\)", source):
     raise SystemExit("DSP contains an unguarded direct parameter read")
 if "mpc::clamp(dry, -kMaxInputMagnitude, kMaxInputMagnitude)" not in source:
     raise SystemExit("Audio input headroom guard is missing")
