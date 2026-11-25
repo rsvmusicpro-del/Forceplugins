@@ -108,3 +108,8 @@ The ADAA architecture remains first-order, while the underlying transfer changed
 ## Host automation boundary (1.9.4)
 
 Every parameter consumed by the audio path is read through a finite-value guard and clamped to its declared range. NaN/Inf values fall back to the control's documented default; choice parameters are bounded before integer conversion. This prevents malformed host automation from contaminating a smoother or selector. Normal finite automation is unchanged and the guard adds only a predictable finite check and clamp at block/control rate.
+
+
+## Tone-neutral parameter-0 master gain (1.9.5)
+
+The MPC host may nudge parameter 0 during plugin load. The SDK contract requires this parameter to behave as a harmless master output control. It is therefore applied after the fixed valve-inspired nonlinear stage and before the dedicated final Fader. This prevents parameter-0 automation or load-time nudges from changing the valve stage's operating point or harmonic spectrum. Parameter IDs, order, defaults, factory programs and MPC Sample mappings remain unchanged.
