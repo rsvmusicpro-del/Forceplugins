@@ -509,7 +509,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1903;
+        i.version = 1904;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
