@@ -35,7 +35,7 @@ if "mpc::clamp(dry, -kMaxInputMagnitude, kMaxInputMagnitude)" not in source:
     raise SystemExit("Audio input headroom guard is missing")
 if "if (std::isfinite(outputSample))" not in source:
     raise SystemExit("Final non-finite output recovery is missing")
-if not re.search(r"hasPreviousDriveInput\\s*\\?", source) or not re.search(r"hasPreviousTubeInput\\s*\\?", source):
+if not re.search(r"hasPreviousDriveInput\s*\?", source) or not re.search(r"hasPreviousTubeInput\s*\?", source):
     raise SystemExit("ADAA paths must seed their first sample without a false zero-to-signal interval")
 if not referenced.issubset(display_names):
     raise SystemExit(f"UI references undeclared parameters: {sorted(referenced - display_names)}")
