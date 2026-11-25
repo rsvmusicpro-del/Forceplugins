@@ -1,4 +1,4 @@
-// StrattPultek — Pultec-inspired passive EQ curves + low-cost harmonic colour.
+// StrattPultek — Pultec-inspired passive EQ curves + calibrated Cleansweep filtering.
 // SPDX-License-Identifier: MIT
 //
 // Signal path per channel:
@@ -368,11 +368,13 @@ public:
                 if (!ctx.outputs[ch]) continue;
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
+                // Reject malformed host samples before they enter recursive DSP state.
+                const float safeDry = std::isfinite(dry) ? dry : 0.0f;
                 // The original LF boost and attenuation, plus HF attenuation,
                 // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
                 // bx_cleansweep V2-style first-order 6 dB/octave filters, HP then LP.
                 // The global EQ Mix remains the final parallel blend against dry.
-                float filtered = channels_[ch].highpass.process(dry);
+                float filtered = channels_[ch].highpass.process(safeDry);
                 filtered = channels_[ch].lowpass.process(filtered);
                 float wet = filtered + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(filtered);
                 wet += (lowAttenGain_ - 1.0f) * channels_[ch].lowAtten.process(wet);
@@ -420,7 +422,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1800;
+        i.version = 1900;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
