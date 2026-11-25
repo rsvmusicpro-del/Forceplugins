@@ -18,7 +18,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.1":
+if manifest["version"] != "1.9.2":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
@@ -35,6 +35,8 @@ if "mpc::clamp(dry, -kMaxInputMagnitude, kMaxInputMagnitude)" not in source:
     raise SystemExit("Audio input headroom guard is missing")
 if "if (std::isfinite(outputSample))" not in source:
     raise SystemExit("Final non-finite output recovery is missing")
+if "hasPreviousDriveInput ?" not in source or "hasPreviousTubeInput ?" not in source:
+    raise SystemExit("ADAA paths must seed their first sample without a false zero-to-signal interval")
 if not referenced.issubset(display_names):
     raise SystemExit(f"UI references undeclared parameters: {sorted(referenced - display_names)}")
 programs = re.findall(r'addProgram\("[^"]+",\s*\{([^}]+)\}\)', source)
