@@ -103,3 +103,11 @@ Pour un intervalle court entièrement contenu dans une branche polynomiale, la m
 59. Passe-haut : \\(b_0=1/(1+K), b_1=-b_0\\), même dénominateur; la réponse est à -3.01 dB à \\(f_c\\) et tend vers 6 dB/octave.
 
 Les fréquences sont bornées à \\(0.49f_s\\), les contrôles sont lissés en domaine logarithmique et les coefficients sont recalculés par bloc. Le modèle est une réalisation bilinéaire stable du passe-haut/passe-bas 1er ordre documenté par Brainworx; ce n'est pas une reproduction du traitement Anti-Crush propriétaire.
+
+
+## Numerical boundary protection added in 1.9.1
+
+60. Finite host input bound: \(x_s=\operatorname{clamp}(x,-16,+16)\), retaining 24 dB of amplitude headroom above unity before recursive and polynomial DSP.
+61. Output containment: \(y_s=y\) when \(y\) is finite; otherwise emit \(0\) and reset only the affected channel's recursive state.
+
+These are defensive bounds for malformed or pathological host values, not a normal programme limiter and not a change to the intended EQ or saturation curves.
