@@ -1,4 +1,4 @@
-# StrattPultek 1.9.4
+# StrattPultek 1.9.5
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -15,7 +15,7 @@
 - Host-automation boundary handling: every DSP parameter read is checked for NaN/Inf and clamped to its declared range before reaching smoothers, frequency selectors or coefficient design; malformed automation falls back to the documented default without poisoning DSP state.
 - Defensive audio-boundary handling: finite host samples are limited to ±16.0 (24 dBFS) before recursive DSP, and a non-finite final sample clears that channel's DSP history and emits silence for that sample. Ordinary programme levels are unaffected.
 - ADAA startup-state seeding: after prepare/reset or channel recovery, each nonlinear path uses its first live sample as both endpoints of the initial ADAA interval. This prevents a false zero-to-signal averaging interval on the first sample and avoids a startup-dependent transient; stereo channels maintain independent validity flags.
-- Output trim and global EQ wet/dry mix; a separate, smoothed **final master fader** (-60 to +6 dB, 0 dB unity) after every other process; five factory starting programs.
+- Global EQ wet/dry mix; a smoothed **Output master gain** (parameter 0, -12 to +12 dB) applied after all nonlinear colour stages so host load nudges cannot change tone; and a separate **final master Fader** (-60 to +6 dB, 0 dB unity). Five factory starting programs.
 
 ## Software-emulation design basis
 
@@ -47,7 +47,7 @@ The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec fre
 
 ## CPU and realtime
 
-One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. The Fader is a separate -60 to +6 dB control applied as the final multiplication after output trim and wet/dry blending; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The added density term is \`d[n] = clamp(2·|x[n] + x[n−1]|, 0, 1)\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
+One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. Output (parameter 0) is a tone-neutral post-colour master gain; the separate Fader is the final -60 to +6 dB multiplication after it; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The added density term is \`d[n] = clamp(2·|x[n] + x[n−1]|, 0, 1)\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
 
 The equations and engineering checks used to review the filter, nonlinear stage, smoothing, gain structure and output path are catalogued in [DSP_CALCULATIONS.md](DSP_CALCULATIONS.md). The list distinguishes analysis equations from the subset implemented in the real-time code.
 
@@ -87,3 +87,8 @@ The first-order ADAA quotient now has a dedicated path for very short sample int
 ## Host-parameter hardening in 1.9.4
 
 All audio-thread parameter reads now pass through finite-value and range guards. This closes the malformed-host automation path where a NaN could enter a one-pole smoother and persist after the host returned to valid values. Choice values are bounded before integer conversion, preventing invalid selector indices. Valid parameter values and all established parameter identities, presets and MPC Sample mappings are unchanged.
+
+
+## Tone-neutral master output in 1.9.5
+
+Parameter 0 (Output) is the host-nudged master gain required by the MPC SDK. It now runs after the fixed nonlinear valve-colour stage and before the dedicated final Fader. Loading or nudging parameter 0 therefore changes level only; it can no longer change the valve stage's operating point or harmonic content. Parameter IDs, order, defaults, programs and MPC Sample mappings are unchanged.
