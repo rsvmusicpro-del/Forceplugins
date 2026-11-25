@@ -1,4 +1,4 @@
-# StrattPultek 1.6.0 DSP notes and verification plan
+# StrattPultek 1.7.0 DSP notes and verification plan
 
 ## EQ control coverage
 
@@ -12,7 +12,7 @@
 | Bandwidth | 0–100% | Q from 1.60 (narrow) to 0.45 (broad) |
 | HF attenuation frequency | 5, 10, 20 kHz | Selector maps to the approximate mid-attenuation point by solving the discrete-time one-pole response at the current sample rate |
 | HF attenuation | 0–20 dB | First-order high shelf cut (6 dB/oct) |
-| Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
+| Grain / Drive | 0–100% each | C2 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Drive Mix | 0–100% | Independent post-EQ saturation dry/wet blend, unity-sum to avoid correlated-signal gain bumps |
 | Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Output trim, global EQ wet/dry blend, then a separate final master fader at the very end of the chain |
 
@@ -55,9 +55,9 @@ That work is a useful technical reference and establishes that a more complete c
 - Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide. The three HF attenuation poles are solved once in prepare() for the active sample rate and cached; only the selected cached pole is smoothed in process().
 - No heap allocation, locks, logging or I/O in the audio callback.
 
-## Permanent valve-amplifier output stage (1.6.0 numerical refinement)
+## Permanent valve-amplifier output stage (1.7.0 transfer refinement)
 
-A fixed, non-adjustable triode-inspired coloration stage is inserted after the complete EQ / controllable drive / global mix / output-trim path and immediately before the final master fader. It is independent of Drive, Grain and Drive Mix, has no parameter, no UI control and no Q-Link mapping. The stage uses a fixed 1.35 input gain, a small 0.045 asymmetric component in the existing C1 polynomial transfer, first-order ADAA using the closed-form primitive, inverse gain compensation, and a per-channel 3 Hz DC blocker. In 1.6.0, both primitives and the divided difference are evaluated in double precision, reducing cancellation for near-adjacent float samples; the differential-limit branch uses a tighter relative threshold and the midpoint derivative. This produces subtle even-order harmonic coloration at ordinary levels and progressively softens louder peaks without a hard digital clip. ADAA limits foldback without oversampling; state is stereo-independent and reset with the other DSP state. It is a low-cost tube-amplifier-inspired model, not a measured component-level 12AX7/transformer circuit capture.
+A fixed, non-adjustable valve-inspired coloration stage remains after the complete EQ / controllable drive / global mix / output-trim path and immediately before the final master fader. It is independent of Drive, Grain and Drive Mix, has no parameter, no UI control and no Q-Link mapping. Version 1.7.0 replaces the C1 knee with a C2-continuous polynomial: F(x)=x for |x|≤1; for 1<|x|<2, with t=|x|-1, F(|x|)=1+t−t³+0.5t⁴; and F(x)=sign(x)·1.5 for |x|≥2. The first and second derivatives join continuously at both boundaries. The stage uses fixed input gain 1.15, asymmetry η=0.045, the exact closed-form primitives of F and F² for first-order ADAA, double-precision divided differences with a relative differential-limit fallback, inverse gain compensation, and an independent per-channel 3 Hz DC blocker. The change smooths the transfer's curvature transitions and retains antiderivative antialiasing without oversampling or per-sample transcendental functions. It remains a low-cost phenomenological valve-amplifier model, not a measured component-level 12AX7/transformer circuit capture.
 
 The final order is: EQ → controllable ADAA drive → global EQ dry/wet → output trim → fixed valve stage → final smoothed master fader. The existing parameter IDs, order, preset arrays and MPC Sample knob assignments are unchanged.
 
@@ -69,7 +69,7 @@ The first parameter remains Output trim, intentionally harmless under the MPC pr
 
 ## Validation performed
 
-The 1.6.0 numerical refinement requires a fresh CI build and host-simulator run. Previous validation results are historical and do not establish the new revision's build or runtime status.
+The 1.7.0 transfer refinement requires a fresh CI build and host-simulator run; previous results are historical and do not establish this revision's build or runtime status. Previous validation results are historical and do not establish the new revision's build or runtime status.
 
 1. Native, ARM32 and ARM64 builds; generated MPC skins and `tools/validate.py` passed with 0 errors and 0 warnings.
 2. `host_sim` passed at 44.1, 48 and 96 kHz with 32-, 128- and 512-frame blocks, including parameter randomisation, state round-trip, in-place processing, silence and finite-output checks.
@@ -87,6 +87,6 @@ The 1.6.0 numerical refinement requires a fresh CI build and host-simulator run.
 - [ABSounds — EQP-WDF-1A](https://github.com/ABSounds/EQP-WDF-1A): open-source WDF-based implementation used as a technical comparison; no source code is copied.
 
 
-## Numerical refinement in 1.6.0
+## Transfer refinement in 1.7.0
 
-The ADAA transfer is unchanged: \(F_a(x)=F(x)+\eta F(x)^2\). Its primitive is \(I_a(x)=I_F(x)+\eta I_{F^2}(x)\), where both component primitives are evaluated in double precision. The sample-to-sample output remains the first-order divided difference \((I_a(x_n)-I_a(x_{n-1}))/(x_n-x_{n-1})\). For \(|\Delta x|\le 10^{-7}\max(1,|x_n|,|x_{n-1}|)\), the differential limit is evaluated at the midpoint as \(F(m)+\eta F(m)^2\). This reduces subtractive cancellation without changing the sound-design curve, public controls, saved parameter identity or realtime allocation behaviour. It is a numerical-accuracy improvement, not a claim of exact valve-circuit emulation.
+The ADAA architecture remains first-order, while the underlying transfer changed to a C2-continuous knee: \(F_a(x)=F(x)+\eta F(x)^2\). Its primitive is \(I_a(x)=I_F(x)+\eta I_{F^2}(x)\), where both component primitives are evaluated in double precision. The sample-to-sample output remains the first-order divided difference \((I_a(x_n)-I_a(x_{n-1}))/(x_n-x_{n-1})\). For \(|\Delta x|\le 10^{-7}\max(1,|x_n|,|x_{n-1}|)\), the differential limit is evaluated at the midpoint as \(F(m)+\eta F(m)^2\). The new primitives are exact for the updated piecewise polynomial; this reduces subtractive cancellation while preserving public controls, saved parameter identity and realtime allocation behaviour. It is a numerical-accuracy improvement, not a claim of exact valve-circuit emulation.
