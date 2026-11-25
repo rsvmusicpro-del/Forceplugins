@@ -53,7 +53,7 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 
 ## Non-linéarité, aliasing et robustesse
 
-41. Courbe polynomiale C1 par morceaux : \(F(x)=x\) si \(|x|\le1\), transition polynomiale pour \(1<|x|<3\), plateau borné au-delà.
+41. Courbe polynomiale C2 en 1.7.0 : \\(F(x)=x\\) si \\(|x|\\le1\\), \\(F(|x|)=1+t-t^3+t^4/2\\) pour \\(1<|x|<2\\) avec \\(t=|x|-1\\), puis plateau \\(1.5\\operatorname{sgn}(x)\\).
 42. Asymétrie harmonique : \(F_a(x)=F(x)+\eta F(x)^2\).
 43. Dérivée de la primitive : \(dI_F(x)/dx=F(x)\).
 44. ADAA ordre 1 : \(y[n]=\frac{I_F(x[n])-I_F(x[n-1])}{x[n]-x[n-1]}\).
