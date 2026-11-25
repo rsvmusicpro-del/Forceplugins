@@ -1,10 +1,10 @@
-# StrattPultek 1.8.0
+# StrattPultek 1.9.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
 ## Included processing
 
-- bx_cleansweep V2-style first-order high-pass and low-pass filters on the Filter page. HP spans 20 Hz–11 kHz and LP 20 Hz–22 kHz; both are continuously variable, logarithmically smoothed and use a bilinear first-order response (6 dB/octave). The filters run before the Pultec EQ.
+- bx_cleansweep V2-style first-order high-pass and low-pass filters on the Filter page. HP spans 20 Hz–11 kHz and LP 20 Hz–22 kHz; both are continuously variable, logarithmically smoothed and use a prewarped bilinear first-order analog-prototype response (6 dB/octave), with double-precision coefficient design and non-finite-state recovery. The filters run before the Pultec EQ.
 
 - Selectable first-order low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
@@ -21,6 +21,10 @@ The design was reviewed against professional Pultec-style plug-ins (Universal Au
 A published open-source EQP-1A study using Wave Digital Filters demonstrates that a schematic-derived passive network can be modeled in real time, with improved high-frequency accuracy when oversampled. That work informed the evaluation of the filter topology and the decision to keep the MPC build lightweight: the present implementation uses low-cost shelves and a resonant biquad rather than importing a third-party WDF implementation. This preserves the Force/MPC ARM target and its current CPU profile. It is a deliberate real-time design choice, not a claim that the two filter architectures are mathematically identical.
 
 ## Filter emulation scope
+
+The digital HP/LP pair is derived from the normalized analog first-order prototypes HLP(s)=wc/(s+wc) and HHP(s)=s/(s+wc). The prewarped bilinear substitution K=tan(pi*fc/fs) maps the analog -3 dB corner to the requested digital cutoff; its pole remains strictly inside the unit circle for the supported cutoff interval. Coefficients are calculated in double precision and stored as float for the ARM audio loop. Non-finite host samples are rejected before they can contaminate recursive filter state, and the filter itself resets safely on a non-finite input/output. Butterworth and Bessel first-order prototypes have the same single-pole response; there is no legitimate first-order magnitude-curve blend to add without changing the documented 6 dB/octave topology. The implementation therefore preserves the Cleansweep response rather than inventing a hybrid curve. This remains a linear filter stage: no saturation, harmonic generation or gain coloration is introduced by HP/LP filtering.
+
+
 
 The public bx_cleansweep V2 documentation specifies the HP/LP ranges and first-order 6 dB/octave slopes. This clean-room implementation uses a bilinear-transform one-pole pair with those documented frequency ranges. Brainworx's proprietary Anti-Crush curve implementation is not public, so bit-identical or circuit-identical behaviour cannot be claimed. This is a topology-level functional emulation, not a reverse-engineered copy.
 
