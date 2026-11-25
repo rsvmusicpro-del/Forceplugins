@@ -386,24 +386,24 @@ public:
     void reset() override
     {
         for (Channel& c : channels_) c.reset();
-        output_.snap(dbToGain(get(kOutput)));
-        grain_.snap(get(kGrain) * 0.01f);
-        drive_.snap(get(kDrive) * 0.01f);
-        mix_.snap(get(kMix) * 0.01f);
-        driveMix_.snap(get(kDriveMix) * 0.01f);
-        fader_.snap(dbToGain(get(kFader)));
+        output_.snap(dbToGain(readParam(kOutput, 0.0f, -12.0f, 12.0f)));
+        grain_.snap(readParam(kGrain, 25.0f, 0.0f, 100.0f) * 0.01f);
+        drive_.snap(readParam(kDrive, 20.0f, 0.0f, 100.0f) * 0.01f);
+        mix_.snap(readParam(kMix, 100.0f, 0.0f, 100.0f) * 0.01f);
+        driveMix_.snap(readParam(kDriveMix, 100.0f, 0.0f, 100.0f) * 0.01f);
+        fader_.snap(dbToGain(readParam(kFader, 0.0f, -60.0f, 6.0f)));
 
         // State restoration and program changes must take effect immediately.
-        eqLowFreq_ = lowFrequency(getInt(kLowFreq));
-        eqLowBoost_ = get(kLowBoost);
-        eqLowAtten_ = get(kLowAtten);
-        eqHighFreq_ = highFrequency(getInt(kHighFreq));
-        eqHighBoost_ = get(kHighBoost);
-        eqBandwidth_ = get(kBandwidth);
-        eqHighAttenPole_ = highAttenPoleChoices_[mpc::clamp(getInt(kHighAttenFreq), 0, 2)];
-        eqHighAtten_ = get(kHighAtten);
-        hpFreq_ = get(kHpFreq);
-        lpFreq_ = get(kLpFreq);
+        eqLowFreq_ = lowFrequency(readChoice(kLowFreq, 2, 3));
+        eqLowBoost_ = readParam(kLowBoost, 0.0f, 0.0f, 14.0f);
+        eqLowAtten_ = readParam(kLowAtten, 0.0f, 0.0f, 18.0f);
+        eqHighFreq_ = highFrequency(readChoice(kHighFreq, 3, 6));
+        eqHighBoost_ = readParam(kHighBoost, 0.0f, 0.0f, 20.0f);
+        eqBandwidth_ = readParam(kBandwidth, 50.0f, 0.0f, 100.0f);
+        eqHighAttenPole_ = highAttenPoleChoices_[readChoice(kHighAttenFreq, 1, 2)];
+        eqHighAtten_ = readParam(kHighAtten, 0.0f, 0.0f, 20.0f);
+        hpFreq_ = readParam(kHpFreq, 20.0f, 20.0f, 11000.0f);
+        lpFreq_ = readParam(kLpFreq, 22000.0f, 20.0f, 22000.0f);
         updateEq();
     }
 
@@ -413,12 +413,12 @@ public:
 
         smoothEq(ctx.numFrames);
         updateEq();
-        output_.setTarget(dbToGain(get(kOutput)));
-        grain_.setTarget(get(kGrain) * 0.01f);
-        drive_.setTarget(get(kDrive) * 0.01f);
-        mix_.setTarget(get(kMix) * 0.01f);
-        driveMix_.setTarget(get(kDriveMix) * 0.01f);
-        fader_.setTarget(dbToGain(get(kFader)));
+        output_.setTarget(dbToGain(readParam(kOutput, 0.0f, -12.0f, 12.0f)));
+        grain_.setTarget(readParam(kGrain, 25.0f, 0.0f, 100.0f) * 0.01f);
+        drive_.setTarget(readParam(kDrive, 20.0f, 0.0f, 100.0f) * 0.01f);
+        mix_.setTarget(readParam(kMix, 100.0f, 0.0f, 100.0f) * 0.01f);
+        driveMix_.setTarget(readParam(kDriveMix, 100.0f, 0.0f, 100.0f) * 0.01f);
+        fader_.setTarget(dbToGain(readParam(kFader, 0.0f, -60.0f, 6.0f)));
 
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
         for (int i = 0; i < ctx.numFrames; ++i)
@@ -517,18 +517,33 @@ private:
         return i;
     }
 
+    // Host automation is normally finite, but a malformed VST host can send NaN/Inf.
+    // Never let such values enter a smoother or turn a choice into an invalid index.
+    float readParam(int index, float fallback, float minimum, float maximum) const
+    {
+        const float value = get(index);
+        return std::isfinite(value) ? mpc::clamp(value, minimum, maximum) : fallback;
+    }
+
+    int readChoice(int index, int fallback, int maximum) const
+    {
+        const float value = readParam(index, static_cast<float>(fallback), 0.0f,
+                                      static_cast<float>(maximum));
+        return static_cast<int>(std::lround(value));
+    }
+
     void smoothEq(int frames)
     {
-        hpFreq_ = smoothFrequency(hpFreq_, get(kHpFreq), frames, sampleRate_);
-        lpFreq_ = smoothFrequency(lpFreq_, get(kLpFreq), frames, sampleRate_);
-        eqLowFreq_ = smoothFrequency(eqLowFreq_, lowFrequency(getInt(kLowFreq)), frames, sampleRate_);
-        eqLowBoost_ = smoothBlock(eqLowBoost_, get(kLowBoost), frames, sampleRate_);
-        eqLowAtten_ = smoothBlock(eqLowAtten_, get(kLowAtten), frames, sampleRate_);
-        eqHighFreq_ = smoothFrequency(eqHighFreq_, highFrequency(getInt(kHighFreq)), frames, sampleRate_);
-        eqHighBoost_ = smoothBlock(eqHighBoost_, get(kHighBoost), frames, sampleRate_);
-        eqBandwidth_ = smoothBlock(eqBandwidth_, get(kBandwidth), frames, sampleRate_);
-        eqHighAttenPole_ = smoothFrequency(eqHighAttenPole_, highAttenPoleChoices_[mpc::clamp(getInt(kHighAttenFreq), 0, 2)], frames, sampleRate_);
-        eqHighAtten_ = smoothBlock(eqHighAtten_, get(kHighAtten), frames, sampleRate_);
+        hpFreq_ = smoothFrequency(hpFreq_, readParam(kHpFreq, 20.0f, 20.0f, 11000.0f), frames, sampleRate_);
+        lpFreq_ = smoothFrequency(lpFreq_, readParam(kLpFreq, 22000.0f, 20.0f, 22000.0f), frames, sampleRate_);
+        eqLowFreq_ = smoothFrequency(eqLowFreq_, lowFrequency(readChoice(kLowFreq, 2, 3)), frames, sampleRate_);
+        eqLowBoost_ = smoothBlock(eqLowBoost_, readParam(kLowBoost, 0.0f, 0.0f, 14.0f), frames, sampleRate_);
+        eqLowAtten_ = smoothBlock(eqLowAtten_, readParam(kLowAtten, 0.0f, 0.0f, 18.0f), frames, sampleRate_);
+        eqHighFreq_ = smoothFrequency(eqHighFreq_, highFrequency(readChoice(kHighFreq, 3, 6)), frames, sampleRate_);
+        eqHighBoost_ = smoothBlock(eqHighBoost_, readParam(kHighBoost, 0.0f, 0.0f, 20.0f), frames, sampleRate_);
+        eqBandwidth_ = smoothBlock(eqBandwidth_, readParam(kBandwidth, 50.0f, 0.0f, 100.0f), frames, sampleRate_);
+        eqHighAttenPole_ = smoothFrequency(eqHighAttenPole_, highAttenPoleChoices_[readChoice(kHighAttenFreq, 1, 2)], frames, sampleRate_);
+        eqHighAtten_ = smoothBlock(eqHighAtten_, readParam(kHighAtten, 0.0f, 0.0f, 20.0f), frames, sampleRate_);
     }
 
     void updateEq()
