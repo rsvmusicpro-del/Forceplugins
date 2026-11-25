@@ -41,6 +41,16 @@ static inline float fastTanh(float x)
     return x * (27.0f + x2) / (27.0f + 9.0f * x2);
 }
 
+// Smooth a control once per block while preserving the same time constant for
+// variable host block sizes (the MPC may call process() with 32..512 frames).
+static float smoothBlock(float current, float target, int frames, double sampleRate)
+{
+    if (frames <= 0 || sampleRate <= 0.0) return target;
+    const float timeSamples = 0.015f * static_cast<float>(sampleRate);
+    const float alpha = 1.0f - std::exp(-static_cast<float>(frames) / timeSamples);
+    return current + alpha * (target - current);
+}
+
 static float lowFrequency(int index)
 {
     static const float f[] = {20.0f, 30.0f, 60.0f, 100.0f};
@@ -76,7 +86,7 @@ public:
     {
         using namespace mpc;
         // Index 0 is deliberately a harmless master output trim: the MPC
-        // toggles parameter 0 during prepare/load.
+        // toggles parameter 0 during prepare/load. Keep this index permanent.
         addParam(floatParam("output", "Output", -12.0f, 12.0f, 0.0f, "dB", 1));
         addParam(choiceParam("low_freq", "Low Freq", {"20", "30", "60", "100"}, 2));
         addParam(floatParam("low_boost", "Low Boost", 0.0f, 10.0f, 0.0f, "dB", 1));
@@ -99,12 +109,12 @@ public:
 
     void prepare(double sampleRate, int /*maxBlockSize*/) override
     {
-        sampleRate_ = sampleRate;
-        output_.setTime(15.0f, sampleRate);
-        grain_.setTime(15.0f, sampleRate);
-        drive_.setTime(15.0f, sampleRate);
-        mix_.setTime(15.0f, sampleRate);
-        updateEq();
+        sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
+                        ? sampleRate : 44100.0;
+        output_.setTime(15.0f, sampleRate_);
+        grain_.setTime(15.0f, sampleRate_);
+        drive_.setTime(15.0f, sampleRate_);
+        mix_.setTime(15.0f, sampleRate_);
         reset();
     }
 
@@ -113,16 +123,30 @@ public:
         for (Channel& c : channels_) c.reset();
         output_.snap(dbToGain(get(kOutput)));
         grain_.snap(get(kGrain) * 0.01f);
-        drive_.snap(1.0f + get(kDrive) * 0.025f);
+        drive_.snap(get(kDrive) * 0.01f);
         mix_.snap(get(kMix) * 0.01f);
+
+        // State restoration and program changes must take effect immediately.
+        eqLowFreq_ = lowFrequency(getInt(kLowFreq));
+        eqLowBoost_ = get(kLowBoost);
+        eqLowAtten_ = get(kLowAtten);
+        eqHighFreq_ = highFrequency(getInt(kHighFreq));
+        eqHighBoost_ = get(kHighBoost);
+        eqBandwidth_ = get(kBandwidth);
+        eqHighAttenFreq_ = attenuationFrequency(getInt(kHighAttenFreq));
+        eqHighAtten_ = get(kHighAtten);
+        updateEq();
     }
 
     void process(mpc::ProcessContext& ctx) override
     {
+        if (!ctx.outputs || ctx.numFrames <= 0) return;
+
+        smoothEq(ctx.numFrames);
         updateEq();
         output_.setTarget(dbToGain(get(kOutput)));
         grain_.setTarget(get(kGrain) * 0.01f);
-        drive_.setTarget(1.0f + get(kDrive) * 0.025f);
+        drive_.setTarget(get(kDrive) * 0.01f);
         mix_.setTarget(get(kMix) * 0.01f);
 
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
@@ -132,9 +156,11 @@ public:
             const float colour = grain_.process();
             const float drive = drive_.process();
             const float mix = mix_.process();
+            const float driveGain = 1.0f + 2.5f * drive;
 
             for (int ch = 0; ch < channels; ++ch)
             {
+                if (!ctx.outputs[ch]) continue;
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
                 float wet = channels_[ch].lowBoost.process(dry);
@@ -142,10 +168,10 @@ public:
                 wet = channels_[ch].highBoost.process(wet);
                 wet = channels_[ch].highAtten.process(wet);
 
-                // Unity small-signal gain; the rational tanh creates a gentle
-                // odd-harmonic spectrum without oversampling or per-sample pow().
-                const float saturated = fastTanh(wet * drive) / drive;
-                wet += (saturated - wet) * colour;
+                // Drive=0 is exactly clean. Grain controls the colour blend;
+                // both controls therefore reach a genuinely neutral setting.
+                const float saturated = fastTanh(wet * driveGain) / driveGain;
+                wet += (saturated - wet) * (colour * drive);
                 const float processed = dry + (wet - dry) * mix;
                 ctx.outputs[ch][i] = processed * outGain;
             }
@@ -167,25 +193,29 @@ private:
         return i;
     }
 
+    void smoothEq(int frames)
+    {
+        eqLowFreq_ = smoothBlock(eqLowFreq_, lowFrequency(getInt(kLowFreq)), frames, sampleRate_);
+        eqLowBoost_ = smoothBlock(eqLowBoost_, get(kLowBoost), frames, sampleRate_);
+        eqLowAtten_ = smoothBlock(eqLowAtten_, get(kLowAtten), frames, sampleRate_);
+        eqHighFreq_ = smoothBlock(eqHighFreq_, highFrequency(getInt(kHighFreq)), frames, sampleRate_);
+        eqHighBoost_ = smoothBlock(eqHighBoost_, get(kHighBoost), frames, sampleRate_);
+        eqBandwidth_ = smoothBlock(eqBandwidth_, get(kBandwidth), frames, sampleRate_);
+        eqHighAttenFreq_ = smoothBlock(eqHighAttenFreq_, attenuationFrequency(getInt(kHighAttenFreq)), frames, sampleRate_);
+        eqHighAtten_ = smoothBlock(eqHighAtten_, get(kHighAtten), frames, sampleRate_);
+    }
+
     void updateEq()
     {
-        const float lf = lowFrequency(getInt(kLowFreq));
-        const float hf = highFrequency(getInt(kHighFreq));
-        const float af = attenuationFrequency(getInt(kHighAttenFreq));
-        const float lowBoost = get(kLowBoost);
-        const float lowAtten = get(kLowAtten);
-        const float highBoost = get(kHighBoost);
-        const float highAtten = get(kHighAtten);
         // Broad -> lower Q; Narrow -> higher Q.
-        const float q = 1.60f - 1.15f * (get(kBandwidth) * 0.01f);
-
-        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, lf, 0.7071f, lowBoost);
+        const float q = 1.60f - 1.15f * (eqBandwidth_ * 0.01f);
+        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_, 0.7071f, eqLowBoost_);
         // The Pultec low boost/attenuation interaction is approximated by a
         // broad dip above the selected LF shelf, rather than a second shelf.
-        const BiquadCoeffs ld = BiquadCoeffs::peak(sampleRate_, mpc::clamp(lf * 1.55f, 25.0f, 250.0f),
-                                                   0.78f, -lowAtten);
-        const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, hf, q, highBoost);
-        const BiquadCoeffs ha = BiquadCoeffs::highShelf(sampleRate_, af, 0.7071f, -highAtten);
+        const BiquadCoeffs ld = BiquadCoeffs::peak(sampleRate_, mpc::clamp(eqLowFreq_ * 1.55f, 25.0f, 250.0f),
+                                                   0.78f, -eqLowAtten_);
+        const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
+        const BiquadCoeffs ha = BiquadCoeffs::highShelf(sampleRate_, eqHighAttenFreq_, 0.7071f, -eqHighAtten_);
         for (Channel& c : channels_)
         {
             c.lowBoost.setCoeffs(lb); c.lowDip.setCoeffs(ld);
@@ -194,6 +224,9 @@ private:
     }
 
     double sampleRate_ = 44100.0;
+    float eqLowFreq_ = 60.0f, eqLowBoost_ = 0.0f, eqLowAtten_ = 0.0f;
+    float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
+    float eqHighAttenFreq_ = 10000.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
     Smoother output_, grain_, drive_, mix_;
 };
