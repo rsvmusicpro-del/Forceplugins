@@ -40,6 +40,36 @@ def square_primitive(x):
     return math.copysign(1.0/3.0 + value, x)
 
 
+def transfer_asymmetric(x, eta=ETA):
+    y = transfer(x)
+    return y + eta*y*y
+
+
+def gauss5_segment(lo, hi, eta=ETA):
+    nodes = (0.5384693101056831, 0.9061798459386640)
+    weights = (0.5688888888888889, 0.4786286704993665, 0.2369268850561891)
+    midpoint = 0.5*(lo + hi)
+    half = 0.5*(hi - lo)
+    return half*(weights[0]*transfer_asymmetric(midpoint, eta)
+                 + weights[1]*(transfer_asymmetric(midpoint-nodes[0]*half, eta)
+                               + transfer_asymmetric(midpoint+nodes[0]*half, eta))
+                 + weights[2]*(transfer_asymmetric(midpoint-nodes[1]*half, eta)
+                               + transfer_asymmetric(midpoint+nodes[1]*half, eta)))
+
+
+def gauss5_split_average(x, previous, eta=ETA):
+    lo, hi = sorted((x, previous))
+    boundaries = (-2.0, -1.0, 1.0, 2.0)
+    total = 0.0
+    start = lo
+    for boundary in boundaries:
+        if start < boundary < hi:
+            total += gauss5_segment(start, boundary, eta)
+            start = boundary
+    total += gauss5_segment(start, hi, eta)
+    return total/(hi-lo)
+
+
 def short_interval_average(x, previous, eta=ETA):
     delta = x - previous
     scale = max(1.0, abs(x), abs(previous))
@@ -69,7 +99,7 @@ def short_interval_average(x, previous, eta=ETA):
         fa2 = f2 + eta*(2.0*p1*p1 + 2.0*p*p2)
         fa4 = f4 + eta*(2.0*p*p4 + 8.0*p1*p3 + 6.0*p2*p2)
         return fa + fa2*d2/24.0 + fa4*d4/1920.0
-    return None
+    return gauss5_split_average(x, previous, eta)
 
 
 def simpson_average(x, previous, steps=200):
@@ -110,6 +140,17 @@ class ValveTransferTests(unittest.TestCase):
             y = transfer(x)
             self.assertAlmostEqual(d1, y, delta=2.0e-6)
             self.assertAlmostEqual(d2, y*y, delta=2.0e-6)
+
+    def test_short_intervals_crossing_each_knee_remain_accurate(self):
+        # Exercise both directions and intervals down to float-adjacent scales.
+        for boundary in (-2.0, -1.0, 1.0, 2.0):
+            for width in (1.0e-4, 1.0e-6, 1.0e-8, 1.0e-10):
+                for direction in (-1.0, 1.0):
+                    x = boundary + direction*0.37*width
+                    previous = boundary - direction*0.63*width
+                    actual = short_interval_average(x, previous)
+                    expected = simpson_average(x, previous, steps=1000)
+                    self.assertAlmostEqual(actual, expected, delta=2.0e-10)
 
     def test_short_interval_formula_matches_integral_average(self):
         rng = random.Random(1700)

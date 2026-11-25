@@ -73,6 +73,60 @@ static inline double softClipSquareIntegral(double x)
     return std::copysign(1.0 / 3.0 + integral, x);
 }
 
+// Point value of the asymmetric static transfer used by the ADAA integrator.
+static inline double softClipTransfer(double x, double asymmetry)
+{
+    const double a = std::fabs(x);
+    double shaped;
+    if (a <= 1.0) shaped = x;
+    else if (a >= 2.0) shaped = std::copysign(1.5, x);
+    else
+    {
+        const double t = a - 1.0;
+        shaped = std::copysign(1.0 + t - t * t * t + 0.5 * t * t * t * t, x);
+    }
+    return shaped + asymmetry * shaped * shaped;
+}
+
+// Five-point Gauss-Legendre integrates polynomials through degree 9 exactly.
+// F + eta*F^2 is degree 8 in each region. Split at every knee so each
+// quadrature interval contains one polynomial branch and avoid subtracting
+// nearly equal global primitives when a tiny interval straddles a knee.
+static inline double integrateShortCrossingInterval(double lo, double hi, double eta)
+{
+    constexpr double nodes[2] = {0.53846931010568309104, 0.90617984593866399280};
+    constexpr double weights[3] = {0.56888888888888888889,
+                                   0.47862867049936646804,
+                                   0.23692688505618908751};
+    constexpr double boundaries[4] = {-2.0, -1.0, 1.0, 2.0};
+    double integral = 0.0;
+    double start = lo;
+
+    for (double boundary : boundaries)
+    {
+        if (boundary <= start || boundary >= hi) continue;
+        const double midpoint = 0.5 * (start + boundary);
+        const double halfWidth = 0.5 * (boundary - start);
+        const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
+                           + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
+        const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
+                           + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
+        integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
+                               + weights[1] * pair0 + weights[2] * pair1);
+        start = boundary;
+    }
+
+    const double midpoint = 0.5 * (start + hi);
+    const double halfWidth = 0.5 * (hi - start);
+    const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
+                       + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
+    const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
+                       + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
+    integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
+                           + weights[1] * pair0 + weights[2] * pair1);
+    return integral;
+}
+
 // First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
 // Each ADAA path seeds its previous sample from the first live input after reset,
 // avoiding an artificial interval from digital silence to a non-zero first sample.
@@ -131,6 +185,13 @@ static inline float adaaSoftClip(float x, float previousX, float asymmetry)
             const double fa4 = f4 + eta * (2.0 * p * p4 + 8.0 * p1 * p3 + 6.0 * p2 * p2);
             return static_cast<float>(fa + fa2 * d2 / 24.0 + fa4 * d4 / 1920.0);
         }
+    }
+
+    if (ad <= 1.0e-4 * scale)
+    {
+        const double lo = std::fmin(xd, pd);
+        const double hi = std::fmax(xd, pd);
+        return static_cast<float>(integrateShortCrossingInterval(lo, hi, eta) / (hi - lo));
     }
 
     const double currentIntegral = softClipIntegral(xd)
@@ -448,7 +509,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1902;
+        i.version = 1903;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;

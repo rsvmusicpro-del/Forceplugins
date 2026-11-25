@@ -1,5 +1,12 @@
 # Changelog
 
+## StrattPultek 1.9.3
+
+- Stabilized first-order ADAA for tiny intervals crossing the ±1/±2 polynomial knees with split five-point Gauss-Legendre integration, exact for the degree-eight asymmetric transfer on each segment.
+- Added deterministic regression coverage for all four knees, both interval directions and widths from 1e-4 to 1e-10; retained the existing local Taylor and closed-form paths elsewhere.
+- Preserved all parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
+
 ## StrattPultek 1.9.1
 
 - Bound finite input samples to ±16.0 (24 dBFS) before recursive DSP to prevent pathological host values from overflowing filter or ADAA state while preserving normal programme headroom.

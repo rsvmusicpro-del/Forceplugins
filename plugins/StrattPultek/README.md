@@ -1,4 +1,4 @@
-# StrattPultek 1.9.2
+# StrattPultek 1.9.3
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -36,7 +36,7 @@ Version 1.7.1 refines the fixed, invisible valve-inspired output stage immediate
 
 ## Modelling note
 
-This is a **Pultec-inspired digital emulation**, designed to reproduce the recognizable control interaction and musical response in a low-CPU MPC insert. It is not advertised as a component-by-component capture of one hardware revision. The LF interaction is modeled with two low shelves whose corner frequencies are offset. The HF boost uses a resonant biquad whose maximum gain falls with wider bandwidth; the HF attenuation uses a first-order shelf calibrated so its selected frequency is near the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum). The colour stage uses a C2-continuous asymmetric polynomial soft clip, first-order ADAA and a slow DC blocker. The ADAA divided difference uses closed-form antiderivatives for both the clip and its asymmetric component to reduce aliasing without oversampling. For near-coincident samples contained in one polynomial branch, a fourth-order symmetric interval expansion avoids subtracting nearly equal primitives; intervals crossing a knee retain the exact primitive difference. The asymmetry adds even-order harmonics, and a 3 Hz DC blocker removes bias. EQ controls are smoothed across blocks to avoid abrupt coefficient changes when the user moves a control.
+This is a **Pultec-inspired digital emulation**, designed to reproduce the recognizable control interaction and musical response in a low-CPU MPC insert. It is not advertised as a component-by-component capture of one hardware revision. The LF interaction is modeled with two low shelves whose corner frequencies are offset. The HF boost uses a resonant biquad whose maximum gain falls with wider bandwidth; the HF attenuation uses a first-order shelf calibrated so its selected frequency is near the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum). The colour stage uses a C2-continuous asymmetric polynomial soft clip, first-order ADAA and a slow DC blocker. The ADAA divided difference uses closed-form antiderivatives for both the clip and its asymmetric component to reduce aliasing without oversampling. For near-coincident samples contained in one polynomial branch, a fourth-order symmetric interval expansion avoids subtracting nearly equal primitives; tiny intervals crossing a knee use split five-point Gauss-Legendre integration, exact for each degree-eight polynomial segment. The asymmetry adds even-order harmonics, and a 3 Hz DC blocker removes bias. EQ controls are smoothed across blocks to avoid abrupt coefficient changes when the user moves a control.
 
 Airwindows informed the design in two specific ways: the density-dependent wet weighting described for PurestDrive and the parallel dry/wet concept of Drive/Density. Pultec behaviour remains grounded in the original control interactions and the UAD manual. No Airwindows source code or third-party WDF implementation is copied into this plugin; the DSP is implemented in this repository under its MIT licence.
 
@@ -76,3 +76,8 @@ The UI uses the SDK's MPC amber widget kit and generated Q-Link skin; no externa
 - [Airwindows source repository](https://github.com/airwindows/airwindows): MIT-licensed reference algorithms; no source files imported.
 - [Barrera et al. — Modeling the Pultec EQP-1A with Wave Digital Filters (SMC 2024)](https://smcnetwork.org/smc2024/papers/SMC2024_paper_id132.pdf): circuit-derived passive-network modeling, oversampling and real-time implementation.
 - [ABSounds — EQP-WDF-1A](https://github.com/ABSounds/EQP-WDF-1A): open-source WDF-based implementation used as a technical comparison, not copied into this project.
+
+
+## Numerical refinement in 1.9.3
+
+The first-order ADAA quotient now has a dedicated path for very short sample intervals that cross one of the transfer's polynomial knees (±1 or ±2). Instead of subtracting nearly equal global antiderivatives, the interval is split at the knee and integrated with five-point Gauss-Legendre quadrature. The asymmetric transfer is degree eight within each segment, and this quadrature is exact through degree nine. Intervals wholly inside one branch retain the existing symmetric local expansion; ordinary and longer intervals retain the closed-form primitive quotient. This is a numerical conditioning improvement, not a change to the static transfer, tone controls or steady-state target curve.

@@ -18,7 +18,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.2":
+if manifest["version"] != "1.9.3":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:

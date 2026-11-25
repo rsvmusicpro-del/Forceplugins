@@ -116,3 +116,13 @@ These are defensive bounds for malformed or pathological host values, not a norm
 ## ADAA initial-state condition added in 1.9.2
 
 62. First-sample ADAA initialization: after a reset, let the first valid nonlinear input be \\(x_0\\). Set \\(x_{-1}=x_0\\), so the divided-difference limit is \\(y_0=F_a(x_0)\\), rather than the artificial startup average \\([I_a(x_0)-I_a(0)]/x_0\\). Subsequent samples use the ordinary first-order ADAA interval \\([x_{n-1},x_n]\\). The drive and fixed valve stages keep independent per-channel validity flags; reset and numerical recovery clear them. This is an initialization correction, not a change to the nonlinear transfer or steady-state frequency response.
+
+
+## ADAA boundary conditioning added in 1.9.3
+
+63. For a short interval crossing a polynomial boundary, split the integration interval at each knee (b\in\{-2,-1,1,2\}), then integrate each polynomial segment with five-point Gauss-Legendre quadrature:
+\[
+\int_a^b F_a(x)\,dx \approx \frac{b-a}{2}
+\sum_{i=1}^{5}w_i F_a\!\left(\frac{a+b}{2}+\frac{b-a}{2}x_i\right).
+\]
+The five-point rule is exact for polynomials through degree nine; the asymmetric transfer (F_a=F+\eta F^2) is degree eight on each segment. Dividing the summed integral by the original interval width yields the ADAA interval average without subtracting nearly equal global primitive values. This path is limited to intervals below the existing relative (10^{-4}\) threshold that cross a branch boundary; the local Taylor and ordinary closed-form paths are unchanged.
