@@ -62,12 +62,42 @@ static inline float softClipIntegral(float x)
     return 0.3f + 3.0f * t + 0.2f * oneMinusT2 * oneMinusT2 * oneMinusT;
 }
 
-static inline float adaaSoftClip(float x, float previousX)
+// Integral of softClip(x)^2. This lets the asymmetric transfer function
+// add controlled even-order harmonics while retaining the same ADAA treatment.
+static inline float softClipSquareIntegral(float x)
+{
+    const float a = std::fabs(x);
+    float h;
+    if (a <= 1.0f)
+        h = a * a * a * (1.0f / 3.0f);
+    else if (a >= 3.0f)
+        h = 4.28888889f + 2.25f * (a - 3.0f);
+    else
+    {
+        const float t = 0.5f * (a - 1.0f);
+        const float u = 1.0f - t;
+        const float u2 = u * u;
+        const float u5 = u2 * u2 * u;
+        const float u9 = u5 * u2 * u2;
+        h = (1.0f / 3.0f) + 4.5f * t + 0.6f * (u5 - 1.0f)
+            - (1.0f / 18.0f) * (u9 - 1.0f);
+    }
+    return std::copysign(h, x);
+}
+
+static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
     const float delta = x - previousX;
     if (std::fabs(delta) < 1.0e-4f)
-        return softClip(0.5f * (x + previousX));
-    return (softClipIntegral(x) - softClipIntegral(previousX)) / delta;
+    {
+        const float y = softClip(0.5f * (x + previousX));
+        return y + asymmetry * y * y;
+    }
+    const float currentIntegral = softClipIntegral(x)
+                                + asymmetry * softClipSquareIntegral(x);
+    const float previousIntegral = softClipIntegral(previousX)
+                                 + asymmetry * softClipSquareIntegral(previousX);
+    return (currentIntegral - previousIntegral) / delta;
 }
 
 // Smooth a control once per block while preserving the same time constant for
@@ -114,11 +144,19 @@ struct Channel
 {
     Biquad lowBoost, lowResonance, lowDip, highBoost, highAtten;
     float previousDriveInput = 0.0f;
+    float previousDcInput = 0.0f, previousDcOutput = 0.0f;
     void reset()
     {
         lowBoost.reset(); lowResonance.reset(); lowDip.reset();
         highBoost.reset(); highAtten.reset();
-        previousDriveInput = 0.0f;
+        previousDriveInput = previousDcInput = previousDcOutput = 0.0f;
+    }
+    float removeDc(float x, float pole)
+    {
+        const float y = x - previousDcInput + pole * previousDcOutput;
+        previousDcInput = x;
+        previousDcOutput = y;
+        return y;
     }
 };
 } // namespace
@@ -155,6 +193,7 @@ public:
     {
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
+        dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
         output_.setTime(15.0f, sampleRate_);
         grain_.setTime(15.0f, sampleRate_);
         drive_.setTime(15.0f, sampleRate_);
@@ -216,7 +255,11 @@ public:
                 // Drive=0 is exactly clean. Grain controls the colour blend;
                 // both controls therefore reach a genuinely neutral setting.
                 const float driveInput = wet * driveGain;
-                const float saturated = adaaSoftClip(driveInput, channels_[ch].previousDriveInput) / driveGain;
+                // A small asymmetric term adds even-order harmonic content; a slow DC
+                // blocker removes the resulting bias without disturbing the bass band.
+                const float saturated = channels_[ch].removeDc(
+                    adaaSoftClip(driveInput, channels_[ch].previousDriveInput, 0.08f),
+                    dcPole_) / driveGain;
                 channels_[ch].previousDriveInput = driveInput;
                 wet += (saturated - wet) * (colour * drive);
                 const float processed = dry + (wet - dry) * mix;
@@ -281,6 +324,7 @@ private:
     }
 
     double sampleRate_ = 44100.0;
+    float dcPole_ = 0.9995f; // 3 Hz DC blocker pole, recalculated in prepare()
     float eqLowFreq_ = 60.0f, eqLowBoost_ = 0.0f, eqLowAtten_ = 0.0f;
     float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
     float eqHighAttenFreq_ = 10000.0f, eqHighAtten_ = 0.0f;
