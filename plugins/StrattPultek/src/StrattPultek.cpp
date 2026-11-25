@@ -27,7 +27,7 @@ enum Params
     kOutput = 0, kLowFreq, kLowBoost, kLowAtten,
     kHighFreq, kHighBoost, kBandwidth,
     kHighAttenFreq, kHighAtten,
-    kGrain, kDrive, kMix, kDriveMix, kNumParams
+    kGrain, kDrive, kMix, kDriveMix, kFader, kNumParams
 };
 
 static float dbToGain(float db)
@@ -90,7 +90,10 @@ static inline float softClipSquareIntegral(float x)
 static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
     const float delta = x - previousX;
-    if (std::fabs(delta) < 1.0e-4f)
+    const float scale = std::fmax(1.0f, std::fmax(std::fabs(x), std::fabs(previousX)));
+    // Scale the near-equal threshold with signal magnitude to avoid subtractive
+    // cancellation in the antiderivative difference at hot internal levels.
+    if (std::fabs(delta) < 1.0e-4f * scale)
     {
         const float y = softClip(0.5f * (x + previousX));
         return y + asymmetry * y * y;
@@ -222,12 +225,14 @@ public:
         addParam(floatParam("mix", "Mix", 0.0f, 100.0f, 100.0f, "%", 0));
         // Appended to preserve all existing parameter indices and saved projects.
         addParam(floatParam("drive_mix", "Drive Mix", 0.0f, 100.0f, 100.0f, "%", 0));
+        // Dedicated post-chain master fader; appended to preserve saved projects.
+        addParam(floatParam("fader", "Fader", -60.0f, 6.0f, 0.0f, "dB", 1));
 
-        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f});
-        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f});
-        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f});
-        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f});
-        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f});
+        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f}, 0.0f});
+        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f}, 0.0f});
+        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f}, 0.0f});
+        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f}, 0.0f});
+        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f}, 0.0f});
     }
 
     void prepare(double sampleRate, int /*maxBlockSize*/) override
@@ -243,6 +248,7 @@ public:
         drive_.setTime(15.0f, sampleRate_);
         mix_.setTime(15.0f, sampleRate_);
         driveMix_.setTime(15.0f, sampleRate_);
+        fader_.setTime(15.0f, sampleRate_);
         reset();
     }
 
@@ -254,6 +260,7 @@ public:
         drive_.snap(get(kDrive) * 0.01f);
         mix_.snap(get(kMix) * 0.01f);
         driveMix_.snap(get(kDriveMix) * 0.01f);
+        fader_.snap(dbToGain(get(kFader)));
 
         // State restoration and program changes must take effect immediately.
         eqLowFreq_ = lowFrequency(getInt(kLowFreq));
@@ -278,6 +285,7 @@ public:
         drive_.setTarget(get(kDrive) * 0.01f);
         mix_.setTarget(get(kMix) * 0.01f);
         driveMix_.setTarget(get(kDriveMix) * 0.01f);
+        fader_.setTarget(dbToGain(get(kFader)));
 
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
         for (int i = 0; i < ctx.numFrames; ++i)
@@ -287,6 +295,7 @@ public:
             const float drive = drive_.process();
             const float mix = mix_.process();
             const float driveMix = driveMix_.process();
+            const float finalFader = fader_.process();
             const float driveGain = 1.0f + 2.5f * drive;
 
             for (int ch = 0; ch < channels; ++ch)
@@ -323,7 +332,8 @@ public:
                 const float driveWet = colour * drive * driveMix * density;
                 wet += (saturated - wet) * driveWet;
                 const float processed = dry + (wet - dry) * mix;
-                ctx.outputs[ch][i] = processed * outGain;
+                // Last operation in the complete signal path: independent master fader.
+                ctx.outputs[ch][i] = processed * outGain * finalFader;
             }
         }
     }
@@ -335,7 +345,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1300;
+        i.version = 1400;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -394,7 +404,7 @@ private:
     float highAttenPoleChoices_[3] = { 1120.0f, 1911.0f, 2635.0f };
     float eqHighAttenPole_ = 1911.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
-    Smoother output_, grain_, drive_, mix_, driveMix_;
+    Smoother output_, grain_, drive_, mix_, driveMix_, fader_;
 };
 
 MPC_PLUGIN_ENTRY(StrattPultek)
