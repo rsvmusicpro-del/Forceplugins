@@ -12,7 +12,7 @@
 | Bandwidth | 0–100% | Q from 1.60 (narrow) to 0.45 (broad) |
 | HF attenuation frequency | 5, 10, 20 kHz | High shelf |
 | HF attenuation | 0–10 dB | High shelf cut |
-| Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
+| Grain / Drive | 0–100% each | C1 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Output / Mix | -12…+12 dB / 0–100% | Output trim and parallel blend |
 
 These are EQP-1A-inspired operating ranges and a digital curve approximation. The revised LF boost now combines a shelf and resonant bell, which is closer to the broad resonant shoulder of the passive network than a shelf alone. It remains a deliberately tunable approximation, not a measured plot of a particular hardware serial number. Different Pultec revisions and component tolerances differ; exact reproduction requires a selected reference unit and measured sweeps.
@@ -22,8 +22,8 @@ These are EQP-1A-inspired operating ranges and a digital curve approximation. Th
 - Five biquad sections per channel (LF shelf, LF resonant boost, LF attenuation dip, HF bell boost, HF shelf attenuation); coefficients computed once per process block.
 - All eight EQ controls use a 15 ms block-size-compensated glide before coefficient recalculation, avoiding abrupt filter jumps while keeping the coefficient work out of the sample loop.
 - One-pole 15 ms smoothing for output, grain, drive and mix.
-- The colour stage uses first-order antiderivative antialiasing (ADAA). Its polynomial clip has a closed-form integral, so the divided difference reduces high-frequency foldback without per-sample log/exp/tanh or oversampling. Drive at 0% bypasses its contribution and Grain at 0% is fully clean.
-- The ADAA memory is per channel and reset with the filter state; the previous nonlinear input is not shared between stereo channels.
+- The colour stage uses first-order antiderivative antialiasing (ADAA). Its polynomial clip and squared-clip asymmetric component both have closed-form integrals, so the divided difference adds controlled even-order harmonics while reducing high-frequency foldback without per-sample log/exp/tanh or oversampling. A 3 Hz one-pole DC blocker removes the asymmetry's bias. Drive at 0% bypasses its contribution and Grain at 0% is fully clean.
+- The ADAA and DC-blocker memories are per channel and reset with the filter state; the previous nonlinear input is not shared between stereo channels.
 - Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide.
 - No oversampling in this low-CPU baseline. ADAA reduces, but does not eliminate, aliasing. Compare spectral sweeps at high Drive against the previous direct waveshaper and measure ARM CPU before considering 2x/4x oversampling.
 - No heap allocation, locks, logging or I/O in the audio callback.
