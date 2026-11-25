@@ -1,5 +1,12 @@
 # Changelog
 
+## StrattPultek 1.9.5
+
+- Move parameter 0 (Output) after the fixed nonlinear valve-colour stage so the MPC host's load-time parameter nudge changes level only, not saturation or harmonic content.
+- Keep the dedicated Fader as the final signal-path multiplication.
+- Add a regression contract check for the post-colour master-gain invariant.
+- Preserve all 16 parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
 ## StrattPultek 1.9.4
 
 - Guard every audio-path parameter read against NaN/Inf and clamp it to the declared control range before smoothing or selector conversion.
