@@ -1,4 +1,4 @@
-# StrattPultek — 59 calculs mathématiques et physiques (v1.9.0)
+# StrattPultek — 64 calculs mathématiques et physiques (v1.9.4)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -126,3 +126,8 @@ These are defensive bounds for malformed or pathological host values, not a norm
 \sum_{i=1}^{5}w_i F_a\!\left(\frac{a+b}{2}+\frac{b-a}{2}x_i\right).
 \]
 The five-point rule is exact for polynomials through degree nine; the asymmetric transfer \(F_a=F+\eta F^2\) is degree eight on each segment. Dividing the summed integral by the original interval width yields the ADAA interval average without subtracting nearly equal global primitive values. This path is limited to intervals below the existing relative \(10^{-4}\) threshold that cross a branch boundary; the local Taylor and ordinary closed-form paths are unchanged.
+
+
+## Protection des paramètres hôte ajoutée en 1.9.4
+
+64. Lecture bornée d'un paramètre : \(p_s=\operatorname{clamp}(p,p_{min},p_{max})\) si \(p\) est fini, sinon \(p_s=p_{défaut}\). Les paramètres de choix sont bornés avant conversion entière. Cette protection empêche qu'une automation VST malformée (NaN/Inf) ne contamine les lisseurs ou les indices de sélection. Elle est exécutée au taux de contrôle, jamais dans une boucle supplémentaire par échantillon.
