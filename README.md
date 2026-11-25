@@ -46,6 +46,10 @@ flowchart LR
 
 Each step is explained, with a larger diagram, in **[docs/workflow.md](docs/workflow.md)**.
 
+## Where our plugins live
+
+All plugins developed for this project must be stored in the root-level [`plugins/`](plugins/) directory, with one dedicated subfolder per plugin (for example, `plugins/MySynth/`). Keep each plugin's source code, UI, resources and presets inside its own subfolder. This follows the SDK's existing project convention.
+
 ## Start here
 
 - See **[GETTING_STARTED.md](GETTING_STARTED.md)**: clone this repo, build an example, put it on your MPC, then describe your own plugin.
