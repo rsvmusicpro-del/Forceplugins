@@ -41,7 +41,7 @@ jobs:
         run: python tools/package.py plugins/StrattPultek
       - uses: actions/upload-artifact@v4
         with:
-          name: StrattPultek-MPC-1.3.0
+          name: StrattPultek-MPC-1.4.0
           path: |
             plugins/StrattPultek/dist/*.zip
             plugins/StrattPultek/build/test-*.wav
