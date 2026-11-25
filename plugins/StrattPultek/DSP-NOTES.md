@@ -42,3 +42,10 @@ The first parameter remains Output trim, intentionally harmless under the MPC pr
 4. Compare level-matched response plots with the published EQP-1A curves, then tune the LF shelf corner ratio and gain curves, HF Q using a serviced reference unit. Do not label the response hardware-matched until that measurement exists.
 5. Measure CPU on Force hardware; host_sim desktop timing is not a substitute for ARM timing.
 6. Level-matched listening against a serviced EQP-1A reference before describing the response as hardware-matched.
+
+## Public reference material
+
+- [Pulse Techniques — EQP-1A](https://pulsetechniques.com/): manufacturer description of the passive low boost/attenuation shelves, offset corners and combined low-end lift/dip, based on Audio Precision measurements.
+- [Pultec EQP-1A operating instructions](https://www.sowter.co.uk/schematics/Pultec%20EQP%201A.pdf): original operating manual describing the passive equalizer, makeup amplifier and transformer I/O.
+- [Sound On Sound — Pulse Techniques EQP-1A review](https://www.soundonsound.com/reviews/pulse-techniques-eqp-1a): published measurements note the attenuation corner sits roughly half an octave above the boost corner, supporting the current 1.414 ratio as an initial approximation.
+- [Manley Enhanced Pultec EQP1-A response curves](https://static1.squarespace.com/static/582f5ce4e4fcb562b921bdc3/t/590cf29bc534a56c75914f20/1494020763255/Manley-PULTEC-EQ-Curves.pdf): published low/high response plots useful for curve-shape checks; Manley revisions are not a substitute for measuring the exact reference unit.
