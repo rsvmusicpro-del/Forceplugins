@@ -258,13 +258,13 @@ private:
         const float q = 1.60f - 1.15f * (eqBandwidth_ * 0.01f);
         // The original EQP-1A low boost is not a textbook monotonic shelf:
         // its passive LC network creates a broad resonant shoulder around the
-        // selected frequency. Split the requested boost between a gentle
-        // shelf and a broad bell to reproduce that useful curve shape while
-        // keeping the control's approximate dB scale stable at the centre.
+        // selected frequency. The shelf contributes half its setting at the corner frequency;
+        // the 0.725 bell contribution brings the combined centre response
+        // close to the requested boost while retaining a gentler low shelf.
         const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_, 0.7071f,
                                                        eqLowBoost_ * 0.55f);
         const BiquadCoeffs lr = BiquadCoeffs::peak(sampleRate_, eqLowFreq_, 0.82f,
-                                                    eqLowBoost_ * 0.45f);
+                                                    eqLowBoost_ * 0.725f);
         // Boost and attenuation remain independent cascaded controls. The
         // attenuation network is a broad resonant dip above the LF selector;
         // its offset/Q are explicit approximations pending unit-specific
