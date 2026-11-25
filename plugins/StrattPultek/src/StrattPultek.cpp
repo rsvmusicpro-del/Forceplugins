@@ -27,7 +27,7 @@ enum Params
     kOutput = 0, kLowFreq, kLowBoost, kLowAtten,
     kHighFreq, kHighBoost, kBandwidth,
     kHighAttenFreq, kHighAtten,
-    kGrain, kDrive, kMix, kNumParams
+    kGrain, kDrive, kMix, kDriveMix, kNumParams
 };
 
 static float dbToGain(float db)
@@ -220,12 +220,14 @@ public:
         addParam(floatParam("grain", "Grain", 0.0f, 100.0f, 25.0f, "%", 0));
         addParam(floatParam("drive", "Drive", 0.0f, 100.0f, 20.0f, "%", 0));
         addParam(floatParam("mix", "Mix", 0.0f, 100.0f, 100.0f, "%", 0));
+        // Appended to preserve all existing parameter indices and saved projects.
+        addParam(floatParam("drive_mix", "Drive Mix", 0.0f, 100.0f, 100.0f, "%", 0));
 
-        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f});
-        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f});
-        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f});
-        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f});
-        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f});
+        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f});
+        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f});
+        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f});
+        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f});
+        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f});
     }
 
     void prepare(double sampleRate, int /*maxBlockSize*/) override
@@ -240,6 +242,7 @@ public:
         grain_.setTime(15.0f, sampleRate_);
         drive_.setTime(15.0f, sampleRate_);
         mix_.setTime(15.0f, sampleRate_);
+        driveMix_.setTime(15.0f, sampleRate_);
         reset();
     }
 
@@ -250,6 +253,7 @@ public:
         grain_.snap(get(kGrain) * 0.01f);
         drive_.snap(get(kDrive) * 0.01f);
         mix_.snap(get(kMix) * 0.01f);
+        driveMix_.snap(get(kDriveMix) * 0.01f);
 
         // State restoration and program changes must take effect immediately.
         eqLowFreq_ = lowFrequency(getInt(kLowFreq));
@@ -273,6 +277,7 @@ public:
         grain_.setTarget(get(kGrain) * 0.01f);
         drive_.setTarget(get(kDrive) * 0.01f);
         mix_.setTarget(get(kMix) * 0.01f);
+        driveMix_.setTarget(get(kDriveMix) * 0.01f);
 
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
         for (int i = 0; i < ctx.numFrames; ++i)
@@ -281,6 +286,7 @@ public:
             const float colour = grain_.process();
             const float drive = drive_.process();
             const float mix = mix_.process();
+            const float driveMix = driveMix_.process();
             const float driveGain = 1.0f + 2.5f * drive;
 
             for (int ch = 0; ch < channels; ++ch)
@@ -301,11 +307,21 @@ public:
                 const float driveInput = wet * driveGain;
                 // A small asymmetric term adds even-order harmonic content; a slow DC
                 // blocker removes the resulting bias without disturbing the bass band.
+                const float previousDriveInput = channels_[ch].previousDriveInput;
                 const float saturated = channels_[ch].removeDc(
-                    adaaSoftClip(driveInput, channels_[ch].previousDriveInput, 0.08f),
+                    adaaSoftClip(driveInput, previousDriveInput, 0.08f),
                     dcPole_) / driveGain;
                 channels_[ch].previousDriveInput = driveInput;
-                wet += (saturated - wet) * (colour * drive);
+
+                // Airwindows PurestDrive-inspired density weighting: the
+                // previous/current sample sum naturally backs off at sharp
+                // zero-crossings and lets sustained waveform body carry more
+                // colour. Unlike the original sine shaper, this uses our
+                // polynomial ADAA transfer and keeps the MPC CPU budget low.
+                const float density = mpc::clamp(
+                    std::fabs(previousDriveInput + driveInput) * 2.0f, 0.0f, 1.0f);
+                const float driveWet = colour * drive * driveMix * density;
+                wet += (saturated - wet) * driveWet;
                 const float processed = dry + (wet - dry) * mix;
                 ctx.outputs[ch][i] = processed * outGain;
             }
@@ -319,7 +335,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1200;
+        i.version = 1300;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -378,7 +394,7 @@ private:
     float highAttenPoleChoices_[3] = { 1120.0f, 1911.0f, 2635.0f };
     float eqHighAttenPole_ = 1911.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
-    Smoother output_, grain_, drive_, mix_;
+    Smoother output_, grain_, drive_, mix_, driveMix_;
 };
 
 MPC_PLUGIN_ENTRY(StrattPultek)
