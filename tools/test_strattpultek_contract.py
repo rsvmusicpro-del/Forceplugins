@@ -36,8 +36,9 @@ if not referenced.issubset(display_names):
 programs = re.findall(r'addProgram\\("[^"]+",\\s*\\{([^}]+)\\}\\)', source)
 if not programs or any(len(values.split(",")) != len(expected) for values in programs):
     raise SystemExit("Factory program values do not match the 16-parameter contract")
-for mapping in ("knobs", "shiftKnobs"):
-    for entry in manifest[mapping]:
-        if not 0 <= entry["parameter"] < 14:
-            raise SystemExit(f"Invalid MPC Sample {mapping} parameter: {entry}")
+expected_knobs = {"knobs": [2, 5, 9], "shiftKnobs": [3, 8, 13]}
+for mapping, expected_indices in expected_knobs.items():
+    actual_indices = [entry["parameter"] for entry in manifest[mapping]]
+    if actual_indices != expected_indices:
+        raise SystemExit(f"MPC Sample {mapping} mapping changed: {actual_indices!r}")
 print("StrattPultek parameter identity, presets, MPC Sample mapping and 3-page UI contract passed")
