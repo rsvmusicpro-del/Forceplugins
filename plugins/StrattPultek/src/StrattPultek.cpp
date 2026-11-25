@@ -310,6 +310,8 @@ private:
         // creates the characteristic low lift and upper-bass dip without an
         // invented peaking filter in the attenuation path.
         const float lowAttenCorner = mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f);
+        const float hfAttenCorner = mpc::clamp(eqHighAttenFreq_, 1.0f,
+                                                0.49f * static_cast<float>(sampleRate_));
         const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
         lowBoostGain_ = dbToGain(eqLowBoost_);
         lowAttenGain_ = dbToGain(-eqLowAtten_);
@@ -319,7 +321,7 @@ private:
             c.lowBoost.setCutoff(eqLowFreq_, sampleRate_);
             c.lowAtten.setCutoff(lowAttenCorner, sampleRate_);
             c.highBoost.setCoeffs(hb);
-            c.highAtten.setCutoff(eqHighAttenFreq_, sampleRate_);
+            c.highAtten.setCutoff(hfAttenCorner, sampleRate_);
         }
     }
 
