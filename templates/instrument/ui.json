@@ -1,0 +1,45 @@
+{
+  "kit": "mpc-red",
+  "pages": [
+    {
+      "name": "MAIN",
+      "controls": [
+        {
+          "param": "Waveform",
+          "widget": "switch"
+        },
+        {
+          "param": "Cutoff",
+          "widget": "knob"
+        },
+        {
+          "param": "Volume",
+          "widget": "fader"
+        },
+        "empty",
+        {
+          "param": "Attack",
+          "widget": "fader"
+        },
+        {
+          "param": "Decay",
+          "widget": "fader"
+        },
+        {
+          "param": "Sustain",
+          "widget": "fader"
+        },
+        {
+          "param": "Release",
+          "widget": "fader"
+        }
+      ]
+    }
+  ],
+  "style": {
+    "background": "ff1e1d1e",
+    "accent": "ffd31145",
+    "text": "ffffffff",
+    "muted": "ff6a6a6c"
+  }
+}

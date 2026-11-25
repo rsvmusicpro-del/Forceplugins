@@ -1,0 +1,24 @@
+{
+  "name": "{{NAME}}",
+  "manufacturer": "{{VENDOR}}",
+  "version": "1.0.0",
+  "format": "vst2",
+  "kind": "{{KIND}}",
+  "uid": "{{UID}}",
+  "numInputs": {{NUM_INPUTS}},
+  "numOutputs": {{NUM_OUTPUTS}},
+  "category": "Effect",
+  "shortName": "{{SHORT_NAME}}",
+  "knobs": [
+    { "parameter": 0, "label": "Gain" },
+    { "parameter": 1, "label": "Tone" },
+    { "parameter": 2, "label": "Mix" }
+  ],
+  "shiftKnobs": [],
+  "file32": "VST/{{SLUG}}-arm32.so",
+  "file64": "VST/{{SLUG}}-arm64.so",
+  "description": "{{NAME}}: a gain / tone / mix effect for the MPC. Describe your plugin here.",
+  "author": "{{VENDOR}}",
+  "url": "",
+  "license": "MIT"
+}
