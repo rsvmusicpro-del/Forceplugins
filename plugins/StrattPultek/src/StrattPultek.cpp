@@ -35,22 +35,6 @@ static float dbToGain(float db)
     return std::pow(10.0f, db * 0.05f);
 }
 
-// C2-continuous polynomial soft clip. It is linear around zero and uses a
-// quintic-integral knee from |x|=1 to |x|=2. The slope and curvature both
-// reach zero at the saturation boundary, avoiding the curvature step in the
-// former C1 curve. The bounded output is 1.5. Closed-form primitives keep
-// first-order ADAA inexpensive on the MPC ARM targets.
-static inline float softClip(float x)
-{
-    const float a = std::fabs(x);
-    if (a <= 1.0f) return x;
-    if (a >= 2.0f) return std::copysign(1.5f, x);
-    const float t = a - 1.0f;
-    const float t2 = t * t;
-    const float y = 1.0f + t - t2 * t + 0.5f * t2 * t2;
-    return std::copysign(y, x);
-}
-
 // Even antiderivative of softClip(). The polynomial is integrated exactly,
 // so the ADAA divided difference remains the analytic interval average.
 static inline double softClipIntegral(double x)
