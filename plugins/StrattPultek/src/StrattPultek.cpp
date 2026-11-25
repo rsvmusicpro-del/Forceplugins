@@ -142,6 +142,42 @@ static float attenuationFrequency(int index)
     return f[mpc::clamp(index, 0, 2)];
 }
 
+// Find the one-pole shelf pole that places the selected frequency near the
+// hardware's documented mid-attenuation point (~-12 dB for a -21 dB maximum).
+// Solve the actual discrete-time OnePoleLP response, so the 20 kHz selector
+// remains calibrated near Nyquist at the MPC's 44.1 kHz sample rate.
+static float highAttenuationPole(float selectorHz, double sampleRate)
+{
+    const float sr = static_cast<float>(sampleRate);
+    const float frequency = mpc::clamp(selectorHz, 1.0f, 0.49f * sr);
+    const float omega = 6.2831853071795864769f * frequency / sr;
+    const float cw = std::cos(omega);
+    const float sw = std::sin(omega);
+    const float shelfGain = dbToGain(-20.0f);
+    const float target = dbToGain(-20.0f * (12.0f / 21.0f));
+    float low = 1.0f;
+    float high = 0.49f * sr;
+
+    // Monotonic in pole frequency; 24 iterations exceed float precision here.
+    for (int i = 0; i < 24; ++i)
+    {
+        const float pole = 0.5f * (low + high);
+        const float a = 1.0f - std::exp(-6.2831853071795864769f * pole / sr);
+        const float oneMinusA = 1.0f - a;
+        const float denReal = 1.0f - oneMinusA * cw;
+        const float denImag = oneMinusA * sw;
+        const float den2 = denReal * denReal + denImag * denImag;
+        const float lpReal = a * denReal / den2;
+        const float lpImag = a * denImag / den2;
+        const float hReal = shelfGain + (1.0f - shelfGain) * lpReal;
+        const float hImag = (1.0f - shelfGain) * lpImag;
+        const float magnitude = std::sqrt(hReal * hReal + hImag * hImag);
+        if (magnitude < target) low = pole;
+        else high = pole;
+    }
+    return 0.5f * (low + high);
+}
+
 struct Channel
 {
     OnePoleLP lowBoost, lowAtten, highAtten;
@@ -310,13 +346,10 @@ private:
         // creates the characteristic low lift and upper-bass dip without an
         // invented peaking filter in the attenuation path.
         const float lowAttenCorner = mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f);
-        // The selector is near the mid-attenuation point, not the -3 dB corner.
-        // For a first-order shelf, the -11.4 dB point of a -20 dB shelf occurs
-        // at about 3.88 times its pole frequency (Manley manual: -12 dB at the
-        // selected frequency for a -21 dB maximum). Keep this as an explicit
-        // approximation; the exact curve varies between hardware revisions.
-        const float hfAttenCorner = mpc::clamp(eqHighAttenFreq_ / 3.88f, 1.0f,
-                                                0.49f * static_cast<float>(sampleRate_));
+        // The selector is near the mid-attenuation point, not the -3 dB pole.
+        // Solve the discrete-time first-order shelf at the selected frequency;
+        // this matters especially for 20 kHz at the MPC's 44.1 kHz sample rate.
+        const float hfAttenCorner = highAttenuationPole(eqHighAttenFreq_, sampleRate_);
         // The hardware's HF boost maximum falls from about +20 dB (narrow) to
         // about +13.5 dB (broad). Approximate that bandwidth-dependent headroom.
         const float bandwidthGain = 1.0f - 0.325f * (eqBandwidth_ * 0.01f);
