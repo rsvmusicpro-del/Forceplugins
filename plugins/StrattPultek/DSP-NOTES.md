@@ -23,7 +23,7 @@ Both filters are independent per stereo channel, cascaded HP then LP before the 
 | HF attenuation | 0–20 dB | First-order high shelf cut (6 dB/oct) |
 | Grain / Drive | 0–100% each | C2 polynomial soft clip with first-order ADAA plus a small asymmetric even-harmonic term; Drive sets saturation intensity, Grain sets its blend; both zero are neutral |
 | Drive Mix | 0–100% | Independent post-EQ saturation dry/wet blend, unity-sum to avoid correlated-signal gain bumps |
-| Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Post-colour Output master gain, global EQ wet/dry blend, then a separate final master fader at the very end of the chain |
+| Output / Mix / Fader | -12…+12 dB / 0–100% / -60…+6 dB | Global EQ wet/dry blend, post-colour Output master gain, then a separate final master fader at the very end of the chain |
 
 These are EQP-1A-inspired operating ranges and a digital curve approximation. The LF boost and attenuation and HF attenuation are implemented as first-order 6 dB/octave shelves, matching the documented passive-filter topology; the LF attenuation corner is offset higher than the boost corner and produces the characteristic combined lift/dip. The 1.414 LF corner ratio is a practical half-octave approximation. The HF attenuation selector is mapped to the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum) by solving the discrete-time one-pole shelf response for each selected frequency and sample rate. This avoids the large error a fixed analog frequency ratio would create near Nyquist at 20 kHz / 44.1 kHz. The HF boost gain is reduced linearly with the broadness control from +20 dB at the narrow end to +13.5 dB at the broad end, following published Manley EQP-1A behaviour.
 
