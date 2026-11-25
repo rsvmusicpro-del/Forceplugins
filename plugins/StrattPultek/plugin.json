@@ -1,7 +1,7 @@
 {
   "name": "StrattPultek",
   "manufacturer": "Stratt",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "format": "vst2",
   "kind": "effect",
   "uid": "So21",
@@ -39,7 +39,7 @@
   ],
   "file32": "VST/strattpultek-arm32.so",
   "file64": "VST/strattpultek-arm64.so",
-  "description": "Pultec-inspired passive EQ, numerically stable ADAA harmonic drive, independent drive blend and final smoothed master fader.",
+  "description": "Pultec-inspired passive EQ, numerically stable ADAA harmonic drive, independent drive blend and fixed valve coloration before final smoothed master fader.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
