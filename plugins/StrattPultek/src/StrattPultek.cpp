@@ -2,13 +2,14 @@
 // SPDX-License-Identifier: MIT
 //
 // Signal path per channel:
-//   input -> LF shelf boost -> LF resonant attenuation ("Pultec trick")
+//   input -> LF shelf + resonant boost -> LF resonant attenuation ("Pultec trick")
 //         -> HF bell boost -> HF shelf attenuation -> tube-like soft saturation
 //         -> output trim / dry-wet.
 // The EQ curves are practical digital approximations of the EQP-1A control
-// topology, not a component-by-component SPICE or transformer model. Frequency
-// choices and interaction are exposed; calibration against a measured hardware
-// unit remains a future validation step.
+// topology. The LF boost combines a shelf and resonant bell to better capture
+// the characteristic low-end shoulder; boost/cut interaction remains an
+// approximation, not a component-level SPICE model. Calibration against a
+// measured hardware unit remains a separate validation step.
 
 #include "mpc_plugin.h"
 #include "dsp/biquad.h"
@@ -111,11 +112,11 @@ static float attenuationFrequency(int index)
 
 struct Channel
 {
-    Biquad lowBoost, lowDip, highBoost, highAtten;
+    Biquad lowBoost, lowResonance, lowDip, highBoost, highAtten;
     float previousDriveInput = 0.0f;
     void reset()
     {
-        lowBoost.reset(); lowDip.reset();
+        lowBoost.reset(); lowResonance.reset(); lowDip.reset();
         highBoost.reset(); highAtten.reset();
         previousDriveInput = 0.0f;
     }
@@ -207,6 +208,7 @@ public:
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
                 float wet = channels_[ch].lowBoost.process(dry);
+                wet = channels_[ch].lowResonance.process(wet);
                 wet = channels_[ch].lowDip.process(wet);
                 wet = channels_[ch].highBoost.process(wet);
                 wet = channels_[ch].highAtten.process(wet);
@@ -254,16 +256,26 @@ private:
     {
         // Broad -> lower Q; Narrow -> higher Q.
         const float q = 1.60f - 1.15f * (eqBandwidth_ * 0.01f);
-        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_, 0.7071f, eqLowBoost_);
-        // The Pultec low boost/attenuation interaction is approximated by a
-        // broad dip above the selected LF shelf, rather than a second shelf.
-        const BiquadCoeffs ld = BiquadCoeffs::peak(sampleRate_, mpc::clamp(eqLowFreq_ * 1.55f, 25.0f, 250.0f),
-                                                   0.78f, -eqLowAtten_);
+        // The original EQP-1A low boost is not a textbook monotonic shelf:
+        // its passive LC network creates a broad resonant shoulder around the
+        // selected frequency. Split the requested boost between a gentle
+        // shelf and a broad bell to reproduce that useful curve shape while
+        // keeping the control's approximate dB scale stable at the centre.
+        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_, 0.7071f,
+                                                       eqLowBoost_ * 0.55f);
+        const BiquadCoeffs lr = BiquadCoeffs::peak(sampleRate_, eqLowFreq_, 0.82f,
+                                                    eqLowBoost_ * 0.45f);
+        // Boost and attenuation remain independent cascaded controls. The
+        // attenuation network is a broad resonant dip above the LF selector;
+        // its offset/Q are explicit approximations pending unit-specific
+        // response sweeps, rather than claims of component-level matching.
+        const BiquadCoeffs ld = BiquadCoeffs::peak(sampleRate_,
+            mpc::clamp(eqLowFreq_ * 1.65f, 25.0f, 250.0f), 0.72f, -eqLowAtten_);
         const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
         const BiquadCoeffs ha = BiquadCoeffs::highShelf(sampleRate_, eqHighAttenFreq_, 0.7071f, -eqHighAtten_);
         for (Channel& c : channels_)
         {
-            c.lowBoost.setCoeffs(lb); c.lowDip.setCoeffs(ld);
+            c.lowBoost.setCoeffs(lb); c.lowResonance.setCoeffs(lr); c.lowDip.setCoeffs(ld);
             c.highBoost.setCoeffs(hb); c.highAtten.setCoeffs(ha);
         }
     }
