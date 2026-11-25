@@ -18,7 +18,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.4":
+if manifest["version"] != "1.9.5":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
@@ -31,8 +31,12 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
-if "i.version = 1904;" not in source:
-    raise SystemExit("PluginInfo version does not match the 1.9.4 manifest")
+if "i.version = 1905;" not in source:
+    raise SystemExit("PluginInfo version does not match the 1.9.5 manifest")
+if "channels_[ch].tubeStage(processed, dcPole_)" not in source or "tubeOutput * outGain * finalFader" not in source:
+    raise SystemExit("Parameter 0 master gain must remain post-colour and tone-neutral")
+if "tubeStage(preFader" in source:
+    raise SystemExit("Parameter 0 must not drive the nonlinear valve stage")
 if "float readParam(int index, float fallback, float minimum, float maximum) const" not in source:
     raise SystemExit("Finite host-parameter guard is missing")
 if re.search(r"\bget(?:Int)?\(k[A-Z]\w*\)", source):
