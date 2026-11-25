@@ -35,75 +35,68 @@ static float dbToGain(float db)
     return std::pow(10.0f, db * 0.05f);
 }
 
-// C1-continuous polynomial soft clip. It is linear around zero, transitions
-// smoothly from unity slope at |x|=1 to zero slope at |x|=3, then remains
-// bounded at 1.5. Its closed-form antiderivative makes first-order ADAA cheap:
-// no transcendental functions, allocations, or extra oversampling buffers.
+// C2-continuous polynomial soft clip. It is linear around zero and uses a
+// quintic-integral knee from |x|=1 to |x|=2. The slope and curvature both
+// reach zero at the saturation boundary, avoiding the curvature step in the
+// former C1 curve. The bounded output is 1.5. Closed-form primitives keep
+// first-order ADAA inexpensive on the MPC ARM targets.
 static inline float softClip(float x)
 {
     const float a = std::fabs(x);
     if (a <= 1.0f) return x;
-    if (a >= 3.0f) return std::copysign(1.5f, x);
-    const float t = 0.5f * (a - 1.0f);
-    const float oneMinusT = 1.0f - t;
-    const float y = 1.5f - 0.5f * oneMinusT * oneMinusT * oneMinusT * oneMinusT;
+    if (a >= 2.0f) return std::copysign(1.5f, x);
+    const float t = a - 1.0f;
+    const float t2 = t * t;
+    const float y = 1.0f + t - t2 * t + 0.5f * t2 * t2;
     return std::copysign(y, x);
 }
 
-// Even antiderivative of softClip(). The ADAA divided difference averages
-// the waveshaper over the previous/current input interval, suppressing
-// harmonics above Nyquist before they fold back as audible aliasing.
+// Even antiderivative of softClip(). The polynomial is integrated exactly,
+// so the ADAA divided difference remains the analytic interval average.
 static inline double softClipIntegral(double x)
 {
-    // Evaluate the primitive in double precision. ADAA subtracts two nearby
-    // primitive values; float precision loses significant bits for slowly
-    // varying signals and high internal levels.
     const double a = std::fabs(x);
     if (a <= 1.0) return 0.5 * a * a;
-    if (a >= 3.0) return 3.3 + 1.5 * (a - 3.0);
-    const double t = 0.5 * (a - 1.0);
-    const double u = 1.0 - t;
-    const double u2 = u * u;
-    return 0.3 + 3.0 * t + 0.2 * u2 * u2 * u;
+    if (a >= 2.0) return 1.85 + 1.5 * (a - 2.0);
+    const double t = a - 1.0;
+    const double t2 = t * t;
+    return 0.5 + t + 0.5 * t2 - 0.25 * t2 * t2 + 0.1 * t2 * t2 * t;
 }
 
-// Integral of softClip(x)^2. This lets the asymmetric transfer function
-// add controlled even-order harmonics while retaining the same ADAA treatment.
+// Integral of softClip(x)^2, required for the asymmetric even-harmonic term.
+// The transition polynomial is integrated analytically (degree 9).
 static inline double softClipSquareIntegral(double x)
 {
-    // Primitive of softClip(x)^2. The odd extension is required because the
-    // integrand is even; keep all intermediate powers in double precision.
     const double a = std::fabs(x);
-    double h;
     if (a <= 1.0)
-        h = a * a * a * (1.0 / 3.0);
-    else if (a >= 3.0)
-        h = 4.288888888888889 + 2.25 * (a - 3.0);
-    else
-    {
-        const double t = 0.5 * (a - 1.0);
-        const double u = 1.0 - t;
-        const double u2 = u * u;
-        const double u5 = u2 * u2 * u;
-        const double u9 = u5 * u2 * u2;
-        h = (1.0 / 3.0) + 4.5 * t + 0.6 * (u5 - 1.0)
-            - (1.0 / 18.0) * (u9 - 1.0);
-    }
-    return std::copysign(h, x);
+        return std::copysign(a * a * a / 3.0, x);
+    if (a >= 2.0)
+        return std::copysign((5491.0 / 2520.0) + 2.25 * (a - 2.0), x);
+
+    const double t = a - 1.0;
+    const double t2 = t * t;
+    const double t3 = t2 * t;
+    const double t4 = t2 * t2;
+    const double t5 = t4 * t;
+    const double t6 = t3 * t3;
+    const double t7 = t6 * t;
+    const double t8 = t4 * t4;
+    const double t9 = t8 * t;
+    const double integral = t + t2 + t3 / 3.0 - 0.5 * t4 - 0.2 * t5
+                          + t6 / 6.0 + t7 / 7.0 - t8 / 8.0 + t9 / 36.0;
+    return std::copysign(1.0 / 3.0 + integral, x);
 }
 
+// First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
+// Evaluate the divided difference in double precision and use its differential
+// limit near coincident samples to avoid catastrophic cancellation.
 static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
-    // The input samples are float, but the divided difference is evaluated in
-    // double. This materially reduces cancellation in I(x)-I(x-1) without
-    // changing the transfer curve or adding any transcendental operation.
     const double xd = static_cast<double>(x);
     const double pd = static_cast<double>(previousX);
     const double delta = xd - pd;
     const double scale = std::fmax(1.0, std::fmax(std::fabs(xd), std::fabs(pd)));
 
-    // In the differential limit, the derivative of the primitive is exactly
-    // F(x)+eta*F(x)^2. Use the midpoint to retain second-order secant accuracy.
     if (std::fabs(delta) <= 1.0e-7 * scale)
     {
         const float y = softClip(static_cast<float>(0.5 * (xd + pd)));
@@ -220,12 +213,12 @@ struct Channel
     }
     float tubeStage(float x, float pole)
     {
-        // Fixed, non-user-adjustable triode-style transfer. The small input
-        // gain moves louder peaks gradually into the soft knee; the asymmetric
+        // Fixed, non-user-adjustable triode-inspired transfer. The input
+        // gain moves louder peaks gradually into the C2 soft knee; the asymmetric
         // term creates predominantly even-order colour. ADAA's closed-form
         // primitive limits aliasing without oversampling or per-sample maths
         // beyond the polynomial. Divide by drive to preserve nominal gain.
-        constexpr float tubeDrive = 1.35f;
+        constexpr float tubeDrive = 1.15f;
         constexpr float tubeAsymmetry = 0.045f;
         const float driven = x * tubeDrive;
         const float shaped = adaaSoftClip(driven, previousTubeInput, tubeAsymmetry)
