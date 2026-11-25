@@ -64,7 +64,7 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 49. Filtre bloqueur DC : \(y[n]=x[n]-x[n-1]+p y[n-1]\), avec \(p=e^{-2\pi f_{DC}/f_s}\).
 50. Vérification de crête de sortie : \(P_{out}=\max_n|G_T y[n]|\), puis \(H_{out}=-20\log_{10}(P_{out})\).
 
-## Modèle fixe de coloration à lampe ajouté en 1.5.0
+## Modèle fixe de coloration à lampe ajouté en 1.5.0 et raffiné en 1.6.0
 
 51. Gain fixe d'attaque du modèle : \\(u[n]=1.35x[n]\\).
 52. Transfert asymétrique normalisé : \\(v[n]=F(u[n])+0.045F(u[n])^2\\), où \\(F\\) est le soft-clip polynomial C1 borné.
@@ -81,3 +81,8 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 - Vérification des réponses de filtres et des sélecteurs HF au taux d'échantillonnage réel (11–20), calculée en préparation ou au changement de bloc, pas par appel trigonométrique à chaque échantillon.
 
 Les équations 1–50 sont un catalogue d'analyse et de validation ; les appliquer toutes comme des traitements supplémentaires dégraderait le son ou augmenterait inutilement la charge CPU.
+
+
+## Raffinement numérique ADAA en 1.6.0
+
+Pour limiter l'annulation soustractive lorsque les deux échantillons sont proches, les primitives \(I_F\), \(I_{F^2}\), leur combinaison \(I_a=I_F+\eta I_{F^2}\), et le quotient de différences sont maintenant calculés en double précision. La limite différentielle est prise au milieu \(m=(x_n+x_{n-1})/2\) lorsque \(|\Delta x|\le10^{-7}\max(1,|x_n|,|x_{n-1}|)\), avec \(F(m)+\eta F(m)^2\). Le transfert et ses primitives analytiques restent identiques ; seul le calcul numérique du quotient est raffiné. Cela améliore la précision numérique, sans transformer ce modèle polynomial en simulation physique exacte d'une triode.
