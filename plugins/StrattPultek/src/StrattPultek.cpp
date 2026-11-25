@@ -42,7 +42,8 @@ static inline float softClip(float x)
     if (a <= 1.0f) return x;
     if (a >= 3.0f) return std::copysign(1.5f, x);
     const float t = 0.5f * (a - 1.0f);
-    const float y = 1.0f + 2.0f * t - 2.5f * t * t + t * t * t;
+    const float oneMinusT = 1.0f - t;
+    const float y = 1.5f - 0.5f * oneMinusT * oneMinusT * oneMinusT * oneMinusT;
     return std::copysign(y, x);
 }
 
@@ -53,10 +54,11 @@ static inline float softClipIntegral(float x)
 {
     const float a = std::fabs(x);
     if (a <= 1.0f) return 0.5f * a * a;
-    if (a >= 3.0f) return (10.0f / 3.0f) + 1.5f * (a - 3.0f);
+    if (a >= 3.0f) return 3.3f + 1.5f * (a - 3.0f);
     const float t = 0.5f * (a - 1.0f);
-    const float t2 = t * t;
-    return 0.5f + 2.0f * t + 2.0f * t2 - (5.0f / 3.0f) * t * t2 + 0.5f * t2 * t2;
+    const float oneMinusT = 1.0f - t;
+    const float oneMinusT2 = oneMinusT * oneMinusT;
+    return 0.3f + 3.0f * t + 0.2f * oneMinusT2 * oneMinusT2 * oneMinusT;
 }
 
 static inline float adaaSoftClip(float x, float previousX)
