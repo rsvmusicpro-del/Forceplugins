@@ -64,7 +64,7 @@ python tools/validate.py plugins/StrattPultek
 python tools/package.py plugins/StrattPultek
 ```
 
-The UI uses the SDK's MPC amber widget kit and generated Q-Link skin; no external GUI framework or third-party assets are included.
+The touch UI uses the MPC amber widget kit with a restrained charcoal background, amber focus accent, simple film-strip knobs and horizontal faders. The 1280×628 background is shipped as `assets/strattpultek-bg.png`; its editable vector source is `assets/strattpultek-bg.svg`. The SDK build copies the background into `Plugin Skins/` and generates the native TUI and Q-Link mappings. No external GUI framework or third-party artwork is included.
 
 ## References
 
