@@ -18,7 +18,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.3":
+if manifest["version"] != "1.9.4":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
@@ -31,6 +31,10 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
+if "float readParam(int index, float fallback, float minimum, float maximum) const" not in source:
+    raise SystemExit("Finite host-parameter guard is missing")
+if re.search(r"\\bget(?:Int)?\\(k[A-Z]\\w*\\)", source):
+    raise SystemExit("DSP contains an unguarded direct parameter read")
 if "mpc::clamp(dry, -kMaxInputMagnitude, kMaxInputMagnitude)" not in source:
     raise SystemExit("Audio input headroom guard is missing")
 if "if (std::isfinite(outputSample))" not in source:
