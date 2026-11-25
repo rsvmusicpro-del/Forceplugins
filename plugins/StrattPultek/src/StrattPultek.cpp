@@ -74,6 +74,8 @@ static inline double softClipSquareIntegral(double x)
 }
 
 // First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
+// Each ADAA path seeds its previous sample from the first live input after reset,
+// avoiding an artificial interval from digital silence to a non-zero first sample.
 // For very short intervals wholly inside one polynomial branch, evaluate the
 // interval average with its symmetric Taylor expansion. This avoids subtracting
 // nearly equal global primitives. The fourth-order term is exact through O(d^4);
@@ -439,7 +441,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1901;
+        i.version = 1902;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
