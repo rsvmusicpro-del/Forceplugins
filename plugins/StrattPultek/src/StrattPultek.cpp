@@ -15,6 +15,7 @@
 #include "mpc_plugin.h"
 #include "dsp/biquad.h"
 #include "dsp/smoother.h"
+#include "dsp/onepole.h"
 
 #include <cmath>
 
@@ -143,7 +144,8 @@ static float attenuationFrequency(int index)
 
 struct Channel
 {
-    Biquad lowBoost, lowAtten, highBoost, highAtten;
+    OnePoleLP lowBoost, lowAtten, highAtten;
+    Biquad highBoost;
     float previousDriveInput = 0.0f;
     float previousDcInput = 0.0f, previousDcOutput = 0.0f;
     void reset()
@@ -247,10 +249,13 @@ public:
                 if (!ctx.outputs[ch]) continue;
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
-                float wet = channels_[ch].lowBoost.process(dry);
-                wet = channels_[ch].lowAtten.process(wet);
+                // The original LF boost and attenuation, plus HF attenuation,
+                // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
+                float wet = dry + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(dry);
+                wet += (lowAttenGain_ - 1.0f) * channels_[ch].lowAtten.process(wet);
                 wet = channels_[ch].highBoost.process(wet);
-                wet = channels_[ch].highAtten.process(wet);
+                const float hfLow = channels_[ch].highAtten.process(wet);
+                wet = hfLow + highAttenGain_ * (wet - hfLow);
 
                 // Drive=0 is exactly clean. Grain controls the colour blend;
                 // both controls therefore reach a genuinely neutral setting.
@@ -304,22 +309,24 @@ private:
         // about half an octave above the boost shelf. Cascading the two shelves
         // creates the characteristic low lift and upper-bass dip without an
         // invented peaking filter in the attenuation path.
-        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_,
-                                                       0.7071f, eqLowBoost_);
-        const BiquadCoeffs la = BiquadCoeffs::lowShelf(sampleRate_,
-            mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f), 0.7071f, -eqLowAtten_);
+        const float lowAttenCorner = mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f);
         const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
-        const BiquadCoeffs ha = BiquadCoeffs::highShelf(sampleRate_, eqHighAttenFreq_, 0.7071f, -eqHighAtten_);
+        lowBoostGain_ = dbToGain(eqLowBoost_);
+        lowAttenGain_ = dbToGain(-eqLowAtten_);
+        highAttenGain_ = dbToGain(-eqHighAtten_);
         for (Channel& c : channels_)
         {
-            c.lowBoost.setCoeffs(lb); c.lowAtten.setCoeffs(la);
-            c.highBoost.setCoeffs(hb); c.highAtten.setCoeffs(ha);
+            c.lowBoost.setCutoff(eqLowFreq_, sampleRate_);
+            c.lowAtten.setCutoff(lowAttenCorner, sampleRate_);
+            c.highBoost.setCoeffs(hb);
+            c.highAtten.setCutoff(eqHighAttenFreq_, sampleRate_);
         }
     }
 
     double sampleRate_ = 44100.0;
     float dcPole_ = 0.9995f; // 3 Hz DC blocker pole, recalculated in prepare()
     float eqLowFreq_ = 60.0f, eqLowBoost_ = 0.0f, eqLowAtten_ = 0.0f;
+    float lowBoostGain_ = 1.0f, lowAttenGain_ = 1.0f, highAttenGain_ = 1.0f;
     float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
     float eqHighAttenFreq_ = 10000.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
