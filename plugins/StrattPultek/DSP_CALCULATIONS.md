@@ -71,7 +71,7 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 53. Compensation de gain nominal : \\(s[n]=v[n]/1.15\\).
 54. ADAA ordre 1 : \\(s_{ADAA}[n]=\\frac{I(u[n])-I(u[n-1])}{u[n]-u[n-1]}\\), avec limite différentielle lorsque les entrées sont presque égales.
 55. Blocage DC indépendant par canal : \\(y[n]=s_{ADAA}[n]-s_{ADAA}[n-1]+e^{-2\\pi(3)/f_s}y[n-1]\\).
-56. Position de la lampe dans le graphe : \\(y_{out}[n]=Fader(Valve(OutputTrim(Mix(EQDrive(x[n])))))\\).
+56. Position de la lampe dans le graphe : \\(y_{out}[n]=Fader(OutputGain(Valve(Mix(EQDrive(x[n])))))\\).
 
 ## Calculs effectivement appliqués dans la version 1.5.0
 
