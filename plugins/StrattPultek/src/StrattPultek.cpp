@@ -3,7 +3,7 @@
 //
 // Signal path per channel:
 //   input -> LF boost shelf -> higher-corner LF attenuation shelf ("Pultec trick")
-//         -> HF bell boost -> HF shelf attenuation -> tube-like soft saturation
+//         -> HF bell boost -> HF shelf attenuation -> asymmetric harmonic saturation
 //         -> output trim / dry-wet.
 // The EQ curves are practical digital approximations of the EQP-1A control
 // topology. Both LF controls are shelving filters; the attenuation shelf has
