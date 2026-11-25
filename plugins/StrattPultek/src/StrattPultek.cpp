@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 //
 // Signal path per channel:
-//   input -> LF boost shelf -> higher-corner LF attenuation shelf ("Pultec trick")
+//   input -> 6 dB/oct HP -> 6 dB/oct LP -> LF boost/attenuation shelves
 //         -> HF bell boost -> HF shelf attenuation -> asymmetric harmonic saturation
 //         -> output trim / dry-wet.
 // The EQ curves are practical digital approximations of the EQP-1A control
