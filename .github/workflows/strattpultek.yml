@@ -1,0 +1,35 @@
+name: StrattPultek build and test
+on:
+  push:
+    branches: ["feature/strattpultek"]
+    paths:
+      - "plugins/StrattPultek/**"
+      - ".github/workflows/strattpultek.yml"
+      - "framework/**"
+      - "tools/**"
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-test-package:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build native, ARM32 and ARM64; generate UI and validate
+        run: python tools/build.py plugins/StrattPultek
+      - name: Run MPC host simulator
+        run: .sdk-tools/host_sim plugins/StrattPultek/build/native/strattpultek.so test --seconds 5 --block 128 --wav plugins/StrattPultek/build/test.wav
+      - name: Package installable ZIP
+        run: python tools/package.py plugins/StrattPultek
+      - uses: actions/upload-artifact@v4
+        with:
+          name: StrattPultek-MPC-1.0.0
+          path: |
+            plugins/StrattPultek/dist/*.zip
+            plugins/StrattPultek/build/test.wav
+          if-no-files-found: error
