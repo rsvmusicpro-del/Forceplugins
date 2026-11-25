@@ -17,6 +17,26 @@
 
 These are EQP-1A-inspired operating ranges and a digital curve approximation. The LF boost and attenuation and HF attenuation are implemented as first-order 6 dB/octave shelves, matching the documented passive-filter topology; the LF attenuation corner is offset higher than the boost corner and produces the characteristic combined lift/dip. The 1.414 LF corner ratio is a practical half-octave approximation, not a measured plot of a particular hardware serial number. The HF attenuation selector is mapped to the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum) by solving the discrete-time one-pole shelf response for each selected frequency and sample rate. This avoids the large error a fixed analog frequency ratio would create near Nyquist at 20 kHz / 44.1 kHz. The HF boost gain is reduced linearly with the broadness control from +20 dB at the narrow end to +13.5 dB at the broad end; both are practical approximations of published Manley EQP-1A behaviour, not a component-level capture. Different Pultec revisions and component tolerances differ; exact reproduction requires a selected reference unit and measured sweeps.
 
+## Functional comparison with EQP-1A hardware and software models
+
+| Function | EQP-1A / documented Manley revision | StrattPultek 1.2.0 | Assessment |
+|---|---|---|---|
+| LF boost and attenuation | Two interacting passive shelves; attenuation curve extends higher than boost | Two first-order shelves with a 1.414 corner ratio | Topology is represented; exact interaction curve is not calibrated to a measured unit |
+| LF selector | 20, 30, 60, 100 Hz | Same choices | Control coverage matches |
+| HF boost | Peaking network with 3, 4, 5, 8, 10, 12, 16 kHz; bandwidth changes both width and peak gain | Biquad peak at the same choices; Q 1.60 to 0.45 and approximate +20 to +13.5 dB max scaling | Functional coverage matches; response family is an approximation |
+| HF attenuation | High shelf, 5, 10, 20 kHz; selector is near the middle of the attenuation curve | First-order shelf; digital pole is solved to place the selector near -11.4 dB at a -20 dB maximum | Selector convention is now represented; exact hardware curve still needs measurement |
+| Makeup / output stage | Passive loss compensated by a tube amplifier and transformers | Digital EQ followed by asymmetric polynomial ADAA saturation, DC blocking and output trim | Harmonic colour is present, but this is not a tube/transformer circuit model |
+| Bypass / output routing | Hardware EQ bypass while amplifier remains in circuit (Manley revision) | Host bypass plus wet/dry mix | Practical plugin control, not a circuit-level bypass emulation |
+
+The Universal Audio Pultec Passive EQ manual documents the same three control groups and selector sets; the Manley owner's manual additionally describes the bandwidth-dependent HF boost maximum and the HF attenuation selector convention. The Pulse Techniques manufacturer describes the LF boost/attenuation interaction as two shelves with offset corners. These sources support functional control coverage, but they do not prove that this digital model reproduces every hardware revision or clone.
+
+**Conclusion:** StrattPultek covers the principal EQP-1A user controls and characteristic filter topology, with additional digital mix/output/colour controls. It is not yet a complete hardware-behaviour clone: passive-network component tolerances, transformer response, tube makeup-stage behaviour, insertion loss and revision-specific measured curves are not modelled. Do not advertise it as hardware-identical until swept-response and level-matched listening tests against a serviced reference unit have been completed.
+
+References:
+- [Manley Enhanced Pultec EQP1-A Owner's Manual](https://www.ordioproductions.com.au/wp-content/uploads/Manley-Enhanced-Pultec-EQP-1A-User-Manual.pdf)
+- [Universal Audio — Pultec Passive EQ Collection Manual](https://help.uaudio.com/hc/en-us/articles/7183176266260-Pultec-Passive-EQ-Collection-Manual)
+- [Pulse Techniques — EQP-1A](https://pulsetechniques.com/)
+
 ## CPU design
 
 - One biquad (HF bell) and three first-order shelves per channel (LF boost, offset LF attenuation, HF attenuation); coefficients are updated once per process block.
