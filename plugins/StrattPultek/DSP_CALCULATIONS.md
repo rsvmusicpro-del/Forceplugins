@@ -64,7 +64,16 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 49. Filtre bloqueur DC : \(y[n]=x[n]-x[n-1]+p y[n-1]\), avec \(p=e^{-2\pi f_{DC}/f_s}\).
 50. Vérification de crête de sortie : \(P_{out}=\max_n|G_T y[n]|\), puis \(H_{out}=-20\log_{10}(P_{out})\).
 
-## Calculs effectivement appliqués dans la version 1.4.0
+## Modèle fixe de coloration à lampe ajouté en 1.5.0
+
+51. Gain fixe d'attaque du modèle : \\(u[n]=1.35x[n]\\).
+52. Transfert asymétrique normalisé : \\(v[n]=F(u[n])+0.045F(u[n])^2\\), où \\(F\\) est le soft-clip polynomial C1 borné.
+53. Compensation de gain nominal : \\(s[n]=v[n]/1.35\\).
+54. ADAA ordre 1 : \\(s_{ADAA}[n]=\\frac{I(u[n])-I(u[n-1])}{u[n]-u[n-1]}\\), avec limite différentielle lorsque les entrées sont presque égales.
+55. Blocage DC indépendant par canal : \\(y[n]=s_{ADAA}[n]-s_{ADAA}[n-1]+e^{-2\\pi(3)/f_s}y[n-1]\\).
+56. Position de la lampe dans le graphe : \\(y_{out}[n]=Fader(Valve(OutputTrim(Mix(EQDrive(x[n])))))\\).
+
+## Calculs effectivement appliqués dans la version 1.5.0
 
 - Seuil ADAA relatif au niveau interne (46), pour réduire l'annulation numérique dans la différence des primitives près des entrées voisines.
 - Conversion dB/gain du fader (35), gain total de fin de chaîne (36), et lissage temporel (32–33).
