@@ -400,7 +400,8 @@ public:
                     std::fabs(previousDriveInput + driveInput) * 2.0f, 0.0f, 1.0f);
                 const float driveWet = colour * drive * driveMix * density;
                 wet += (saturated - wet) * driveWet;
-                const float processed = dry + (wet - dry) * mix;
+                // Filter cutoffs remain independent of the Pultec/circuit wet-dry control.
+                const float processed = filtered + (wet - filtered) * mix;
                 // Permanent, invisible valve-amplifier coloration is deliberately
                 // after every EQ/drive/mix/output-trim stage and directly before
                 // the final master fader. It has no parameter or UI mapping.
