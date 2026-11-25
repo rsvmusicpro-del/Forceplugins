@@ -280,7 +280,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1100;
+        i.version = 1200;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -310,9 +310,18 @@ private:
         // creates the characteristic low lift and upper-bass dip without an
         // invented peaking filter in the attenuation path.
         const float lowAttenCorner = mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f);
-        const float hfAttenCorner = mpc::clamp(eqHighAttenFreq_, 1.0f,
+        // The selector is near the mid-attenuation point, not the -3 dB corner.
+        // For a first-order shelf, the -11.4 dB point of a -20 dB shelf occurs
+        // at about 3.88 times its pole frequency (Manley manual: -12 dB at the
+        // selected frequency for a -21 dB maximum). Keep this as an explicit
+        // approximation; the exact curve varies between hardware revisions.
+        const float hfAttenCorner = mpc::clamp(eqHighAttenFreq_ / 3.88f, 1.0f,
                                                 0.49f * static_cast<float>(sampleRate_));
-        const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
+        // The hardware's HF boost maximum falls from about +20 dB (narrow) to
+        // about +13.5 dB (broad). Approximate that bandwidth-dependent headroom.
+        const float bandwidthGain = 1.0f - 0.325f * (eqBandwidth_ * 0.01f);
+        const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q,
+                                                   eqHighBoost_ * bandwidthGain);
         lowBoostGain_ = dbToGain(eqLowBoost_);
         lowAttenGain_ = dbToGain(-eqLowAtten_);
         highAttenGain_ = dbToGain(-eqHighAtten_);

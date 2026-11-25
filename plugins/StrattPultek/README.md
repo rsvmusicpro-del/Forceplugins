@@ -1,18 +1,18 @@
-# StrattPultek 1.1.0
+# StrattPultek 1.2.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
 ## Included processing
 
 - Selectable first-order low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
-- Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth control.
-- First-order high-frequency shelf attenuation (5, 10, 20 kHz).
+- Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
+- First-order high-frequency shelf attenuation (5, 10, 20 kHz); the selector is calibrated near the documented mid-attenuation point rather than the -3 dB pole.
 - Low-cost asymmetric polynomial saturation with first-order antiderivative antialiasing (ADAA), adding controllable even-order harmonic content; independent Drive intensity and Grain blend controls, with a 3 Hz DC blocker. The clip curve is linear at low levels and has a smooth bounded knee; both controls at zero are genuinely transparent.
 - Output trim and wet/dry mix; five factory starting programs.
 
 ## Modelling note
 
-This is a **Pultec-inspired digital approximation**, not a claim of exact component-level hardware capture. The LF interaction is approximated with two low shelves whose corner frequencies are offset, the HF controls with a biquad high-frequency bell plus first-order shelving sections, and the colour stage with a C1-continuous asymmetric polynomial soft clip, first-order ADAA and a slow DC blocker. The ADAA divided difference uses closed-form antiderivatives for both the clip and its asymmetric component to reduce aliasing without oversampling; the asymmetry adds even-order harmonics, and a 3 Hz DC blocker removes bias. EQ controls are smoothed across blocks to avoid abrupt coefficient changes when the user moves a control. Exact hardware matching requires measured reference curves and listening/level-matched validation against a specific serviced EQP-1A unit.
+This is a **Pultec-inspired digital approximation**, not a claim of exact component-level hardware capture. The LF interaction is approximated with two low shelves whose corner frequencies are offset, the HF controls with a biquad high-frequency bell whose maximum gain falls with wider bandwidth, plus first-order shelving sections. The HF attenuation selector is mapped to the approximate mid-attenuation point of the hardware curve (about -11.4 dB for a -20 dB maximum), and the colour stage with a C1-continuous asymmetric polynomial soft clip, first-order ADAA and a slow DC blocker. The ADAA divided difference uses closed-form antiderivatives for both the clip and its asymmetric component to reduce aliasing without oversampling; the asymmetry adds even-order harmonics, and a 3 Hz DC blocker removes bias. EQ controls are smoothed across blocks to avoid abrupt coefficient changes when the user moves a control. Exact hardware matching requires measured reference curves and listening/level-matched validation against a specific serviced EQP-1A unit.
 
 No Airwindows source code is copied into this plugin. The colour-stage design uses a generic low-cost waveshaping approach; no third-party Airwindows licence or attribution is required.
 
