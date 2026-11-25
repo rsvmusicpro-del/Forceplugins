@@ -24,7 +24,7 @@ These are EQP-1A-inspired operating ranges and a digital curve approximation. Th
 - One-pole 15 ms smoothing for output, grain, drive and mix.
 - The colour stage uses first-order antiderivative antialiasing (ADAA). Its polynomial clip and squared-clip asymmetric component both have closed-form integrals, so the divided difference adds controlled even-order harmonics while reducing high-frequency foldback without per-sample log/exp/tanh or oversampling. A 3 Hz one-pole DC blocker removes the asymmetry's bias. Drive at 0% bypasses its contribution and Grain at 0% is fully clean.
 - The ADAA and DC-blocker memories are per channel and reset with the filter state; the previous nonlinear input is not shared between stereo channels.
-- Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide.
+- Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide. The three HF attenuation poles are solved once in `prepare()` for the active sample rate and cached; only the selected cached pole is smoothed in `process()`.
 - No oversampling in this low-CPU baseline. ADAA reduces, but does not eliminate, aliasing. Compare spectral sweeps at high Drive against the previous direct waveshaper and measure ARM CPU before considering 2x/4x oversampling.
 - No heap allocation, locks, logging or I/O in the audio callback.
 
