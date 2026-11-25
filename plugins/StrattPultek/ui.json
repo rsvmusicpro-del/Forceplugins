@@ -1,6 +1,6 @@
 {
   "kit": "amber",
-  "qlinkGroups": "columns",
+  "qlinkGroups": "rows",
   "pages": [
     {
       "name": "LOW",
@@ -37,16 +37,16 @@
           "widget": "knob"
         },
         {
-          "param": "Bandwidth",
-          "widget": "knob"
-        },
-        {
           "param": "HF Att Freq",
           "widget": "knob",
           "overlay": "menu"
         },
         {
           "param": "HF Atten",
+          "widget": "knob"
+        },
+        {
+          "param": "Bandwidth",
           "widget": "knob"
         }
       ]
