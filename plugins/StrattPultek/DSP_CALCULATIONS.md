@@ -1,4 +1,4 @@
-# StrattPultek — 64 calculs mathématiques et physiques (v1.9.4)
+# StrattPultek — 64 calculs mathématiques et physiques (v1.9.5)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -131,3 +131,8 @@ The five-point rule is exact for polynomials through degree nine; the asymmetric
 ## Protection des paramètres hôte ajoutée en 1.9.4
 
 64. Lecture bornée d'un paramètre : \(p_s=\operatorname{clamp}(p,p_{min},p_{max})\) si \(p\) est fini, sinon \(p_s=p_{défaut}\). Les paramètres de choix sont bornés avant conversion entière. Cette protection empêche qu'une automation VST malformée (NaN/Inf) ne contamine les lisseurs ou les indices de sélection. Elle est exécutée au taux de contrôle, jamais dans une boucle supplémentaire par échantillon.
+
+
+## Sortie maître neutre ajoutée en 1.9.5
+
+65. Gain maître sans interaction non linéaire : \(y[n]=G_{Output}G_{Fader}T(x_{EQ}[n])\), où \(T\) est l'étage de coloration fixe. Le gain Output est placé après \(T\) : modifier ou réinitialiser le paramètre 0 ne change donc ni le point de fonctionnement, ni les harmoniques, ni la saturation de cet étage. Le Fader dédié reste la dernière multiplication.
