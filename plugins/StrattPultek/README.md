@@ -1,4 +1,4 @@
-# StrattPultek 1.5.0
+# StrattPultek 1.6.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -20,7 +20,7 @@ A published open-source EQP-1A study using Wave Digital Filters demonstrates tha
 
 ## Permanent valve output stage
 
-Version 1.5.0 adds a fixed, invisible triode-inspired output coloration stage immediately before the final master fader. It is always active, has no parameter or UI control, and is independent of the existing Drive / Grain saturation controls. A gain-compensated asymmetric polynomial transfer with first-order ADAA introduces restrained even-order harmonics and progressive peak softening; a per-channel 3 Hz DC blocker removes bias. It is intentionally a lightweight musical model, not a claim of component-level hardware measurement. Existing parameter IDs, order, presets and Q-Link assignments are preserved.
+Version 1.5.0 adds a fixed, invisible triode-inspired output coloration stage immediately before the final master fader. It is always active, has no parameter or UI control, and is independent of the existing Drive / Grain saturation controls. A gain-compensated asymmetric polynomial transfer with first-order ADAA introduces restrained even-order harmonics and progressive peak softening; a per-channel 3 Hz DC blocker removes bias. Version 1.6.0 evaluates both closed-form ADAA primitives and their divided difference in double precision, reducing cancellation for slowly varying signals and high internal levels. The differential limit uses the midpoint derivative with a tighter relative threshold. The transfer curve and parameter layout are unchanged. It remains a lightweight triode-inspired model, not a measured component-level hardware capture; a physically exact match would require circuit parameters and reference measurements from a specific valve stage. Existing parameter IDs, order, presets and Q-Link assignments are preserved.
 
 ## Modelling note
 
@@ -30,9 +30,9 @@ Airwindows informed the design in two specific ways: the density-dependent wet w
 
 ## CPU and realtime
 
-One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. The Fader is a separate -60 to +6 dB control applied as the final multiplication after output trim and wet/dry blending; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The added density term is \`d[n] = clamp(2·|x[n] + x[n−1]|, 0, 1)\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
+One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. The Fader is a separate -60 to +6 dB control applied as the final multiplication after output trim and wet/dry blending; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The added density term is \`d[n] = clamp(2·|x[n] + x[n−1]|, 0, 1)\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
 
-The 50 equations and engineering checks used to review the filter, nonlinear stage, smoothing, gain structure and output path are catalogued in [DSP_CALCULATIONS.md](DSP_CALCULATIONS.md). The list distinguishes analysis equations from the subset implemented in the real-time code.
+The equations and engineering checks used to review the filter, nonlinear stage, smoothing, gain structure and output path are catalogued in [DSP_CALCULATIONS.md](DSP_CALCULATIONS.md). The list distinguishes analysis equations from the subset implemented in the real-time code.
 
 ## Build and test
 
