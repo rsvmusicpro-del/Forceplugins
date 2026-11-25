@@ -369,7 +369,13 @@ public:
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
                 // Reject malformed host samples before they enter recursive DSP state.
-                const float safeDry = std::isfinite(dry) ? dry : 0.0f;
+                // Keep 24 dB of float headroom, but bound malformed finite host values
+                // before they reach recursive filters and polynomial primitives.
+                // Normal programme levels (including substantial inter-sample peaks)
+                // remain untouched.
+                constexpr float kMaxInputMagnitude = 16.0f;
+                const float safeDry = std::isfinite(dry)
+                    ? mpc::clamp(dry, -kMaxInputMagnitude, kMaxInputMagnitude) : 0.0f;
                 // The original LF boost and attenuation, plus HF attenuation,
                 // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
                 // bx_cleansweep V2-style first-order 6 dB/octave filters, HP then LP.
@@ -410,7 +416,18 @@ public:
                 const float preFader = processed * outGain;
                 const float tubeOutput = channels_[ch].tubeStage(preFader, dcPole_);
                 // The fader remains the final operation in the complete signal path.
-                ctx.outputs[ch][i] = tubeOutput * finalFader;
+                const float outputSample = tubeOutput * finalFader;
+                if (std::isfinite(outputSample))
+                {
+                    ctx.outputs[ch][i] = outputSample;
+                }
+                else
+                {
+                    // Last-resort recovery: never leak NaN/Inf into the MPC mix
+                    // bus, and clear only this channel's recursive history.
+                    channels_[ch].reset();
+                    ctx.outputs[ch][i] = 0.0f;
+                }
             }
         }
     }
@@ -422,7 +439,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1900;
+        i.version = 1901;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
