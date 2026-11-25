@@ -4,7 +4,7 @@
 // Signal path per channel:
 //   input -> 6 dB/oct HP -> 6 dB/oct LP -> LF boost/attenuation shelves
 //         -> HF bell boost -> HF shelf attenuation -> asymmetric harmonic saturation
-//         -> output trim / dry-wet.
+//         -> global EQ dry/wet -> fixed valve colour -> Output master gain -> final Fader.
 // The EQ curves are practical digital approximations of the EQP-1A control
 // topology. Both LF controls are shelving filters; the attenuation shelf has
 // a higher corner frequency, so the cascaded response creates the familiar
@@ -337,7 +337,7 @@ public:
     StrattPultek() : mpc::Plugin(makeInfo())
     {
         using namespace mpc;
-        // Index 0 is deliberately a harmless master output trim: the MPC
+        // Index 0 is deliberately a tone-neutral master output gain: the MPC
         // toggles parameter 0 during prepare/load. Keep this index permanent.
         addParam(floatParam("output", "Output", -12.0f, 12.0f, 0.0f, "dB", 1));
         addParam(choiceParam("low_freq", "Low Freq", {"20", "30", "60", "100"}, 2));
