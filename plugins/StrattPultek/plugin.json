@@ -1,7 +1,7 @@
 {
   "name": "StrattPultek",
   "manufacturer": "Stratt",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "format": "vst2",
   "kind": "effect",
   "uid": "So21",
@@ -39,7 +39,7 @@
   ],
   "file32": "VST/strattpultek-arm32.so",
   "file64": "VST/strattpultek-arm64.so",
-  "description": "Pultec-inspired EQ, bx_cleansweep V2-style 6 dB/octave HP/LP filtering, ADAA harmonic drive and fixed valve-inspired output coloration.",
+  "description": "Pultec-inspired EQ, prewarped analog-prototype Cleansweep 6 dB/octave HP/LP filtering, ADAA harmonic drive and fixed valve-inspired output coloration.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
