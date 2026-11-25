@@ -1,5 +1,11 @@
 # Changelog
 
+## StrattPultek 1.9.4
+
+- Guard every audio-path parameter read against NaN/Inf and clamp it to the declared control range before smoothing or selector conversion.
+- Prevent malformed host automation from permanently contaminating smoother state or producing invalid frequency-selector indices; normal finite automation and the saved-project contract remain unchanged.
+- Preserve parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
 ## StrattPultek 1.9.3
 
 - Stabilized first-order ADAA for tiny intervals crossing the ±1/±2 polynomial knees with split five-point Gauss-Legendre integration, exact for the degree-eight asymmetric transfer on each segment.
