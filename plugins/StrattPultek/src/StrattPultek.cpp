@@ -411,8 +411,9 @@ public:
     {
         if (!ctx.outputs || ctx.numFrames <= 0) return;
 
-        smoothEq(ctx.numFrames);
-        updateEq();
+        // Parameter targets are read once per host block. Filter coefficients
+        // are refreshed in bounded 64-frame segments, reducing block-edge
+        // zippering even when the MPC uses 256/512-frame audio blocks.
         output_.setTarget(dbToGain(readParam(kOutput, 0.0f, -12.0f, 12.0f)));
         grain_.setTarget(readParam(kGrain, 25.0f, 0.0f, 100.0f) * 0.01f);
         drive_.setTarget(readParam(kDrive, 20.0f, 0.0f, 100.0f) * 0.01f);
@@ -420,9 +421,16 @@ public:
         driveMix_.setTarget(readParam(kDriveMix, 100.0f, 0.0f, 100.0f) * 0.01f);
         fader_.setTarget(dbToGain(readParam(kFader, 0.0f, -60.0f, 6.0f)));
 
+        constexpr int kControlQuantum = 64;
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
-        for (int i = 0; i < ctx.numFrames; ++i)
+        for (int blockStart = 0; blockStart < ctx.numFrames; blockStart += kControlQuantum)
         {
+            const int blockFrames = mpc::clamp(ctx.numFrames - blockStart, 1, kControlQuantum);
+            smoothEq(blockFrames);
+            updateEq();
+            const int blockEnd = blockStart + blockFrames;
+            for (int i = blockStart; i < blockEnd; ++i)
+            {
             const float outGain = output_.process();
             const float colour = grain_.process();
             const float drive = drive_.process();
@@ -501,6 +509,7 @@ public:
                 }
             }
         }
+        }
     }
 
 private:
@@ -510,7 +519,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1905;
+        i.version = 1906;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;

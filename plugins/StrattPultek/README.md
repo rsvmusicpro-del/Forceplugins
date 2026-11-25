@@ -1,4 +1,4 @@
-# StrattPultek 1.9.5
+# StrattPultek 1.9.6
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -92,3 +92,8 @@ All audio-thread parameter reads now pass through finite-value and range guards.
 ## Tone-neutral master output in 1.9.5
 
 Parameter 0 (Output) is the host-nudged master gain required by the MPC SDK. It now runs after the fixed nonlinear valve-colour stage and before the dedicated final Fader. Loading or nudging parameter 0 therefore changes level only; it can no longer change the valve stage's operating point or harmonic content. Parameter IDs, order, defaults, programs and MPC Sample mappings are unchanged.
+
+
+## Filter-control interpolation refinement in 1.9.6
+
+EQ parameters retain their 15 ms perceptual smoothing, but the filter coefficients are now recalculated at most every 64 samples rather than only once at the host's full process-block boundary. This limits coefficient-step spacing to about 1.45 ms at 44.1 kHz even when the MPC is set to 512-frame blocks, reducing zipper-like modulation during cutoff, frequency, gain and bandwidth automation. Parameter targets are still read once per host block; the audio callback remains allocation-, lock- and I/O-free. The additional coefficient-design work is bounded to at most eight updates per 512-frame block and is included in the cross-target build and host-simulator CI checks. No parameter IDs, ordering, presets, Q-Link assignments or MPC Sample mappings change.

@@ -1,4 +1,4 @@
-# StrattPultek 1.9.4 DSP notes and verification plan
+# StrattPultek 1.9.6 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
@@ -113,3 +113,8 @@ Every parameter consumed by the audio path is read through a finite-value guard 
 ## Tone-neutral parameter-0 master gain (1.9.5)
 
 The MPC host may nudge parameter 0 during plugin load. The SDK contract requires this parameter to behave as a harmless master output control. It is therefore applied after the fixed valve-inspired nonlinear stage and before the dedicated final Fader. This prevents parameter-0 automation or load-time nudges from changing the valve stage's operating point or harmonic spectrum. Parameter IDs, order, defaults, factory programs and MPC Sample mappings remain unchanged.
+
+
+## Filter coefficient update cadence (1.9.6)
+
+The 15 ms control smoothing is retained, but smoothed EQ values are applied to filter coefficients in fixed 64-frame control segments inside each host callback. This bounds the time between coefficient updates to 64 / fs (1.45 ms at 44.1 kHz), rather than the host's entire block duration (up to 11.6 ms at 512 frames). It reduces audible stepping during automation on large MPC blocks. Parameter targets remain sampled once per host callback, and coefficient design remains outside the per-sample inner loop. The maximum extra coefficient-design cadence is 8 updates per 512-frame callback. The CI host simulator covers 32/128/512-frame blocks at 44.1/48/96 kHz; physical-device CPU benchmarking remains a separate release check.

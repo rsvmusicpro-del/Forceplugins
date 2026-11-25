@@ -1,4 +1,4 @@
-# StrattPultek — 64 calculs mathématiques et physiques (v1.9.5)
+# StrattPultek — 64 calculs mathématiques et physiques (v1.9.6)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -136,3 +136,8 @@ The five-point rule is exact for polynomials through degree nine; the asymmetric
 ## Sortie maître neutre ajoutée en 1.9.5
 
 65. Gain maître sans interaction non linéaire : \(y[n]=G_{Output}G_{Fader}T(x_{EQ}[n])\), où \(T\) est l'étage de coloration fixe. Le gain Output est placé après \(T\) : modifier ou réinitialiser le paramètre 0 ne change donc ni le point de fonctionnement, ni les harmoniques, ni la saturation de cet étage. Le Fader dédié reste la dernière multiplication.
+
+
+## Raffinement du taux de mise à jour des coefficients (1.9.6)
+
+Les cibles de paramètres sont lues une fois par bloc hôte. Les variables EQ lissées sur 15 ms sont appliquées aux filtres par segments de 64 échantillons maximum. La durée maximale entre deux mises à jour est donc Tq = 64 / fs, soit environ 1,45 ms à 44,1 kHz, au lieu de Nhost / fs (jusqu'à 11,61 ms pour 512 échantillons). Le lissage exponentiel conserve sa constante de temps : alpha_q = 1 - exp(-64 / (0,015 fs)), avec le dernier segment adapté à sa taille réelle. Le calcul trigonométrique des coefficients reste au taux de contrôle, jamais dans la boucle par échantillon. Cette modification réduit les sauts de coefficients audibles lors de l'automation sur de grands blocs, au prix d'au plus huit recalculs par bloc de 512 échantillons. Elle ne constitue pas une validation de charge CPU sur matériel physique.
