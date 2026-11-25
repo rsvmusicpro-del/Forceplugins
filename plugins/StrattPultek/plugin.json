@@ -1,7 +1,7 @@
 {
   "name": "StrattPultek",
   "manufacturer": "Stratt",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "format": "vst2",
   "kind": "effect",
   "uid": "So21",
@@ -33,13 +33,13 @@
       "label": "HF Atten"
     },
     {
-      "parameter": 12,
-      "label": "Drv Mix"
+      "parameter": 13,
+      "label": "Fader"
     }
   ],
   "file32": "VST/strattpultek-arm32.so",
   "file64": "VST/strattpultek-arm64.so",
-  "description": "Pultec-inspired passive EQ curves with adaptive ADAA harmonic drive, independent drive blend, stereo processing and native MPC controls.",
+  "description": "Pultec-inspired passive EQ, numerically stable ADAA harmonic drive, independent drive blend and final smoothed master fader.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
