@@ -4,7 +4,7 @@
 
 ## Included processing
 
-- Selectable low-frequency boost (20, 30, 60, 100 Hz), combining a gentle shelf and resonant bell for a broader Pultec-style low-end shoulder.
+- Selectable low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
 - Simultaneous low attenuation control with a broad resonant dip approximation (the familiar low-end boost/attenuation interaction).
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth control.
 - High-frequency shelf attenuation (5, 10, 20 kHz).
@@ -19,7 +19,7 @@ No Airwindows source code is copied into this plugin. The colour-stage design us
 
 ## CPU and realtime
 
-Five stereo biquad sections are coefficient-updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive and Mix use 15 ms one-pole smoothing. The colour stage uses a polynomial waveshaper and its closed-form antiderivative; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; verify the remaining foldback by measurement and listening.
+Four stereo biquad sections are coefficient-updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive and Mix use 15 ms one-pole smoothing. The colour stage uses a polynomial waveshaper and its closed-form antiderivative; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; verify the remaining foldback by measurement and listening.
 
 ## Build and test
 
