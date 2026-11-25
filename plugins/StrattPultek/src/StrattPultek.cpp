@@ -53,56 +53,69 @@ static inline float softClip(float x)
 // Even antiderivative of softClip(). The ADAA divided difference averages
 // the waveshaper over the previous/current input interval, suppressing
 // harmonics above Nyquist before they fold back as audible aliasing.
-static inline float softClipIntegral(float x)
+static inline double softClipIntegral(double x)
 {
-    const float a = std::fabs(x);
-    if (a <= 1.0f) return 0.5f * a * a;
-    if (a >= 3.0f) return 3.3f + 1.5f * (a - 3.0f);
-    const float t = 0.5f * (a - 1.0f);
-    const float oneMinusT = 1.0f - t;
-    const float oneMinusT2 = oneMinusT * oneMinusT;
-    return 0.3f + 3.0f * t + 0.2f * oneMinusT2 * oneMinusT2 * oneMinusT;
+    // Evaluate the primitive in double precision. ADAA subtracts two nearby
+    // primitive values; float precision loses significant bits for slowly
+    // varying signals and high internal levels.
+    const double a = std::fabs(x);
+    if (a <= 1.0) return 0.5 * a * a;
+    if (a >= 3.0) return 3.3 + 1.5 * (a - 3.0);
+    const double t = 0.5 * (a - 1.0);
+    const double u = 1.0 - t;
+    const double u2 = u * u;
+    return 0.3 + 3.0 * t + 0.2 * u2 * u2 * u;
 }
 
 // Integral of softClip(x)^2. This lets the asymmetric transfer function
 // add controlled even-order harmonics while retaining the same ADAA treatment.
-static inline float softClipSquareIntegral(float x)
+static inline double softClipSquareIntegral(double x)
 {
-    const float a = std::fabs(x);
-    float h;
-    if (a <= 1.0f)
-        h = a * a * a * (1.0f / 3.0f);
-    else if (a >= 3.0f)
-        h = 4.28888889f + 2.25f * (a - 3.0f);
+    // Primitive of softClip(x)^2. The odd extension is required because the
+    // integrand is even; keep all intermediate powers in double precision.
+    const double a = std::fabs(x);
+    double h;
+    if (a <= 1.0)
+        h = a * a * a * (1.0 / 3.0);
+    else if (a >= 3.0)
+        h = 4.288888888888889 + 2.25 * (a - 3.0);
     else
     {
-        const float t = 0.5f * (a - 1.0f);
-        const float u = 1.0f - t;
-        const float u2 = u * u;
-        const float u5 = u2 * u2 * u;
-        const float u9 = u5 * u2 * u2;
-        h = (1.0f / 3.0f) + 4.5f * t + 0.6f * (u5 - 1.0f)
-            - (1.0f / 18.0f) * (u9 - 1.0f);
+        const double t = 0.5 * (a - 1.0);
+        const double u = 1.0 - t;
+        const double u2 = u * u;
+        const double u5 = u2 * u2 * u;
+        const double u9 = u5 * u2 * u2;
+        h = (1.0 / 3.0) + 4.5 * t + 0.6 * (u5 - 1.0)
+            - (1.0 / 18.0) * (u9 - 1.0);
     }
     return std::copysign(h, x);
 }
 
 static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
-    const float delta = x - previousX;
-    const float scale = std::fmax(1.0f, std::fmax(std::fabs(x), std::fabs(previousX)));
-    // Scale the near-equal threshold with signal magnitude to avoid subtractive
-    // cancellation in the antiderivative difference at hot internal levels.
-    if (std::fabs(delta) < 1.0e-4f * scale)
+    // The input samples are float, but the divided difference is evaluated in
+    // double. This materially reduces cancellation in I(x)-I(x-1) without
+    // changing the transfer curve or adding any transcendental operation.
+    const double xd = static_cast<double>(x);
+    const double pd = static_cast<double>(previousX);
+    const double delta = xd - pd;
+    const double scale = std::fmax(1.0, std::fmax(std::fabs(xd), std::fabs(pd)));
+
+    // In the differential limit, the derivative of the primitive is exactly
+    // F(x)+eta*F(x)^2. Use the midpoint to retain second-order secant accuracy.
+    if (std::fabs(delta) <= 1.0e-7 * scale)
     {
-        const float y = softClip(0.5f * (x + previousX));
+        const float y = softClip(static_cast<float>(0.5 * (xd + pd)));
         return y + asymmetry * y * y;
     }
-    const float currentIntegral = softClipIntegral(x)
-                                + asymmetry * softClipSquareIntegral(x);
-    const float previousIntegral = softClipIntegral(previousX)
-                                 + asymmetry * softClipSquareIntegral(previousX);
-    return (currentIntegral - previousIntegral) / delta;
+
+    const double eta = static_cast<double>(asymmetry);
+    const double currentIntegral = softClipIntegral(xd)
+                                 + eta * softClipSquareIntegral(xd);
+    const double previousIntegral = softClipIntegral(pd)
+                                  + eta * softClipSquareIntegral(pd);
+    return static_cast<float>((currentIntegral - previousIntegral) / delta);
 }
 
 // Smooth a control once per block while preserving the same time constant for
@@ -374,7 +387,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1500;
+        i.version = 1600;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
