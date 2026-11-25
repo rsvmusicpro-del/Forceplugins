@@ -2,17 +2,20 @@
 // SPDX-License-Identifier: MIT
 //
 // Signal path per channel:
-//   input -> LF shelf boost -> LF resonant attenuation ("Pultec trick")
-//         -> HF bell boost -> HF shelf attenuation -> tube-like soft saturation
+//   input -> LF boost shelf -> higher-corner LF attenuation shelf ("Pultec trick")
+//         -> HF bell boost -> HF shelf attenuation -> asymmetric harmonic saturation
 //         -> output trim / dry-wet.
 // The EQ curves are practical digital approximations of the EQP-1A control
-// topology, not a component-by-component SPICE or transformer model. Frequency
-// choices and interaction are exposed; calibration against a measured hardware
-// unit remains a future validation step.
+// topology. Both LF controls are shelving filters; the attenuation shelf has
+// a higher corner frequency, so the cascaded response creates the familiar
+// low-end lift plus upper-bass dip. This models the topology, not every passive
+// component or transformer. Calibration against a measured hardware unit
+// remains a separate validation step.
 
 #include "mpc_plugin.h"
 #include "dsp/biquad.h"
 #include "dsp/smoother.h"
+#include "dsp/onepole.h"
 
 #include <cmath>
 
@@ -61,12 +64,42 @@ static inline float softClipIntegral(float x)
     return 0.3f + 3.0f * t + 0.2f * oneMinusT2 * oneMinusT2 * oneMinusT;
 }
 
-static inline float adaaSoftClip(float x, float previousX)
+// Integral of softClip(x)^2. This lets the asymmetric transfer function
+// add controlled even-order harmonics while retaining the same ADAA treatment.
+static inline float softClipSquareIntegral(float x)
+{
+    const float a = std::fabs(x);
+    float h;
+    if (a <= 1.0f)
+        h = a * a * a * (1.0f / 3.0f);
+    else if (a >= 3.0f)
+        h = 4.28888889f + 2.25f * (a - 3.0f);
+    else
+    {
+        const float t = 0.5f * (a - 1.0f);
+        const float u = 1.0f - t;
+        const float u2 = u * u;
+        const float u5 = u2 * u2 * u;
+        const float u9 = u5 * u2 * u2;
+        h = (1.0f / 3.0f) + 4.5f * t + 0.6f * (u5 - 1.0f)
+            - (1.0f / 18.0f) * (u9 - 1.0f);
+    }
+    return std::copysign(h, x);
+}
+
+static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 {
     const float delta = x - previousX;
     if (std::fabs(delta) < 1.0e-4f)
-        return softClip(0.5f * (x + previousX));
-    return (softClipIntegral(x) - softClipIntegral(previousX)) / delta;
+    {
+        const float y = softClip(0.5f * (x + previousX));
+        return y + asymmetry * y * y;
+    }
+    const float currentIntegral = softClipIntegral(x)
+                                + asymmetry * softClipSquareIntegral(x);
+    const float previousIntegral = softClipIntegral(previousX)
+                                 + asymmetry * softClipSquareIntegral(previousX);
+    return (currentIntegral - previousIntegral) / delta;
 }
 
 // Smooth a control once per block while preserving the same time constant for
@@ -111,13 +144,22 @@ static float attenuationFrequency(int index)
 
 struct Channel
 {
-    Biquad lowBoost, lowDip, highBoost, highAtten;
+    OnePoleLP lowBoost, lowAtten, highAtten;
+    Biquad highBoost;
     float previousDriveInput = 0.0f;
+    float previousDcInput = 0.0f, previousDcOutput = 0.0f;
     void reset()
     {
-        lowBoost.reset(); lowDip.reset();
+        lowBoost.reset(); lowAtten.reset();
         highBoost.reset(); highAtten.reset();
-        previousDriveInput = 0.0f;
+        previousDriveInput = previousDcInput = previousDcOutput = 0.0f;
+    }
+    float removeDc(float x, float pole)
+    {
+        const float y = x - previousDcInput + pole * previousDcOutput;
+        previousDcInput = x;
+        previousDcOutput = y;
+        return y;
     }
 };
 } // namespace
@@ -132,13 +174,13 @@ public:
         // toggles parameter 0 during prepare/load. Keep this index permanent.
         addParam(floatParam("output", "Output", -12.0f, 12.0f, 0.0f, "dB", 1));
         addParam(choiceParam("low_freq", "Low Freq", {"20", "30", "60", "100"}, 2));
-        addParam(floatParam("low_boost", "Low Boost", 0.0f, 10.0f, 0.0f, "dB", 1));
-        addParam(floatParam("low_atten", "Low Atten", 0.0f, 10.0f, 0.0f, "dB", 1));
+        addParam(floatParam("low_boost", "Low Boost", 0.0f, 14.0f, 0.0f, "dB", 1));
+        addParam(floatParam("low_atten", "Low Atten", 0.0f, 18.0f, 0.0f, "dB", 1));
         addParam(choiceParam("high_freq", "High Freq", {"3k", "4k", "5k", "8k", "10k", "12k", "16k"}, 3));
-        addParam(floatParam("high_boost", "High Boost", 0.0f, 10.0f, 0.0f, "dB", 1));
+        addParam(floatParam("high_boost", "High Boost", 0.0f, 20.0f, 0.0f, "dB", 1));
         addParam(floatParam("bandwidth", "Bandwidth", 0.0f, 100.0f, 50.0f, "%", 0));
         addParam(choiceParam("hf_att_freq", "HF Att Freq", {"5k", "10k", "20k"}, 1));
-        addParam(floatParam("hf_atten", "HF Atten", 0.0f, 10.0f, 0.0f, "dB", 1));
+        addParam(floatParam("hf_atten", "HF Atten", 0.0f, 20.0f, 0.0f, "dB", 1));
         addParam(floatParam("grain", "Grain", 0.0f, 100.0f, 25.0f, "%", 0));
         addParam(floatParam("drive", "Drive", 0.0f, 100.0f, 20.0f, "%", 0));
         addParam(floatParam("mix", "Mix", 0.0f, 100.0f, 100.0f, "%", 0));
@@ -154,6 +196,7 @@ public:
     {
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
+        dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
         output_.setTime(15.0f, sampleRate_);
         grain_.setTime(15.0f, sampleRate_);
         drive_.setTime(15.0f, sampleRate_);
@@ -206,15 +249,22 @@ public:
                 if (!ctx.outputs[ch]) continue;
                 const float dry = (ctx.inputs && ch < ctx.numInputs && ctx.inputs[ch])
                                     ? ctx.inputs[ch][i] : 0.0f;
-                float wet = channels_[ch].lowBoost.process(dry);
-                wet = channels_[ch].lowDip.process(wet);
+                // The original LF boost and attenuation, plus HF attenuation,
+                // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
+                float wet = dry + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(dry);
+                wet += (lowAttenGain_ - 1.0f) * channels_[ch].lowAtten.process(wet);
                 wet = channels_[ch].highBoost.process(wet);
-                wet = channels_[ch].highAtten.process(wet);
+                const float hfLow = channels_[ch].highAtten.process(wet);
+                wet = hfLow + highAttenGain_ * (wet - hfLow);
 
                 // Drive=0 is exactly clean. Grain controls the colour blend;
                 // both controls therefore reach a genuinely neutral setting.
                 const float driveInput = wet * driveGain;
-                const float saturated = adaaSoftClip(driveInput, channels_[ch].previousDriveInput) / driveGain;
+                // A small asymmetric term adds even-order harmonic content; a slow DC
+                // blocker removes the resulting bias without disturbing the bass band.
+                const float saturated = channels_[ch].removeDc(
+                    adaaSoftClip(driveInput, channels_[ch].previousDriveInput, 0.08f),
+                    dcPole_) / driveGain;
                 channels_[ch].previousDriveInput = driveInput;
                 wet += (saturated - wet) * (colour * drive);
                 const float processed = dry + (wet - dry) * mix;
@@ -230,7 +280,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1000;
+        i.version = 1100;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -254,22 +304,31 @@ private:
     {
         // Broad -> lower Q; Narrow -> higher Q.
         const float q = 1.60f - 1.15f * (eqBandwidth_ * 0.01f);
-        const BiquadCoeffs lb = BiquadCoeffs::lowShelf(sampleRate_, eqLowFreq_, 0.7071f, eqLowBoost_);
-        // The Pultec low boost/attenuation interaction is approximated by a
-        // broad dip above the selected LF shelf, rather than a second shelf.
-        const BiquadCoeffs ld = BiquadCoeffs::peak(sampleRate_, mpc::clamp(eqLowFreq_ * 1.55f, 25.0f, 250.0f),
-                                                   0.78f, -eqLowAtten_);
+        // Both original LF controls are shelving networks. Their corner
+        // frequencies are deliberately offset: the attenuation shelf starts
+        // about half an octave above the boost shelf. Cascading the two shelves
+        // creates the characteristic low lift and upper-bass dip without an
+        // invented peaking filter in the attenuation path.
+        const float lowAttenCorner = mpc::clamp(eqLowFreq_ * 1.41421356f, 1.0f, 400.0f);
+        const float hfAttenCorner = mpc::clamp(eqHighAttenFreq_, 1.0f,
+                                                0.49f * static_cast<float>(sampleRate_));
         const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q, eqHighBoost_);
-        const BiquadCoeffs ha = BiquadCoeffs::highShelf(sampleRate_, eqHighAttenFreq_, 0.7071f, -eqHighAtten_);
+        lowBoostGain_ = dbToGain(eqLowBoost_);
+        lowAttenGain_ = dbToGain(-eqLowAtten_);
+        highAttenGain_ = dbToGain(-eqHighAtten_);
         for (Channel& c : channels_)
         {
-            c.lowBoost.setCoeffs(lb); c.lowDip.setCoeffs(ld);
-            c.highBoost.setCoeffs(hb); c.highAtten.setCoeffs(ha);
+            c.lowBoost.setCutoff(eqLowFreq_, sampleRate_);
+            c.lowAtten.setCutoff(lowAttenCorner, sampleRate_);
+            c.highBoost.setCoeffs(hb);
+            c.highAtten.setCutoff(hfAttenCorner, sampleRate_);
         }
     }
 
     double sampleRate_ = 44100.0;
+    float dcPole_ = 0.9995f; // 3 Hz DC blocker pole, recalculated in prepare()
     float eqLowFreq_ = 60.0f, eqLowBoost_ = 0.0f, eqLowAtten_ = 0.0f;
+    float lowBoostGain_ = 1.0f, lowAttenGain_ = 1.0f, highAttenGain_ = 1.0f;
     float eqHighFreq_ = 8000.0f, eqHighBoost_ = 0.0f, eqBandwidth_ = 50.0f;
     float eqHighAttenFreq_ = 10000.0f, eqHighAtten_ = 0.0f;
     Channel channels_[2];
