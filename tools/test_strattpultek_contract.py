@@ -2,6 +2,7 @@
 """Contract checks for StrattPultek's saved-project and touch-UI compatibility."""
 import json
 import re
+import struct
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -51,6 +52,19 @@ if not re.search(r"hasPreviousDriveInput\s*\?", source) or not re.search(r"hasPr
     raise SystemExit("ADAA paths must seed their first sample without a false zero-to-signal interval")
 if not referenced.issubset(display_names):
     raise SystemExit(f"UI references undeclared parameters: {sorted(referenced - display_names)}")
+
+# Verify that every MPC skin page uses the packaged, correctly sized background.
+for page in ui["pages"]:
+    if page.get("background") != "strattpultek-bg.png":
+        raise SystemExit(f"Missing page background on {page['name']}")
+png = (project / "assets" / "strattpultek-bg.png").read_bytes()
+if png[:8] != b"\x89PNG\r\n\x1a\n":
+    raise SystemExit("UI background is not a PNG")
+if struct.unpack(">II", png[16:24]) != (1280, 628):
+    raise SystemExit("UI background must be 1280x628 pixels")
+if not (project / "assets" / "strattpultek-bg.svg").is_file():
+    raise SystemExit("Editable vector source for the UI background is missing")
+
 programs = re.findall(r'addProgram\("[^"]+",\s*\{([^}]+)\}\)', source)
 if not programs or any(len(values.split(",")) != len(expected) for values in programs):
     raise SystemExit("Factory program values do not match the 16-parameter contract")
