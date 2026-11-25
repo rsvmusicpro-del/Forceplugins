@@ -2,7 +2,8 @@
 // bx_cleansweep V2 is documented as a pair of musical 6 dB/octave filters.
 // This clean-room implementation reproduces that documented topology and
 // cutoff ranges; it does not claim to reproduce Brainworx's proprietary
-// Anti-Crush circuit/curve algorithm. SPDX-License-Identifier: MIT
+// Anti-Crush circuit/curve algorithm.
+// SPDX-License-Identifier: MIT
 #ifndef MPC_DSP_CLEANSWEEP_FILTER_H
 #define MPC_DSP_CLEANSWEEP_FILTER_H
 #include <cmath>
