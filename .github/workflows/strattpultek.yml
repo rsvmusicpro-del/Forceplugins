@@ -7,6 +7,8 @@ on:
       - ".github/workflows/strattpultek.yml"
       - "framework/**"
       - "tools/**"
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
 permissions:
   contents: read
