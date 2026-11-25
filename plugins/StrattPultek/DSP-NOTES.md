@@ -1,4 +1,4 @@
-# StrattPultek 1.4.0 DSP notes and verification plan
+# StrattPultek 1.5.0 DSP notes and verification plan
 
 ## EQ control coverage
 
@@ -55,6 +55,12 @@ That work is a useful technical reference and establishes that a more complete c
 - Frequency selectors use logarithmic 15 ms smoothing; gain and bandwidth controls retain the 15 ms block-size-compensated glide. The three HF attenuation poles are solved once in prepare() for the active sample rate and cached; only the selected cached pole is smoothed in process().
 - No heap allocation, locks, logging or I/O in the audio callback.
 
+## Permanent valve-amplifier output stage (1.5.0)
+
+A fixed, non-adjustable triode-inspired coloration stage is inserted after the complete EQ / controllable drive / global mix / output-trim path and immediately before the final master fader. It is independent of Drive, Grain and Drive Mix, has no parameter, no UI control and no Q-Link mapping. The stage uses a fixed 1.35 input gain, a small 0.045 asymmetric component in the existing C1 polynomial transfer, first-order ADAA using the closed-form primitive, inverse gain compensation, and a per-channel 3 Hz DC blocker. This produces subtle even-order harmonic coloration at ordinary levels and progressively softens louder peaks without a hard digital clip. ADAA limits foldback without oversampling; state is stereo-independent and reset with the other DSP state. It is a low-cost tube-amplifier-inspired model, not a measured component-level 12AX7/transformer circuit capture.
+
+The final order is: EQ → controllable ADAA drive → global EQ dry/wet → output trim → fixed valve stage → final smoothed master fader. The existing parameter IDs, order, preset arrays and MPC Sample knob assignments are unchanged.
+
 ## Q-Link mapping
 
 Normal: Q-Link 1 Low Boost (parameter 2), Q-Link 2 HF Boost (5), Q-Link 3 Grain (9).
@@ -62,6 +68,8 @@ SHIFT: Q-Link 1 Low Atten (3), Q-Link 2 HF Atten (8), Q-Link 3 Fader (13). Drive
 The first parameter remains Output trim, intentionally harmless under the MPC prepare-time parameter-0 nudge. Parameter order and IDs are stable.
 
 ## Validation performed
+
+The 1.5.0 valve-stage change is awaiting a fresh CI build and host-simulator run; the 1.4.0 results below describe the previous revision only.
 
 1. Native, ARM32 and ARM64 builds; generated MPC skins and `tools/validate.py` passed with 0 errors and 0 warnings.
 2. `host_sim` passed at 44.1, 48 and 96 kHz with 32-, 128- and 512-frame blocks, including parameter randomisation, state round-trip, in-place processing, silence and finite-output checks.
