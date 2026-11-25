@@ -1,8 +1,10 @@
-# StrattPultek 1.7.1
+# StrattPultek 1.8.0
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
 ## Included processing
+
+- bx_cleansweep V2-style first-order high-pass and low-pass filters on the Filter page. HP spans 20 Hz–11 kHz and LP 20 Hz–22 kHz; both are continuously variable, logarithmically smoothed and use a bilinear first-order response (6 dB/octave). The filters run before the Pultec EQ.
 
 - Selectable first-order low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
@@ -18,6 +20,10 @@ The design was reviewed against professional Pultec-style plug-ins (Universal Au
 
 A published open-source EQP-1A study using Wave Digital Filters demonstrates that a schematic-derived passive network can be modeled in real time, with improved high-frequency accuracy when oversampled. That work informed the evaluation of the filter topology and the decision to keep the MPC build lightweight: the present implementation uses low-cost shelves and a resonant biquad rather than importing a third-party WDF implementation. This preserves the Force/MPC ARM target and its current CPU profile. It is a deliberate real-time design choice, not a claim that the two filter architectures are mathematically identical.
 
+## Filter emulation scope
+
+The public bx_cleansweep V2 documentation specifies the HP/LP ranges and first-order 6 dB/octave slopes. This clean-room implementation uses a bilinear-transform one-pole pair with those documented frequency ranges. Brainworx's proprietary Anti-Crush curve implementation is not public, so bit-identical or circuit-identical behaviour cannot be claimed. This is a topology-level functional emulation, not a reverse-engineered copy.
+
 ## Permanent valve output stage
 
 Version 1.7.1 refines the fixed, invisible valve-inspired output stage immediately before the final master fader. The transfer now uses a C2-continuous polynomial knee: both slope and curvature join continuously at the linear region and saturation plateau, reducing the curvature discontinuities of the previous C1 curve. Its closed-form primitives for F and F² are re-derived analytically, preserving first-order ADAA for the asymmetric even-harmonic component. The ADAA divided difference remains double precision with a signal-relative differential-limit fallback. The fixed input drive is 1.15, with the existing 0.045 asymmetry and per-channel 3 Hz DC blocker. This is a smoother, better-conditioned phenomenological triode-inspired stage, not a measured component-level hardware capture or a perfect match to a particular valve circuit. Existing parameter IDs, order, presets and Q-Link assignments are preserved.
@@ -27,6 +33,10 @@ Version 1.7.1 refines the fixed, invisible valve-inspired output stage immediate
 This is a **Pultec-inspired digital emulation**, designed to reproduce the recognizable control interaction and musical response in a low-CPU MPC insert. It is not advertised as a component-by-component capture of one hardware revision. The LF interaction is modeled with two low shelves whose corner frequencies are offset. The HF boost uses a resonant biquad whose maximum gain falls with wider bandwidth; the HF attenuation uses a first-order shelf calibrated so its selected frequency is near the documented mid-attenuation point (about -11.4 dB for a -20 dB maximum). The colour stage uses a C2-continuous asymmetric polynomial soft clip, first-order ADAA and a slow DC blocker. The ADAA divided difference uses closed-form antiderivatives for both the clip and its asymmetric component to reduce aliasing without oversampling. For near-coincident samples contained in one polynomial branch, a fourth-order symmetric interval expansion avoids subtracting nearly equal primitives; intervals crossing a knee retain the exact primitive difference. The asymmetry adds even-order harmonics, and a 3 Hz DC blocker removes bias. EQ controls are smoothed across blocks to avoid abrupt coefficient changes when the user moves a control.
 
 Airwindows informed the design in two specific ways: the density-dependent wet weighting described for PurestDrive and the parallel dry/wet concept of Drive/Density. Pultec behaviour remains grounded in the original control interactions and the UAD manual. No Airwindows source code or third-party WDF implementation is copied into this plugin; the DSP is implemented in this repository under its MIT licence.
+
+## UI organization
+
+The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec frequency, gain, bandwidth and output-trim controls), and CIRCUIT (Grain, Drive, Drive Mix, global Mix and final Fader). The original 14 parameter IDs and indices remain unchanged; HP Freq and LP Freq are appended as parameters 14 and 15.
 
 ## CPU and realtime
 
