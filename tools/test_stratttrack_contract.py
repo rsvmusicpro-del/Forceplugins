@@ -10,7 +10,7 @@ assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOut
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<40 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","CIRCUIT"]
-assert len(re.findall(r"addParam\(",src))==32
+assert len(re.findall(r"addParam\(",src))==40
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
