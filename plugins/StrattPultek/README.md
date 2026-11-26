@@ -1,4 +1,4 @@
-# StrattPultek 1.9.8
+# StrattPultek 1.9.9
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -10,7 +10,7 @@
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
 - First-order high-frequency shelf attenuation (5, 10, 20 kHz); the selector is calibrated near the documented mid-attenuation point rather than the -3 dB pole, using a sample-rate-aware digital response solve.
 - Low-cost asymmetric polynomial saturation with first-order antiderivative antialiasing (ADAA), adding controllable even-order harmonic content; independent Drive intensity, Grain blend and **Drive Mix** controls, with a 3 Hz DC blocker. Drive Mix is a dedicated post-EQ saturation dry/wet control and is smoothed over 15 ms.
-- Airwindows PurestDrive-inspired sample-density weighting: the previous/current driven-sample sum dynamically reduces saturation blend around rapid zero-crossings/transients and favours sustained waveform body. This is a fresh implementation using the plugin's existing ADAA polynomial shaper, not copied Airwindows source.
+- Level-independent Grain continuity detection: compares adjacent samples after the same waveshaper transfer, so its response is consistent across input levels. Polarity reversals and abrupt same-polarity amplitude steps reduce saturation immediately; a 0.5 ms one-pole release restores colour smoothly. The detector is per-channel, allocation-free, and adds no audio latency or user parameters.
 - Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`). A precomputed 101-point makeup curve then matches the fundamental of a 0.5-peak sine (-6.02 dBFS) across the Drive range; its maximum correction is capped at +0.98 dB. The curve is numerically integrated once in `prepare()` and interpolated in the audio callback, avoiding runtime trigonometric work. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
 - Host-automation boundary handling: every DSP parameter read is checked for NaN/Inf and clamped to its declared range before reaching smoothers, frequency selectors or coefficient design; malformed automation falls back to the documented default without poisoning DSP state.
 - Defensive audio-boundary handling: finite host samples are limited to ±16.0 (24 dBFS) before recursive DSP, and a non-finite final sample clears that channel's DSP history and emits silence for that sample. Ordinary programme levels are unaffected.
@@ -98,7 +98,7 @@ Parameter 0 (Output) is the host-nudged master gain required by the MPC SDK. It 
 
 EQ parameters retain their 15 ms perceptual smoothing, but the filter coefficients are now recalculated at most every 64 samples rather than only once at the host's full process-block boundary. This limits coefficient-step spacing to about 1.45 ms at 44.1 kHz even when the MPC is set to 512-frame blocks, reducing zipper-like modulation during cutoff, frequency, gain and bandwidth automation. Parameter targets are still read once per host block; the audio callback remains allocation-, lock- and I/O-free. The additional coefficient-design work is bounded to at most eight updates per 512-frame block and is included in the cross-target build and host-simulator CI checks. No parameter IDs, ordering, presets, Q-Link assignments or MPC Sample mappings change.
 
-## Grain density refinement in 1.9.8
+## Grain engine refinement in 1.9.9
 
-The Grain engine now derives its sample-density weight from the previous driven sample and the current waveshaper output, then applies a cubic smoothstep. This preserves the transient-aware saturation concept while removing the hard-clamp slope discontinuity and making the density blend transition smoother. The update is allocation-free, adds no latency or detector state, and keeps the existing Grain, Drive and Drive Mix controls and all saved parameter identities unchanged.
+The Grain detector now compares the previous and current samples after applying the same odd waveshaper transfer. Its continuity ratio is normalized by the sum of sample magnitudes, making the response independent of absolute input level. Opposite-polarity samples produce zero density; same-polarity amplitude steps are weighted by their relative continuity. A cubic smoothstep shapes the detector response, followed by immediate transient attack and a 0.5 ms sample-rate-aware release. The detector state is independent per stereo channel, reset with the DSP, and uses no per-sample transcendental calls, allocation, locks, oversampling or added audio latency. Existing Grain, Drive and Drive Mix controls remain unchanged.
 
