@@ -1,4 +1,5 @@
 #include "dsp/two_pole_filter.h"
+#include "dsp/biquad.h"
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -85,6 +86,26 @@ int main()
     if (check(std::isfinite(recovery.process(0.25f)),
               "Invalid cutoff destabilised filter", 44100.0, 1000.0)) return 8;
 
-    std::puts("Shared Butterworth HP/LP corner, 12 dB/octave slope and stability checks passed");
+
+    for (double sr : rates)
+    {
+        for (float q : {0.45f, 0.9f, 1.6f})
+        {
+            mpc::dsp::Biquad f;
+            f.setCoeffs(mpc::dsp::BiquadCoeffs::resonantBoost(sr, 8000.0f, q, 12.0f));
+            double sum = 0.0; const int n = 65536, skip = 16384;
+            for (int i = 0; i < n; ++i) {
+                const float x = static_cast<float>(std::sin(6.2831853071795864769 * 8000.0 * i / sr));
+                const float y = f.process(x);
+                if (!std::isfinite(y)) return 9;
+                if (i >= skip) sum += static_cast<double>(y) * y;
+            }
+            const double centre = std::sqrt(sum / (n - skip)) * std::sqrt(2.0);
+            if (check(std::fabs(centre - std::pow(10.0, 12.0 / 20.0)) < 0.035,
+                      "RLC resonant centre gain mismatch", sr, 8000.0)) return 10;
+        }
+    }
+
+    std::puts("Shared Butterworth and resonant-RLC response checks passed");
     return 0;
 }
