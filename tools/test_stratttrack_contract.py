@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.5.1"
+assert manifest["version"]=="1.5.2"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -44,7 +44,7 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1501;" in src
+assert "x.version=1502;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
@@ -604,3 +604,32 @@ for left,right in ((1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
     for gain in (0.0,0.25,0.5,1.0):
         out_l,out_r=mid+side*gain,mid-side*gain
         assert abs((out_l+out_r)*0.5-mid)<1.0e-12
+
+
+# Coefficient safety is checked on the quantized float denominator, not only
+# on ideal double coefficients. Exercise every fixed band and supported rate.
+assert "void set(double nb0,double nb1,double nb2,double na0,double na1,double na2)" in src
+assert "!(std::fabs(fa2)<1.0f && (1.0f+fa1+fa2)>1.0e-7f && (1.0f-fa1+fa2)>1.0e-7f)" in src
+assert "const double w0=2.0*static_cast<double>(kPi)*fc/sr;" in src
+assert "const double A=std::pow(10.0,static_cast<double>(gainDb)/40.0);" in src
+import struct
+def f32(x): return struct.unpack("<f",struct.pack("<f",x))[0]
+for sample_rate in (44100.0,48000.0,96000.0):
+    for band, nominal in enumerate(graphic_freq):
+        fc=min(nominal,sample_rate*0.45)
+        w=2.0*math.pi*fc/sample_rate
+        q=graphic_eq_q(sample_rate,fc,graphic_eq_bandwidth(12.0,band,sample_rate))
+        for gain_db in (-12.0,-6.0,0.0,6.0,12.0):
+            alpha=math.sin(w)/(2.0*q)
+            A=10.0**(gain_db/40.0)
+            a0=1.0+alpha/A
+            a1=f32((-2.0*math.cos(w))/a0)
+            a2=f32((1.0-alpha/A)/a0)
+            assert abs(a2)<1.0
+            assert 1.0+a1+a2>1.0e-7
+            assert 1.0-a1+a2>1.0e-7
+            b0=f32((1.0+alpha*A)/a0)
+            b1=f32((-2.0*math.cos(w))/a0)
+            b2=f32((1.0-alpha*A)/a0)
+            assert all(math.isfinite(v) for v in (a1,a2,b0,b1,b2))
+print("StrattTrack quantized graphic-EQ coefficient stability checks OK")
