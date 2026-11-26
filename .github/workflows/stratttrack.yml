@@ -1,4 +1,4 @@
-name: StrattTrack validation
+name: StrattTrack validation # PR20 final-head verification
 on:
   push:
     branches: ["main", "feature/stratttrack"]
@@ -10,6 +10,7 @@ on:
       - "tools/test_strattpultek_filters.cpp"
       - "tools/test_strattpultek_valve.py"
       - "tools/test_stratttrack_valve.py"
+      - "tools/test_stratttrack_console7_stability.cpp"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
@@ -27,6 +28,9 @@ on:
       - "tools/test_strattpultek_filters.cpp"
       - "tools/test_strattpultek_valve.py"
       - "tools/test_stratttrack_valve.py"
+      - "tools/test_stratttrack_console7_stability.cpp"
+      - "plugins/StrattTrack/src/circuit_adaa.h"
+      - "tools/test_stratttrack_circuit_adaa.cpp"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
@@ -53,6 +57,10 @@ jobs:
         run: python tools/test_stratttrack_contract.py
       - name: Verify Airwindows Console7 transfer, ADAA and integration
         run: python tools/test_airwindows_console7.py
+      - name: Verify Console7 stability, malformed-sample recovery and sample-rate range
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework tools/test_stratttrack_console7_stability.cpp -o /tmp/test_stratttrack_console7_stability
+          /tmp/test_stratttrack_console7_stability
       - name: Verify StrattTrack Cleansweep Butterworth orders and corner response
         run: |
           c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iplugins/StrattTrack/src tools/test_stratttrack_cleansweep.cpp -o /tmp/test_stratttrack_cleansweep
@@ -61,6 +69,10 @@ jobs:
         run: python tools/test_strattpultek_valve.py
       - name: Verify StrattTrack hybrid triode ADAA and antiderivative stability
         run: python tools/test_stratttrack_valve.py
+      - name: Verify Drive/Circuit antiderivative ADAA and numerical stability
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iplugins/StrattTrack/src tools/test_stratttrack_circuit_adaa.cpp -o /tmp/test_stratttrack_circuit_adaa
+          /tmp/test_stratttrack_circuit_adaa
       - name: Verify shared second-order Butterworth HP/LP response and stability
         run: |
           c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_shared_filters

@@ -1,3 +1,29 @@
+## StrattTrack 1.5.3
+
+- Final PR-head validation rerun: no DSP or host-state changes beyond the release notes; see the PR checks for the full native/ARM and MPC simulator/package matrix.
+
+- Flush Console7 recursive-filter and ADAA-history state below 1e-30 to prevent subnormal slowdowns on ARM during long decays and near-silence.
+- Add compiled C++ stability/recovery coverage at 8.001–384 kHz, across five Console Fader positions, malformed inputs and post-fault recovery; run it in StrattTrack CI.
+- Retain the 1.5.2 double-precision graphic-EQ design and quantized-coefficient Jury/Schur stability checks; preserve UID S4X3 and all host-state compatibility.
+
+## StrattTrack 1.5.2
+
+- Harden biquad coefficient updates with double-precision normalization and second-order Jury stability checks on stored float coefficients; rejected designs preserve the last known-good filter state.
+- Evaluate adaptive graphic-EQ bandwidth-to-Q conversion and peaking-bell design in double precision, reducing rounding sensitivity near Nyquist.
+- Preserve all 16 fixed centres, gain ranges, parameter IDs/order, preset compatibility and 64-frame coefficient refresh cadence.
+
+## StrattTrack 1.5.1
+
+- Replace linear interpolation in Q with a smoothstep gain-to-octave-bandwidth law, narrowing from 1.9 octaves toward each band's actual fractional-octave spacing as cut/boost increases.
+- Convert bandwidth to Q with the RBJ bilinear-transform frequency-warp relation, and cap bandwidth against the available Nyquist margin so the top band remains finite and stable at 44.1/48 kHz.
+- Add independent checks for bandwidth symmetry, monotonic focus, centre gain, half-gain bandwidth and pole stability across all sixteen bands at 44.1/48/96 kHz; preserve all parameter IDs/order and MPC Sample mappings.
+
+## StrattTrack 1.5.0
+
+- Upgrade the 16-band graphic EQ from fixed-Q to gain-dependent proportional-Q: subtle moves remain broad and larger cuts/boosts progressively focus, matching classic analogue graphic-EQ interaction while retaining symmetric boost/cut and exact unity at 0 dB.
+- Keep the Pioneer DEH-P8850MP documented 16-band frequency layout, ±12 dB range, stereo-linked RBJ cascade, 10 ms smoothing, 64-frame coefficient refresh, minimum-phase response and zero added latency.
+- Add independent proportional-Q curve, centre-gain and pole-stability checks across all sixteen bands and 44.1/48/96 kHz sample rates; bump StrattTrack to 1.5.0.
+
 ## StrattTrack 1.3.1\n\n- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.\n- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.\n- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.\n\n## StrattTrack 1.2.9
 
 - Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.
@@ -144,3 +170,8 @@ Key 61, Key 37, Force (32-bit) and MPC Live III, MPC XL and later (64-bit).
 - Added Mono Compatibility Off/Auto/Full and an adjustable Auto correlation threshold to the OUTPUT page.
 - Auto progressively reduces M/S Side below the selected negative-correlation threshold; Full removes Side immediately before the permanent valve stage. The protection is smoothed and preserves Mid.
 - Appended the two new parameters after the existing 50 slots; retained prior parameter indices, factory-program values and MPC Sample mappings.
+
+
+## StrattTrack 1.4.0 — fixed 16-band graphic EQ
+
+Replaced the active four-band parametric EQ path and EQ-page controls with sixteen fixed-frequency stereo-linked graphic bands (20 Hz–20 kHz, ±12 dB, constant-Q bell filters). Existing EQ parameter slots remain inert at their original indices for saved-session/automation compatibility; sixteen gain-only parameters are appended. Minimum-phase IIR, 10 ms smoothing and 64-frame coefficient refresh avoid linear-phase latency and audio-thread allocation. Research and provenance: `plugins/StrattTrack/GRAPHIC-EQ-RESEARCH.md`.

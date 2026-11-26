@@ -1,15 +1,20 @@
+## Console7 denormal-state hardening (1.5.3)
+
+The shared Airwindows Console7 input stage flushes recursive biquad and ADAA-history values below 1e-30 to exact zero. This avoids subnormal slowdowns on ARM during long decays and near-silence; the threshold is far below the representable audio floor and does not alter audible programme material. Existing non-finite recovery, bounded input, Airwindows MIT attribution and the EQ coefficient-stability guard remain intact. A dedicated compiled C++ regression exercises Console7 across 8.001–384 kHz, five fader positions, sustained tones, malformed host samples and recovery.
+
+
 # StrattTrack DSP notes
 
 ## Shared HP/LP filter standard (1.1.2)
 
-StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec/channel EQ stages.
+StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec and 16-band graphic EQ stages.
 
 ## Signal path and algorithms
 - Input gain consolidation: Preamp is the only active user input-gain stage. The former `input` ID remains as a hidden, non-automatable zero-range compatibility slot at index 1; it is not read by the DSP.
 - Preamp: linear dB gain with sample-rate-invariant smoothing and finite input guards.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: shared second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, 10 ms logarithmic smoothing and 64-frame coefficient refresh.
-- Pulse Techniques EQP-1A stage (after filters, before four-band EQ):
+- Pulse Techniques EQP-1A stage (after filters, before the 16-band graphic EQ):
   - LF boost and attenuation use first-order low shelves with selectable 20/30/60/100 Hz turnovers.
   - The attenuation turnover is offset by sqrt(2), matching the approximately half-octave higher corner visible in EQP-1A3 response sweeps.
   - A broad LF boost/attenuation interaction bell approximates the measured combined lift-and-dip contour; its depth is bounded and saturating, centred at 8× the selected LF frequency.
@@ -17,7 +22,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
   - HF attenuation is a first-order high shelf at 5/10/20 kHz.
   - Controls are smoothed in log-frequency or linear gain space; coefficients are calculated once per block; filter memory is per channel.
 - Gate threshold/range, compressor threshold/ratio/makeup and circuit drive use a 10 ms control-rate smoother; dynamics thresholds and makeup glide in dB space before conversion to linear amplitude. The compressor curve LUT is rebuilt from the smoothed ratio, avoiding abrupt gain-computer changes without adding per-sample transcendental math.
-- Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads; LF and HF are deliberately not shelves. LF/HF use fixed Q=0.7071, LM/HM use their user-selected Q (0.4–4.0), and every band is exactly unity at 0 dB. Frequency, gain and Q smoothers advance on a 64-frame cadence, and all four biquad coefficient sets are refreshed at that same cadence using the elapsed-frame one-pole coefficient `1-exp(-N/(0.010·fs))`; this bounds automation steps independently of the host callback size.
+- Graphic EQ: sixteen stereo-linked RBJ peaking/bell biquads at fixed centres 20, 31.5, 50, 80, 125, 200, 315, 500, 800, 1250, 2000, 3150, 5000, 8000, 12500 and 20000 Hz; each is ±12 dB and unity at 0 dB. Gain-adaptive proportional-Q is now designed in octave bandwidth rather than by linearly interpolating Q: a smoothstep focus curve moves from 1.9 octaves at small moves toward each band's actual fractional-octave spacing at ±12 dB. The RBJ bilinear-transform relation `1/Q = 2 sinh((ln 2 / 2) BW ω0 / sin ω0)` converts this bandwidth to Q with sample-rate and centre-frequency warping; bandwidth is additionally limited by the available Nyquist margin. This preserves symmetric boost/cut and broad low-level tone shaping while giving high-gain corrections a predictable band-relative width. Gain smoothing is 10 ms and coefficients refresh every 64 frames. The former four-band filter objects and processing path are removed; their parameter IDs remain inert at original indices and sixteen gain-only parameters are appended.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
 - Circuit: bounded rational Drive/Circuit colour is parallel-blended and fully bypassed at 0%; the separate fixed ADAA valve-inspired stage and 3 Hz DC blocker remain active independently after the blend.
 - Output: tone-neutral master trim and smoothed stereo balance.
@@ -249,3 +254,24 @@ Stereo-image references for 1.2.9:
 
 Mono Compatibility is the final stereo-image stage immediately before the permanent valve stage, after filters, EQ, dynamics and Drive/Circuit. Its dedicated 50 ms normalized L/R correlation estimator therefore measures the signal that is about to enter the valve. Off leaves Side unchanged. Auto uses an adjustable threshold T (0–100%, interpreted as rho threshold −T/100); at or below that threshold, Side gain ramps linearly to zero at rho=−1. Full sets Side gain to zero, yielding dual mono at the valve input. The protection gain is smoothed over 10 ms and Mid is never changed. Auto reduces correlation-related mono risk but does not mathematically guarantee compatibility for every subsequent nonlinear or time-varying process. Out Pan remains downstream and is not constrained by this protection.
 \n\n## StrattTrack 1.3.1 — valve-stage fault containment\n\nThe fixed hybrid ADAA stage now treats a non-finite input as a local state fault: it clears the previous driven sample, nonlinear-residual low-pass memory and DC-blocker memory, marks the previous input history invalid, and outputs zero for that sample. Finite samples are bounded to ±64 before the nonlinear antiderivative is evaluated. This prevents NaN/Inf propagation and limits pathological upstream excursions without changing normal programme levels, parameter identity, signal-path order or the nominal valve curve. A dedicated independent regression test differentiates the hybrid primitive, checks the ADAA divided difference against split five-point Gauss–Legendre quadrature across every knee, and exercises short intervals around the branch boundaries.\n
+
+## Adaptive proportional-Q 16-band graphic EQ (1.5.0)
+
+The graphic EQ uses a serial minimum-phase IIR cascade of sixteen gain-dependent proportional-Q peaking biquads. Fixed centres: 20 / 31.5 / 50 / 80 / 125 / 200 / 315 / 500 / 800 / 1.25k / 2k / 3.15k / 5k / 8k / 12.5k / 20k Hz. Q rises linearly with absolute slider travel from 0.707 near 0 dB to 2.146 at ±12 dB, so gentle moves remain broad and stronger corrections focus automatically. Boost and cut are symmetrical; 0 dB remains an exact unity transfer. Each band is gain-only (−12 to +12 dB), with sample-rate-aware 10 ms smoothing and coefficient recalculation every 64 frames. No FIR latency or per-sample coefficient math is used. The old four-band filter objects and active DSP path are removed; parameter slots are retained as inert compatibility indices. See `GRAPHIC-EQ-RESEARCH.md`.
+
+
+## Adaptive graphic-EQ bandwidth and Q (1.5.1)
+
+For band centre `f0`, sample rate `Fs`, digital radian frequency `ω0 = 2πf0/Fs`, and bandwidth `BW` in octaves, the RBJ bilinear-transform mapping is `Q = 1 / (2 sinh((ln 2 / 2) BW ω0 / sin ω0))`. This is the frequency-warp-correct conversion from octave bandwidth to the peaking-biquad Q parameter; using the analog approximation without `ω0/sin(ω0)` would make high bands progressively wider as they approach Nyquist. The adaptive target bandwidth is `BW(g) = BWbroad + (BWnarrow − BWbroad) s(t)`, with `t = clamp(|g|/12,0,1)` and `s(t)=t²(3−2t)`. `BWbroad=1.9` octaves gives Q≈0.707 at low frequencies in the low-frequency limit; `BWnarrow` is calculated from geometric midpoints between adjacent fixed centres. Both bandwidth endpoints are capped by `2 log2(Fs/(2f0))`, so a band close to Nyquist cannot request an impossible symmetric upper/lower span. The gain sign is excluded from the law, ensuring identical bandwidth for equal-magnitude cuts and boosts. Q and coefficients are calculated at the existing bounded 64-frame refresh, not per sample; the 10 ms gain smoother and independent left/right filter states remain intact.
+
+
+## Drive/Circuit antiderivative antialiasing (1.6.0)
+
+The Drive/Circuit path preserves its bounded rational transfer f(x)=x/(1+k|x|), where k=0.22d(1+5d), and now evaluates the first-order ADAA interval average. Its even primitive is F(x)=(k|x|−ln(1+k|x|))/k², with the continuous k→0 limit x²/2. The log is evaluated by frexp range reduction and a short atanh polynomial, not a per-sample logarithm; a cancellation-safe series handles small arguments and near-identical samples use the midpoint limit. Stereo channels own independent history, non-finite samples clear that history, and inputs are bounded to ±64. Existing Drive smoothing and the exact 0% Circuit Mix bypass are preserved. This reduces nonlinear foldback without oversampling latency, but does not claim zero aliasing or analogue hardware identity.
+
+CI independently differentiates the primitive, compares interval averages with high-resolution Simpson integration, and checks short-interval and non-finite recovery behaviour.
+
+
+## Graphic-EQ numerical hardening (1.5.2)
+
+The existing proportional-Q law remains defined in octave bandwidth: (BW(g)=BW_b+(BW_n-BW_b)s(t)), with (t=\mathrm{clamp}(|g|/12,0,1)) and (s(t)=t^2(3-2t)). The digital Q inversion uses the RBJ bilinear-warp term (\omega_0/\sin(\omega_0)), now evaluated in double precision. The peaking-biquad coefficient normalizer also uses double intermediates, then validates the stored float denominator with the second-order Jury conditions (|a_2|<1), (1+a_1+a_2>0), and (1-a_1+a_2>0); non-finite or unstable updates are rejected without replacing the last valid coefficients. This guard applies to the plugin's biquad designs and adds no work to the per-sample audio loop.

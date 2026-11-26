@@ -151,44 +151,84 @@
       "name": "EQ",
       "controls": [
         {
-          "param": "LF Freq",
-          "widget": "knob"
+          "param": "20 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "LF Gain",
-          "widget": "knob"
+          "param": "31.5 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "LM Freq",
-          "widget": "knob"
+          "param": "50 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "LM Gain",
-          "widget": "knob"
+          "param": "80 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "LM Q",
-          "widget": "knob"
+          "param": "125 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "HM Freq",
-          "widget": "knob"
+          "param": "200 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "HM Gain",
-          "widget": "knob"
+          "param": "315 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "HM Q",
-          "widget": "knob"
+          "param": "500 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "HF Freq",
-          "widget": "knob"
+          "param": "800 Hz",
+          "widget": "fader",
+          "polarity": "bipolar"
         },
         {
-          "param": "HF Gain",
-          "widget": "knob"
+          "param": "1.25 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "2 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "3.15 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "5 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "8 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "12.5 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
+        },
+        {
+          "param": "20 kHz",
+          "widget": "fader",
+          "polarity": "bipolar"
         }
       ]
     },
