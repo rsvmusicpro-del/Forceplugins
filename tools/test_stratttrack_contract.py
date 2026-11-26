@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.1.7"
+assert manifest["version"]=="1.1.8"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
@@ -25,7 +25,7 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1170;" in src
+assert "x.version=1180;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Output","Out Pan","Fader"]
@@ -88,7 +88,9 @@ assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
 assert "ptLfF*8.0f" in src and "ptHighBoost.resonantBoost" in src
 assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
 assert "applyPolarity(consoleL*ig*pg,0,phaseTargetL)" in src and "applyPolarity(consoleR*ig*pg,1,phaseTargetR)" in src and "panL_.next" in src
-assert "phasePrevious_[channel]*x<=0.0f" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
+assert "phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f" in src
+assert "phaseHasPrevious_[0]=phaseHasPrevious_[1]=false;" in src
+assert "phaseHasPrevious_[channel]=true;" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
 assert "0.001f*std::fmax(sr_,1.0f)" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.

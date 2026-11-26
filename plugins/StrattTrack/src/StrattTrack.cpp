@@ -395,6 +395,7 @@ public:
         phaseGain_[0]=phaseTarget_[0]=getBool(kPhaseL)?-1.0f:1.0f;
         phaseGain_[1]=phaseTarget_[1]=getBool(kPhaseR)?-1.0f:1.0f;
         phasePrevious_[0]=phasePrevious_[1]=0.0f;
+        phaseHasPrevious_[0]=phaseHasPrevious_[1]=false;
         phaseWait_[0]=phaseWait_[1]=0;
         phaseFallback_[0]=phaseFallback_[1]=false;
         ptLowFreq_.snap(ptLowFrequency(mpc::clamp(getInt(kPtLowFreq),0,3)));
@@ -605,7 +606,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1170;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1180;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -619,7 +620,7 @@ private:
             // A polarity switch is discrete, not a continuously swept phase angle:
             // commit at the first zero crossing to avoid a 10 ms amplitude null.
             if(!phaseFallback_[channel]) {
-                if(phasePrevious_[channel]*x<=0.0f || std::fabs(x)<1.0e-7f) {
+                if((phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f) || std::fabs(x)<1.0e-7f) {
                     phaseGain_[channel]=desired;
                     phaseWait_[channel]=0;
                 } else if(++phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)) {
@@ -639,6 +640,7 @@ private:
             }
         }
         phasePrevious_[channel]=x;
+        phaseHasPrevious_[channel]=true;
         return x*phaseGain_[channel];
     }
     Channel ch_[2]; float sr_=44100;

@@ -1,4 +1,4 @@
-# StrattTrack 1.1.7
+# StrattTrack 1.1.8
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -39,6 +39,8 @@ Width uses M=(L+R)/2, S=(L−R)/2 and reconstructs L=M+wS, R=M−wS: 100% is tra
 
 Invert L-R now performs its transition in the M/S domain: Mid remains exactly unchanged while Side is multiplied by cos(πt), t∈[0,1]. At the endpoints this is transparent or a true L/R exchange; during the transition a dual-mono signal retains unity gain instead of receiving the +3 dB midpoint bump caused by an equal-power crossfade.
 
-## Click-safe polarity switching (1.1.6)
+## Click-safe polarity switching (1.1.8)
+
+The per-channel zero-crossing detector now explicitly seeds its previous-sample history before accepting a crossing; a polarity toggle immediately after reset can no longer mistake the initial zero-valued history for a real crossing and invert at an arbitrary non-zero sample. The existing bounded 20 ms timeout and 1 ms fallback remain unchanged.
 
 Phase L/R are discrete polarity inversions, not continuous phase rotation. A switch commits at the next channel-specific zero crossing; DC or near-DC content uses a bounded 20 ms wait followed by a 1 ms one-pole transition. This avoids the long amplitude dip caused by linearly smoothing a polarity multiplier from +1 to -1.
