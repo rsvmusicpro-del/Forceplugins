@@ -5,6 +5,7 @@ root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
+framework=(root.parents[1]/"framework"/"mpc_plugin.h").read_text()
 reset_match=re.search(r"void reset\(\) override \{(.*?)\n    \}\n    void process",src,re.S)
 assert reset_match, "StrattTrack reset block not found"
 reset_body=reset_match.group(1)
@@ -640,3 +641,8 @@ for gain,expected in ((1.0,0.0),(0.5,20.0*math.log10(2.0)),(0.25,20.0*math.log10
 
 assert "bool formatValue(int index,float plainValue,std::string& out) override" in src
 assert 'std::snprintf(buffer,sizeof(buffer),"%.1f dB",finiteClamp(plainValue,0.0f,60.0f,0.0f));' in src
+
+assert "bool  transient = false;" in framework
+assert "const float savedPlain = pr.transient ? pr.def : get(i);" in framework
+assert "if (pr.transient)\n                    set(i, pr.def);" in framework
+assert "compGr.transient = true;" in src
