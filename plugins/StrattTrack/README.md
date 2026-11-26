@@ -58,3 +58,6 @@ The output path now uses Out Pan followed by the single Output master trim; the 
 ## Order-transition refinement (1.2.3)
 
 Changing the Cleansweep order now retains the previous HP/LP filter state and crossfades to the new Butterworth cascade over 10 ms. Newly activated sections are initialized safely, while the previous cascade continues processing only during the transition. Cutoff glide, bypass smoothing and the original first filter remain unchanged.
+
+
+**Reference:** [Brainworx bx_cleansweep Pro manual](https://files.plugin-alliance.com/products/bx_cleansweep_pro/bx_cleansweep_pro_manual.pdf). This StrattTrack implementation deliberately reproduces the Butterworth 1st–6th-order HP/LP family only; it does not claim the Pro's other prototype families or Anti-Crush behavior.

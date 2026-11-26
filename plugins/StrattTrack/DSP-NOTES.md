@@ -109,3 +109,8 @@ The implementation provides the bx_cleansweep Pro Butterworth order family as a 
 ## Cleansweep order-transition refinement (1.2.3)
 
 When an HP or LP order changes, the old per-channel filter instance is retained as a shadow state and crossfaded against the new cascade over the existing 10 ms sample-rate-aware smoother. Newly activated pole sections are reset before use; cutoff-only changes do not reset state. The shadow filter is evaluated only during the transition, keeping steady-state CPU cost unchanged.
+
+
+## Reference and scope
+
+The [official Brainworx bx_cleansweep Pro manual](https://files.plugin-alliance.com/products/bx_cleansweep_pro/bx_cleansweep_pro_manual.pdf) documents Butterworth, Bessel, Chebyshev I/II, Elliptic and Resonant Butterworth modes, each with order and type-dependent parameter behavior. StrattTrack 1.2.3 implements the independent Butterworth 1st–6th-order family with cutoff and enable per side; the other four/five prototype variants, type-dependent ripple/selectivity/resonance controls, analyzer and proprietary Anti-Crush are explicitly outside this implementation's scope.
