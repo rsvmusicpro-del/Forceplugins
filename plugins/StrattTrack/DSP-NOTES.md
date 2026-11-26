@@ -46,6 +46,11 @@ waveshaper aliasing but is not a claim of zero aliasing; host-simulator renders
 and hardware listening remain necessary validation.
 
 
+
+## Host-state and sample-rate hardening (1.1.1)
+
+The reset/prepare path now validates every restored continuous control before seeding its smoother and clamps all choice indices before table lookup. This matters because a non-finite value stored by a host or restored project can otherwise poison a one-pole smoother: once its internal state becomes NaN, later valid automation cannot recover it. The shared smoother also rejects non-finite state, targets and coefficients defensively. The active sample rate is constrained to the supported 8–384 kHz range, with a 44.1 kHz fallback for malformed host input, before the Console7 filter and valve DC-blocker coefficients are prepared. Parameter IDs, parameter order, preset values and signal-path topology are unchanged.
+
 ## Airwindows Console7 input console stage
 
 The first stage of the signal path is a Console7Channel-derived input console, with the Airwindows reference control retained as a single **Fader** control (0.000–1.000; default 0.772). It reproduces the reference channel topology: 20 kHz low-pass (Q=1.618), the original nonlinear gain law (Fader × 1.2720196495, gain cubed before the transfer and divided by gain afterwards), and the original 80:20 Spiral/Density transfer. The control is smoothed over 1.5 ms and is processed independently per stereo channel before any plugin-specific input/EQ/filter stage.
