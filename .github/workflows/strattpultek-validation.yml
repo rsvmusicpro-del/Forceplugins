@@ -37,7 +37,7 @@ jobs:
       - name: Verify shared second-order Butterworth HP/LP response and stability
         run: |
           c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_shared_filters
-          /tmp/test_strattpultek_filters
+          /tmp/test_shared_filters
       - name: Exercise host simulator across sample rates and block sizes
         shell: bash
         run: |
