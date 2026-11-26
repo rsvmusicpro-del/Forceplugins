@@ -5,6 +5,7 @@ on:
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
+      - "tools/test_airwindows_console7.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
