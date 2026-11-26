@@ -2,6 +2,7 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <initializer_list>
 
 using mpc::dsp::TwoPoleButterworth;
 
