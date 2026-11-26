@@ -164,6 +164,16 @@ References:
 - RCA 6L6GC: https://www.robkalmeijer.nl/techniek/electronica/datasheets/6/6l6gc.pdf
 
 
+## StrattTrack 1.2.9 — stereo image refinement
+
+- **Phase L/R:** retain discrete polarity inversion committed at the next valid zero crossing, with a bounded 20 ms wait and 1 ms fallback for DC-like material; this follows the practical polarity-switch function documented for the Maselec MTC-1X without pretending to be continuous phase rotation.
+- **Invert L-R:** keep the Mid component invariant and use a raised-cosine Side sign transition; update its 10 ms glide at 64-frame intervals so host block size does not dictate automation granularity.
+- **Width:** preserve the transparent M/S law and exact mono fold-down (`M` is unchanged for every width); refresh the control every 64 frames. This follows the Maselec mono-preserving image principle and the Drawmer 1976's dedicated width stage, while avoiding an undocumented loudness normalization that would change the centre signal.
+- **Pan:** retain the trigonometric equal-power law (`gL²+gR²=1`) and refresh input/output pan coefficients every 64 frames with elapsed-frame smoothing, reducing block-edge zippering on 512-frame host callbacks.
+- **Bass Mono:** replace the first-order Side subtraction with a dedicated second-order Butterworth high-pass on Side (12 dB/octave, 20–400 Hz), coefficient-updated every 64 frames; Mid is untouched. This is a clean digital analogue of the Maselec MTC-1X elliptical low-frequency Side reduction and Drawmer 1976's recommendation to keep the low band narrow/mono, not a claim of circuit-level replication.
+
+The 50 parameter IDs/order, UI, presets and MPC Sample mappings remain unchanged.
+
 ## StrattTrack 1.2.8 — correlation confidence floor
 
 The broadband normalized correlation estimate remains
@@ -213,7 +223,9 @@ doubles Side without inventing Side for a dual-mono input. The normalized
 correlation coefficient is bounded to [−1,+1]; +1 means identical channels,
 0 means uncorrelated channels, and −1 means polarity-opposed channels.
 The input pan uses the equal-power law `gL=cos((p+1)π/4)`,
-`gR=sin((p+1)π/4)`, so `gL²+gR²=1`. The polarity switch remains a discrete
+`gR=sin((p+1)π/4)`, so `gL²+gR²=1`. The Bass Mono side filter is a second-order
+Butterworth high-pass: its magnitude is 1/sqrt(2) at the selected cutoff and
+approaches zero below cutoff at 12 dB/octave. The polarity switch remains a discrete
 0°/180° inversion committed at a zero crossing, with a bounded 1 ms fallback
 for DC-like material; it is not described as continuous phase rotation.
 
@@ -224,3 +236,10 @@ Reference foundations:
   https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/
 - Audio Engineering Society, stereo imaging and perception literature:
   https://aes.org/
+
+
+Stereo-image references for 1.2.9:
+- Maselec MTC-1X operator manual: phase invert, mono-preserving width, and elliptical low-frequency Side filtering: https://studyres.com/doc/7801228/mtc-1x---maselec
+- Drawmer 1976 operator manual: independent low/mid/high width, gain compensation, mono auditioning and advice to keep lows mono: https://drawmer.com/uploads/manuals/1976_operators_manual.pdf
+- Dangerous Music S&M: analogue M/S encode/insert/decode architecture and channel separation specification: https://www.dangerousmusic.com/product/s-m
+- CMU equal-power pan law derivation: https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/
