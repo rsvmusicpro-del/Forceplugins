@@ -40,7 +40,12 @@ assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.inde
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(driveWet-clean)*mix" in src  # drive colour remains independently blendable
-assert "hpFreq_.next" in src and "hfGain_.next" in src  # smoothed filter controls
+assert "const float hpTarget=finiteClamp(get(kHpFreq),20,1000,20);" in src
+assert "const float lpTarget=finiteClamp(get(kLpFreq),1000,22000,22000);" in src
+assert "const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth);" in src
+assert "const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth);" in src
+assert "ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);" in src
+assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filters
 # Dynamics thresholds/ratio/makeup and circuit drive glide over 10 ms in dB
 # or control space; this prevents abrupt gain-computer and nonlinear-knee jumps.
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_", "compMakeupDb_", "drive_"):
