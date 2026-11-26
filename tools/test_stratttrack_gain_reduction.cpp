@@ -31,7 +31,7 @@ void render(StrattTrack& plugin, float amplitude, int blocks, double& phase)
         plugin.process(context);
         for (int i = 0; i < kFrames; ++i) {
             if (!std::isfinite(outL[i]) || !std::isfinite(outR[i])) {
-                std::fprintf(stderr, "non-finite output at block %d frame %d\\n", block, i);
+                std::fprintf(stderr, "non-finite output at block %d frame %d\n", block, i);
                 std::exit(1);
             }
         }
@@ -44,11 +44,11 @@ int main()
     StrattTrack plugin;
     plugin.prepare(48000.0, kFrames);
     if (plugin.numParams() != 69 || plugin.param(kCompGR).automatable) {
-        std::fprintf(stderr, "Comp GR must be the appended non-automatable parameter\\n");
+        std::fprintf(stderr, "Comp GR must be the appended non-automatable parameter\n");
         return 1;
     }
     if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
-        std::fprintf(stderr, "Comp GR must reset to 0 dB\\n");
+        std::fprintf(stderr, "Comp GR must reset to 0 dB\n");
         return 1;
     }
     plugin.set(kCompThresh, -24.0f);
@@ -60,28 +60,28 @@ int main()
     double phase = 0.0;
     render(plugin, 0.01f, 100, phase);
     if (plugin.get(kCompGR) > 0.1f) {
-        std::fprintf(stderr, "below-threshold signal must show no compressor gain reduction: %.3f dB\\n", plugin.get(kCompGR));
+        std::fprintf(stderr, "below-threshold signal must show no compressor gain reduction: %.3f dB\n", plugin.get(kCompGR));
         return 1;
     }
     render(plugin, 0.8f, 400, phase);
     const float compressed = plugin.get(kCompGR);
     if (!std::isfinite(compressed) || compressed < 2.0f || compressed > 60.0f) {
-        std::fprintf(stderr, "loud signal must show bounded positive gain reduction: %.3f dB\\n", compressed);
+        std::fprintf(stderr, "loud signal must show bounded positive gain reduction: %.3f dB\n", compressed);
         return 1;
     }
     const std::string display = plugin.displayText(kCompGR);
     if (display.find("dB") == std::string::npos) {
-        std::fprintf(stderr, "Comp GR display must include dB units: %s\\n", display.c_str());
+        std::fprintf(stderr, "Comp GR display must include dB units: %s\n", display.c_str());
         return 1;
     }
     render(plugin, 0.0f, 500, phase);
     if (plugin.get(kCompGR) > 0.2f) {
-        std::fprintf(stderr, "compressor release must return Comp GR near 0 dB: %.3f dB\\n", plugin.get(kCompGR));
+        std::fprintf(stderr, "compressor release must return Comp GR near 0 dB: %.3f dB\n", plugin.get(kCompGR));
         return 1;
     }
     plugin.reset();
     if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
-        std::fprintf(stderr, "Comp GR reset must clear telemetry\\n");
+        std::fprintf(stderr, "Comp GR reset must clear telemetry\n");
         return 1;
     }
     std::puts("StrattTrack live compressor gain-reduction telemetry OK");
