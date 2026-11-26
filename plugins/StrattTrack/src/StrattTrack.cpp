@@ -675,7 +675,9 @@ public:
                 const float clean=*samples[ch];
                 // User-controlled drive colour remains a separate parallel stage.
                 // Its Mix=0 setting is exactly the clean dynamics signal.
-                const float driveWet=ch_[ch].circuit.process(clean,drive);
+                float driveWet=clean;
+                if(mix>0.0f && drive>0.0f) driveWet=ch_[ch].circuit.process(clean,drive);
+                else ch_[ch].circuit.reset();
                 *samples[ch]=clean+(driveWet-clean)*mix;
             }
             // Mono Compatibility is deliberately the final stereo-image stage before Valve.

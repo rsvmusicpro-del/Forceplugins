@@ -80,6 +80,7 @@ assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(2,"Pream
 assert "console.process(" in src and "kConsoleFader" in src
 assert '#include "circuit_adaa.h"' in src and "CircuitAdaa circuit;" in src
 assert "ch_[ch].circuit.process(clean,drive)" in src
+assert "if(mix>0.0f && drive>0.0f)" in src and "else ch_[ch].circuit.reset();" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*pg,0,phaseTargetL)")
 assert "input_" not in src and "inGain" not in src and "kInput" not in src
