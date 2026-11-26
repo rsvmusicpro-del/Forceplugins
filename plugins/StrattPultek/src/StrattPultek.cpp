@@ -635,8 +635,8 @@ private:
         // The hardware's HF boost maximum falls from about +20 dB (narrow) to
         // about +13.5 dB (broad). Approximate that bandwidth-dependent headroom.
         const float bandwidthGain = 1.0f - 0.325f * (eqBandwidth_ * 0.01f);
-        const BiquadCoeffs hb = BiquadCoeffs::peak(sampleRate_, eqHighFreq_, q,
-                                                   eqHighBoost_ * bandwidthGain);
+        const BiquadCoeffs hb = BiquadCoeffs::resonantBoost(sampleRate_, eqHighFreq_, q,
+                                                            eqHighBoost_ * bandwidthGain);
         lowBoostGain_ = dbToGain(eqLowBoost_);
         lowAttenGain_ = dbToGain(-eqLowAtten_);
         highAttenGain_ = dbToGain(-eqHighAtten_);
