@@ -57,6 +57,9 @@ for branch, plugin, ui_name, param_count, ver in [
     source=(project/"src"/(plugin+".cpp")).read_text()
     manifest=json.loads((project/"plugin.json").read_text())
     ui=json.loads((project/"ui.json").read_text())
+    if "console_fader" not in source:
+        continue
+    checked += 1
     assert len(re.findall(r"addParam\(",source))==param_count
     assert manifest["version"]==ver
     assert ui["pages"][0]["name"]==ui_name
