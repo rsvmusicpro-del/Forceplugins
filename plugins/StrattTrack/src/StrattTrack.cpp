@@ -1,6 +1,6 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
-// Signal flow: Airwindows Console7 input stage -> input trim -> preamp -> L/R polarity -> dual input pan ->
+// Signal flow: Airwindows Console7 input stage -> preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> serial Cleansweep HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
 // compressor -> user-controlled drive colour (parallel blend) -> permanent
 // invisible ADAA valve stage -> output balance -> tone-neutral master Output gain.
@@ -18,7 +18,7 @@
 
 namespace {
 enum P {
-    kOutput=0, kInput, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
+    kOutput=0, kLegacyInputSlot, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
     kHpFreq, kLpFreq,
     kLfFreq, kLfGain, kLmFreq, kLmGain, kLmQ,
     kHmFreq, kHmGain, kHmQ, kHfFreq, kHfGain,
@@ -323,7 +323,10 @@ class StrattTrack : public mpc::Plugin {
 public:
     StrattTrack():mpc::Plugin(makeInfo()) {
         addParam(mpc::floatParam("output","Output",-24,24,0,"dB",1));
-        addParam(mpc::floatParam("input","Input",-24,24,0,"dB",1));
+        // Retired Input slot: inert compatibility tombstone; preserve all later VST parameter indices and saved-state IDs.
+        mpc::Param legacyInput=mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0);
+        legacyInput.automatable=false;
+        addParam(legacyInput);
         addParam(mpc::floatParam("preamp","Preamp",-18,18,0,"dB",1));
         addParam(mpc::boolParam("phase_l","Phase L",false));
         addParam(mpc::boolParam("phase_r","Phase R",false));
@@ -390,7 +393,6 @@ public:
         // Host state can be restored before prepare/reset. Never seed a smoother
         // with NaN/Inf: one invalid initial value would otherwise poison it forever.
         output_.snap(db(finiteClamp(get(kOutput),-24,24,0)));
-        input_.snap(db(finiteClamp(get(kInput),-24,24,0)));
         consoleFader_.snap(finiteClamp(get(kConsoleFader),0,1,0.772f));
         preamp_.snap(db(finiteClamp(get(kPreamp),-18,18,0)));
         circuitMix_.snap(finiteClamp(get(kCircuitMix),0,100,0)*0.01f);
@@ -452,7 +454,6 @@ public:
         const float sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
         const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.0015f*std::fmax(sr_,1.0f)));
-        const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         // Smooth dynamics thresholds in dB (log-amplitude domain), not in
@@ -471,11 +472,12 @@ public:
         // A fourth-power overdrive grid gives dense resolution around the knee
         // while spanning >90 dB above threshold without per-sample log/pow work.
         // The audio loop maps overdrive to this grid with two hardware square roots.
-        constexpr float kCompCurveMaxOver=32768.0f;
+        constexpr float kCompCurveMaxOver=8388608.0f;
+        constexpr int kCompCurveIntervals=1024;
         if(ratio!=compRatioCached_) {
             const float exponent=-(1.0f-1.0f/ratio);
-            for(int i=0;i<=256;++i) {
-                const float position=static_cast<float>(i)*(1.0f/256.0f);
+            for(int i=0;i<=kCompCurveIntervals;++i) {
+                const float position=static_cast<float>(i)*(1.0f/static_cast<float>(kCompCurveIntervals));
                 const float position2=position*position;
                 const float over=1.0f+(kCompCurveMaxOver-1.0f)*position2*position2;
                 compCurve_[i]=std::pow(over,exponent);
@@ -548,7 +550,7 @@ public:
             if(csLpOrderChanged) csLpOrderFade_.snap(0.0f);
             const int blockEnd=blockStart+blockFrames;
             for(int i=blockStart;i<blockEnd;++i) {
-            const float ig=input_.next(inGain,sampleSmooth), og=output_.next(outGain,sampleSmooth);
+            const float og=output_.next(outGain,sampleSmooth);
             const float pg=preamp_.next(preampGain,sampleSmooth);
             const float csHpMix=csHpEnable_.next(getBool(kCsHpEnable)?1.0f:0.0f,sampleSmooth);
             const float csLpMix=csLpEnable_.next(getBool(kCsLpEnable)?1.0f:0.0f,sampleSmooth);
@@ -560,8 +562,8 @@ public:
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
             const float consoleL=ch_[0].console.process(finiteClamp(l,-16,16,0),consoleFader);
             const float consoleR=ch_[1].console.process(finiteClamp(r,-16,16,0),consoleFader);
-            const float a=applyPolarity(consoleL*ig*pg,0,phaseTargetL);
-            const float b=applyPolarity(consoleR*ig*pg,1,phaseTargetR);
+            const float a=applyPolarity(consoleL*pg,0,phaseTargetL);
+            const float b=applyPolarity(consoleR*pg,1,phaseTargetR);
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
             // Exchange channel positions in the M/S domain: keep Mid invariant
             // and smoothly reverse Side. This preserves mono level throughout the
@@ -618,12 +620,12 @@ public:
             const float over=detector_/std::fmax(compThreshold,1.0e-9f);
             // Conventional hard-knee compressor law in the amplitude domain.
             // The fourth-power grid resolves the knee accurately and keeps the
-            // ratio law valid up to 32768x threshold (about +90.3 dB).
+            // ratio law valid up to 8,388,608x threshold (about +138.5 dB).
             const float normalizedOver=finiteClamp((over-1.0f)/(kCompCurveMaxOver-1.0f),0.0f,1.0f,0.0f);
-            const float curvePos=std::sqrt(std::sqrt(normalizedOver))*256.0f;
+            const float curvePos=std::sqrt(std::sqrt(normalizedOver))*static_cast<float>(kCompCurveIntervals);
             const int curveIndex=static_cast<int>(curvePos);
             const float curveFrac=curvePos-static_cast<float>(curveIndex);
-            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
+            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<kCompCurveIntervals?curveIndex+1:kCompCurveIntervals]-compCurve_[curveIndex])*curveFrac;
             // The compressor envelope already supplies the specified attack/release.
             // Applying a second identical smoother to gain would double its timing.
             compGain_=targetComp;
@@ -661,7 +663,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1203;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1204;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -699,7 +701,7 @@ private:
         return x*phaseGain_[channel];
     }
     Channel ch_[2]; float sr_=44100;
-    Smooth output_,input_,preamp_,circuitMix_,consoleFader_;
+    Smooth output_,preamp_,circuitMix_,consoleFader_;
     Smooth csHpEnable_,csHpFreq_,csLpEnable_,csLpFreq_,csHpOrderFade_,csLpOrderFade_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_;
@@ -714,7 +716,7 @@ private:
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
-    float compCurve_[257]{};
+    float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
     float valveDcCoef_=0.999572f;
 };

@@ -5,7 +5,8 @@
 StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec/channel EQ stages.
 
 ## Signal path and algorithms
-- Input/preamp: linear dB gain with smoothing and finite input guards.
+- Input gain consolidation: Preamp is the only active user input-gain stage. The former `input` ID remains as a hidden, non-automatable zero-range compatibility slot at index 1; it is not read by the DSP.
+- Preamp: linear dB gain with sample-rate-invariant smoothing and finite input guards.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: shared second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, 10 ms logarithmic smoothing and 64-frame coefficient refresh.
 - Pulse Techniques EQP-1A stage (after filters, before four-band EQ):
@@ -89,14 +90,14 @@ Phase L/R are polarity inversions (0°/180°), not continuous phase rotation con
 
 ## Sample-rate-invariant gain smoothing (1.2.0)
 
-Input/output trim, preamp and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
+Output master trim, Preamp and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
 
 The StrattTrack contract test verifies the sample-rate-derived one-sample coefficient against the 10 ms response at 44.1, 48 and 96 kHz and enforces explicit coefficients at all gain-control smoother call sites.
 
 
 ## Compressor transfer accuracy and headroom (1.2.1)
 
-The compressor's static gain-computer lookup now uses a 256-interval fourth-power overdrive grid spanning 1× to 32768× threshold (approximately +90.3 dB). The denser grid near unity resolves the hard-knee transition accurately, while its extended upper range prevents the compressor ratio from flattening prematurely on hot signals. The sample loop maps the normalized detector overdrive with two square roots and table interpolation; it performs no per-sample logarithm or power operation. Independent numerical checks cover ratios from 1:1 through 20:1 across the full table range, with maximum relative interpolation error below 0.2%. The plugin binary and manifest version are incremented to 1.2.1; parameter identity, order, presets, state compatibility and signal-path order are unchanged.
+The compressor's static gain-computer lookup now uses a 1,024-interval fourth-power overdrive grid spanning 1× to 8,388,608× threshold (approximately +138.5 dB). The denser grid near unity resolves the hard-knee transition accurately, while its extended upper range prevents the compressor ratio from flattening prematurely on hot signals. The sample loop maps the normalized detector overdrive with two square roots and table interpolation; it performs no per-sample logarithm or power operation. Independent numerical checks cover ratios from 1:1 through 20:1 across the full table range, with maximum relative interpolation error below 0.2%. The plugin binary and manifest version are incremented to 1.2.1; parameter identity, order, presets, state compatibility and signal-path order are unchanged.
 
 
 ## Independent serial Cleansweep filter bank (1.2.2)
@@ -114,3 +115,8 @@ When an HP or LP order changes, the old per-channel filter instance is retained 
 ## Reference and scope
 
 The [official Brainworx bx_cleansweep Pro manual](https://files.plugin-alliance.com/products/bx_cleansweep_pro/bx_cleansweep_pro_manual.pdf) documents Butterworth, Bessel, Chebyshev I/II, Elliptic and Resonant Butterworth modes, each with order and type-dependent parameter behavior. StrattTrack 1.2.3 implements the independent Butterworth 1st–6th-order family with cutoff and enable per side; the other four/five prototype variants, type-dependent ripple/selectivity/resonance controls, analyzer and proprietary Anti-Crush are explicitly outside this implementation's scope.
+
+
+## Input gain consolidation (1.2.4)
+
+The separate −24 to +24 dB Input trim and its gain multiplication have been removed. Preamp is the only active user input-gain stage after Console7. The former `input` parameter ID remains as a hidden, zero-range, non-automatable compatibility slot at index 1, preserving the 50-parameter VST order and factory-program layout without an active UI control or audio-path read. The compressor's 8,388,608× lookup ceiling is retained as conservative headroom for combined EQ peaks; its 1,024-interval accuracy is independently verified across ratios 1:1–20:1 with less than 0.2% relative interpolation error.

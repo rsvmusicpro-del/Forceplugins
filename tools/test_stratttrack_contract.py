@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.3"
+assert manifest["version"]=="1.2.4"
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
 assert "the fixed, low-level ADAA valve stage remains active independently" in readme
@@ -32,14 +32,21 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1203;" in src
+assert "x.version=1204;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan"))
 assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
 assert len(re.findall(r"addParam\(",src))==50
-parameter_ids=re.findall(r'addParam\(mpc::\w+Param\("([^"]+)"',src)
+parameter_ids=[]
+for line in src.splitlines():
+    if "addParam(legacyInput)" in line:
+        parameter_ids.append("input")
+    else:
+        match=re.search(r'addParam\(mpc::(?:float|log|bool|choice)Param\("([^"]+)"',line)
+        if match:
+            parameter_ids.append(match.group(1))
 assert parameter_ids==[
     "output","input","preamp","phase_l","phase_r","pan_l","pan_r","hp_freq","lp_freq",
     "lf_freq","lf_gain","lm_freq","lm_gain","lm_q","hm_freq","hm_gain","hm_q","hf_freq",
@@ -52,22 +59,30 @@ assert parameter_ids==[
 programs=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',src)
 assert programs and all(len(values.split(","))==len(parameter_ids) for _,values in programs), "Preset values must match the parameter count"
 assert [(x["parameter"],x["label"]) for x in manifest["knobs"]]==[(0,"Output"),(7,"HP Freq"),(8,"LP Freq")]
-assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(1,"Input"),(28,"Drive"),(29,"Circuit")]
+assert src.index("addParam(legacyInput)") < src.index('addParam(mpc::floatParam("preamp"')
+assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(2,"Preamp"),(28,"Drive"),(29,"Circuit")]
 
 assert "console.process(" in src and "kConsoleFader" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
-assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*ig*pg,0,phaseTargetL)")
+assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*pg,0,phaseTargetL)")
+assert "input_" not in src and "inGain" not in src and "kInput" not in src
+assert "kOutput=0, kLegacyInputSlot, kPreamp" in src
+assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
+assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
+assert "get(kLegacyInputSlot)" not in src
 for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
-assert "constexpr float kCompCurveMaxOver=32768.0f;" in src
-assert "std::sqrt(std::sqrt(normalizedOver))*256.0f" in src
+assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
+assert "constexpr int kCompCurveIntervals=1024;" in src
+assert "std::sqrt(std::sqrt(normalizedOver))*static_cast<float>(kCompCurveIntervals)" in src
+assert "float compCurve_[1025]{};" in src
 
 # Independent compressor-LUT accuracy check. The quartic grid must retain
 # the analytic hard-knee ratio near threshold and across the full input range.
-curve_size=256
-curve_max_over=32768.0
+curve_size=1024
+curve_max_over=8388608.0
 for ratio in (1.0, 2.0, 4.0, 10.0, 20.0):
     exponent=-(1.0-1.0/ratio)
     table=[]
@@ -103,7 +118,7 @@ assert "fader_" not in src and "kFader" not in src
 # Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
 assert "sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)))" in src
-for control in ("input_", "output_", "preamp_", "circuitMix_"):
+for control in ("output_", "preamp_", "circuitMix_"):
     line = next(line for line in src.splitlines() if control + ".next(" in line)
     assert ",sampleSmooth)" in line, (control, line)
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
@@ -244,10 +259,9 @@ print("StrattTrack contract and independent DSP equation checks OK")
 # Input page Q-Link contract and appended, project-safe stereo controls.
 input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
 assert ui["qlinkGroups"]=="rows"
-assert input_page["controls"][:4]==["empty"]*4
-assert [x["param"] for x in input_page["controls"][4:8]]==["Bass Mono","Drive","Console Fader","Input"]
-assert [x["param"] for x in input_page["controls"][8:12]]==["Pan L","Pan R","Width","Correlation"]
-assert [x["param"] for x in input_page["controls"][12:16]]==["Preamp","Phase L","Phase R","Invert L-R"]
+assert [x["param"] for x in input_page["controls"][:11]]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
+assert input_page["controls"][11:]==["empty"]*5
+assert not any(isinstance(x,dict) and x.get("param")=="Input" for x in input_page["controls"])
 assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
@@ -314,5 +328,5 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1203;" in src
+assert "x.version=1204;" in src
 print("StrattTrack polarity transition checks OK")

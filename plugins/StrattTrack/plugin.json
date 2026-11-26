@@ -1,7 +1,7 @@
 {
   "name": "StrattTrack",
   "manufacturer": "Stratt",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "format": "vst2",
   "kind": "effect",
   "uid": "S4X3",
@@ -25,8 +25,8 @@
   ],
   "shiftKnobs": [
     {
-      "parameter": 1,
-      "label": "Input"
+      "parameter": 2,
+      "label": "Preamp"
     },
     {
       "parameter": 28,
