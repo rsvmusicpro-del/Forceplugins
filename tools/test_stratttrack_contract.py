@@ -24,6 +24,10 @@ assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOut
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
+assert ui["kit"]=="mpc-red"
+assert ui["style"]["background"]=="ff1e1d1e" and ui["style"]["accent"]=="ffd31145"
+assert ui["style"]["text"]=="ffffffff" and ui["style"]["muted"]=="ff85878a"
+assert all("background" not in page for page in ui["pages"])
 filter_page=next(p for p in ui["pages"] if p["name"]=="FILTERS")
 assert [x["param"] for x in filter_page["controls"] if isinstance(x,dict)]==["HP Freq","LP Freq","CS HP On","CS HP Freq","CS HP Ord","CS LP On","CS LP Freq","CS LP Ord"]
 assert len(filter_page["controls"])<=16

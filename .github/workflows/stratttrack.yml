@@ -1,7 +1,7 @@
 name: StrattTrack validation
 on:
   push:
-    branches: ["feature/stratttrack"]
+    branches: ["main", "feature/stratttrack"]
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
@@ -17,7 +17,7 @@ on:
       - "docs/STRATTTRACK-AI-WORKFLOW.md"
       - ".github/workflows/stratttrack.yml"
   pull_request:
-    branches: ["feature/stratttrack"]
+    branches: ["main", "feature/stratttrack"]
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"

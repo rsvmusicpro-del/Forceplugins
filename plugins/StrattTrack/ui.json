@@ -1,19 +1,15 @@
 {
-  "kit": {
-    "theme": "amber",
-    "accent": "ffd89a48"
-  },
+  "kit": "mpc-red",
   "qlinkGroups": "rows",
   "style": {
-    "background": "ff17191c",
-    "accent": "ffd89a48",
-    "text": "fff2eee7",
-    "muted": "ff898b8e"
+    "background": "ff1e1d1e",
+    "accent": "ffd31145",
+    "text": "ffffffff",
+    "muted": "ff85878a"
   },
   "pages": [
     {
       "name": "INPUT",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Preamp",
@@ -70,7 +66,6 @@
     },
     {
       "name": "FILTERS",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "HP Freq",
@@ -114,7 +109,6 @@
     },
     {
       "name": "PULTEC",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "PT LF Freq",
@@ -155,7 +149,6 @@
     },
     {
       "name": "EQ",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "LF Freq",
@@ -201,7 +194,6 @@
     },
     {
       "name": "DYNAMICS",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Gate Thresh",
@@ -243,7 +235,6 @@
     },
     {
       "name": "OUTPUT",
-      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Circuit Mix",

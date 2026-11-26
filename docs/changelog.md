@@ -4,6 +4,7 @@
 - Retain the former `input` ID as a hidden, zero-range, non-automatable compatibility tombstone at parameter index 1, preserving all 50 parameter indices, factory-program values and saved-state IDs.
 - Remap MPC Sample SHIFT knob 1 to Preamp (parameter 2); keep Output, HP Freq and LP Freq mappings unchanged, as well as Drive and Circuit.
 - Expand compressor gain-computer lookup to 1,024 fourth-power intervals over 1×–8,388,608× detector overdrive, preserving the hard-knee law and sub-0.2% interpolation error.
+- Adopt the shared native MPC red UI kit and preserve the full six-page/Q-Link layout.
 - Update INPUT Q-Link ordering, documentation and regression assertions for the compatibility slot, absence of the Input gain path and expanded compressor range.
 
 # Changelog
