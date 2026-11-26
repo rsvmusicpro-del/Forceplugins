@@ -15,21 +15,25 @@
       "name": "INPUT",
       "background": "stratt-bg.png",
       "controls": [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
         {
-          "param": "Preamp",
+          "param": "Bass Mono",
           "widget": "knob"
         },
         {
-          "param": "Phase L",
-          "widget": "switch"
+          "param": "Drive",
+          "widget": "knob"
         },
         {
-          "param": "Phase R",
-          "widget": "switch"
+          "param": "Console Fader",
+          "widget": "knob"
         },
         {
-          "param": "Invert L-R",
-          "widget": "switch"
+          "param": "Input",
+          "widget": "knob"
         },
         {
           "param": "Pan L",
@@ -50,20 +54,20 @@
           "widget": "knob"
         },
         {
-          "param": "Bass Mono",
+          "param": "Preamp",
           "widget": "knob"
         },
         {
-          "param": "Drive",
-          "widget": "knob"
+          "param": "Phase L",
+          "widget": "switch"
         },
         {
-          "param": "Console Fader",
-          "widget": "knob"
+          "param": "Phase R",
+          "widget": "switch"
         },
         {
-          "param": "Input",
-          "widget": "knob"
+          "param": "Invert L-R",
+          "widget": "switch"
         }
       ]
     },

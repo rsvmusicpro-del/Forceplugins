@@ -180,7 +180,11 @@ print("StrattTrack contract and independent DSP equation checks OK")
 
 # Input page Q-Link contract and appended, project-safe stereo controls.
 input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
-assert [x["param"] for x in input_page["controls"] if isinstance(x,dict)][:11]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
+assert ui["qlinkGroups"]=="rows"
+assert input_page["controls"][:4]==["empty"]*4
+assert [x["param"] for x in input_page["controls"][4:8]]==["Bass Mono","Drive","Console Fader","Input"]
+assert [x["param"] for x in input_page["controls"][8:12]]==["Pan L","Pan R","Width","Correlation"]
+assert [x["param"] for x in input_page["controls"][12:16]]==["Preamp","Phase L","Phase R","Invert L-R"]
 assert "kInvertLR, kWidth, kCorrelation, kBassMono, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
