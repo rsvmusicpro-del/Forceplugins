@@ -71,7 +71,7 @@ A console pass is generally used for coherent summing, subtle harmonic/intermodu
 The 10 ms control one-pole coefficient is now calculated for one sample, because every `Smooth::next()` call occurs inside the sample loop. The previous coefficient was calculated for the entire host block and then reused for every sample, making parameter transitions block-size dependent and up to the block length faster than intended. The corrected coefficient is `alpha = 1 - exp(-1 / (0.010 * fs))`; after 10 ms the smoother reaches approximately 63.2% of a step at 44.1, 48 and 96 kHz, independently of whether the host processes 32, 128 or 512 frames per call. This affects control trajectories only; steady-state EQ, dynamics, gain curves, parameter identities, presets and signal-path topology are unchanged.
 
 
-## Input stereo field controls (1.1.5)
+## Input stereo field controls (1.1.6)
 
 - Invert L-R: smooth equal-power crossfade between normal and swapped channel assignment; separate from L/R polarity inversion.
 - Width: M=(L+R)/2, S=(L−R)/2, decode L=M+wS, R=M−wS. 100% is unity; 0% collapses to mono; values above 100% amplify only existing Side content.
@@ -80,3 +80,8 @@ The 10 ms control one-pole coefficient is now calculated for one sample, because
 - Controls are smoothed; no allocations, locks, logging or I/O are introduced in process().
 
 Engineering basis: mid/side and mono-sum behaviour are described by iZotope's M/S processing guide and PatchLab's stereo/mono notes; negative correlation and low-frequency centering are discussed by sonible's mono-compatibility guide and Sweetwater's phase-meter reference. These controls do not replace auditioning the actual mono fold-down.
+
+
+## Click-safe polarity switching (1.1.6)
+
+Phase L/R are polarity inversions (0°/180°), not continuous phase rotation controls. A parameter change now commits at the first per-channel zero crossing, preserving full amplitude and avoiding the artificial 10 ms cancellation trough caused by linearly smoothing +1 to -1. For DC or near-DC material without a crossing, a 20 ms bounded wait switches to a 1 ms one-pole fallback. The previous sample, requested polarity, wait counter and fallback state are independent per channel and reset deterministically. No allocation, locks, trigonometric operations or I/O are added to the sample path.

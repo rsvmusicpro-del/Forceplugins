@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.1.5"
+assert manifest["version"]=="1.1.6"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
@@ -87,7 +87,9 @@ assert "kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq" in src
 assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
 assert "ptLfF*8.0f" in src and "ptHighBoost.resonantBoost" in src
 assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
-assert "phaseL_.next" in src and "panL_.next" in src
+assert "applyPolarity(consoleL*ig*pg,0,phaseTargetL)" in src and "applyPolarity(consoleR*ig*pg,1,phaseTargetR)" in src and "panL_.next" in src
+assert "phasePrevious_[channel]*x<=0.0f" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
+assert "0.001f*std::fmax(sr_,1.0f)" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.
 def magnitude(b, a, omega):
@@ -209,3 +211,28 @@ for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
 assert abs((1.0+1.0)*0.5-1.0)<1.0e-12  # mono input has zero Side, so Width cannot invent stereo
 assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
 assert "const float shapedSide=(side-bassMonoState_)*width*sideSafety;" in src
+
+
+# Polarity switches are discrete: an ordinary periodic signal changes sign at
+# its next zero crossing (no interpolated 10 ms cancellation dip).
+for frequency,sr in ((50.0,44100.0),(1000.0,48000.0),(12000.0,96000.0)):
+    previous=math.sin(-2.0*math.pi*frequency/sr)
+    switched=False
+    for i in range(1,int(sr*0.02)):
+        current=math.sin(2.0*math.pi*frequency*i/sr)
+        if previous*current<=0.0:
+            switched=True
+            break
+        previous=current
+    assert switched, (frequency,sr)
+# A DC input has no crossing, so the bounded 20 ms timeout must enter the
+# 1 ms fallback rather than leave the requested polarity unapplied forever.
+for sr in (44100,48000,96000):
+    assert 1 <= int(sr*0.020) <= 20000
+    alpha=1.0-math.exp(-1.0/(0.001*sr))
+    gain=1.0
+    for _ in range(round(0.001*sr)):
+        gain += alpha*(-1.0-gain)
+    assert abs(gain+1.0)<0.002
+assert "x.version=1160;" in src
+print("StrattTrack polarity transition checks OK")

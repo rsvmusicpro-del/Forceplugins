@@ -392,8 +392,11 @@ public:
         panL_.snap(finiteClamp(get(kPanL),-100,100,-100)*0.01f);
         panR_.snap(finiteClamp(get(kPanR),-100,100,100)*0.01f);
         outPan_.snap(finiteClamp(get(kOutPan),-100,100,0)*0.01f);
-        phaseL_.snap(getBool(kPhaseL)?-1.0f:1.0f);
-        phaseR_.snap(getBool(kPhaseR)?-1.0f:1.0f);
+        phaseGain_[0]=phaseTarget_[0]=getBool(kPhaseL)?-1.0f:1.0f;
+        phaseGain_[1]=phaseTarget_[1]=getBool(kPhaseR)?-1.0f:1.0f;
+        phasePrevious_[0]=phasePrevious_[1]=0.0f;
+        phaseWait_[0]=phaseWait_[1]=0;
+        phaseFallback_[0]=phaseFallback_[1]=false;
         ptLowFreq_.snap(ptLowFrequency(mpc::clamp(getInt(kPtLowFreq),0,3)));
         ptLowBoost_.snap(finiteClamp(get(kPtLowBoost),0,13.5f,0));
         ptLowAtten_.snap(finiteClamp(get(kPtLowAtten),0,17.5f,0));
@@ -463,7 +466,7 @@ public:
         const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
         const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),controlBlockSmooth);
         const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f, oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
-        const float phaseL=phaseL_.next(getBool(kPhaseL)?-1.0f:1.0f,controlBlockSmooth), phaseR=phaseR_.next(getBool(kPhaseR)?-1.0f:1.0f,controlBlockSmooth);
+        const bool phaseTargetL=getBool(kPhaseL), phaseTargetR=getBool(kPhaseR);
         const float hpTarget=finiteClamp(get(kHpFreq),20,1000,20);
         const float lpTarget=finiteClamp(get(kLpFreq),1000,22000,22000);
         const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),controlBlockSmooth), lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),controlBlockSmooth);
@@ -515,8 +518,8 @@ public:
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
             const float consoleL=ch_[0].console.process(finiteClamp(l,-16,16,0),consoleFader);
             const float consoleR=ch_[1].console.process(finiteClamp(r,-16,16,0),consoleFader);
-            const float a=consoleL*ig*pg*phaseL;
-            const float b=consoleR*ig*pg*phaseR;
+            const float a=applyPolarity(consoleL*ig*pg,0,phaseTargetL);
+            const float b=applyPolarity(consoleR*ig*pg,1,phaseTargetR);
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
             // Exchange channel positions smoothly; Phase L/R remain polarity controls.
             const float swapWeight=std::sin(invertLR*kHalfPi);
@@ -600,13 +603,49 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1150;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1160;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
+    }
+    float applyPolarity(float x,int channel,bool invert) {
+        const float desired=invert?-1.0f:1.0f;
+        if(desired!=phaseTarget_[channel]) {
+            phaseTarget_[channel]=desired;
+            phaseWait_[channel]=0;
+            phaseFallback_[channel]=false;
+        }
+        if(phaseGain_[channel]!=desired) {
+            // A polarity switch is discrete, not a continuously swept phase angle:
+            // commit at the first zero crossing to avoid a 10 ms amplitude null.
+            if(!phaseFallback_[channel]) {
+                if(phasePrevious_[channel]*x<=0.0f || std::fabs(x)<1.0e-7f) {
+                    phaseGain_[channel]=desired;
+                    phaseWait_[channel]=0;
+                } else if(++phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)) {
+                    // DC or near-DC material may never cross zero; use a 1 ms
+                    // one-pole polarity glide as a bounded click-safe fallback.
+                    phaseFallback_[channel]=true;
+                }
+            }
+            if(phaseFallback_[channel]) {
+                const float alpha=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));
+                phaseGain_[channel]+=alpha*(desired-phaseGain_[channel]);
+                if(std::fabs(desired-phaseGain_[channel])<1.0e-4f) {
+                    phaseGain_[channel]=desired;
+                    phaseFallback_[channel]=false;
+                    phaseWait_[channel]=0;
+                }
+            }
+        }
+        phasePrevious_[channel]=x;
+        return x*phaseGain_[channel];
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_,consoleFader_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
-    Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
+    Smooth panL_,panR_,outPan_;
+    float phaseGain_[2]={1.0f,1.0f}, phaseTarget_[2]={1.0f,1.0f}, phasePrevious_[2]={0.0f,0.0f};
+    int phaseWait_[2]={0,0};
+    bool phaseFallback_[2]={false,false};
     Smooth invertLR_,width_,correlation_,bassMonoFreq_;
     float bassMonoState_=0.0f, corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
