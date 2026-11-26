@@ -15,6 +15,7 @@ assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["version"]=="1.2.5"
+assert "## StrattTrack 1.2.5" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
 assert "the fixed, low-level ADAA valve stage remains active independently" in readme
