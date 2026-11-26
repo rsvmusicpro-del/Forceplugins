@@ -6,10 +6,11 @@
 |---|---|---|---|
 | Rane GQ 15 | Dual-channel rack graphic EQ; 15 sliders/channel, gain, low/high cut, bypass and level indicators | 25, 40, 63, 100, 160, 250, 400, 630, 1k, 1.6k, 2.5k, 4k, 6.3k, 10k, 16k Hz | ±12 dB slider range; conventional constant-band graphic EQ |
 | Pioneer DEH-P8850MP | Integrated digital audio processor/head unit with fixed 16-band graphic EQ | 20, 31.5, 50, 80, 125, 200, 315, 500, 800, 1.25k, 2k, 3.15k, 5k, 8k, 12.5k, 20k Hz | ±12 dB graphic range; separate front/rear/sub processing; Auto EQ variant +6 to −12 dB |
+| Klark-Teknik DN332 | Dual-channel analogue 2/3-octave rack graphic EQ, 16 bands/channel, 2U chassis | 20, 31, 50, 80, 125, 200, 315, 500, 800, 1.25k, 2k, 3.15k, 5k, 8k, 12.5k, 20k Hz | ±12 dB; proprietary MELT thick-film filter circuits; 18 dB/oct subsonic filter at 30 Hz; 20 Hz–20 kHz ±0.5 dB response; THD+N <0.01% at 1 kHz/+4 dBu; noise below −90 dBu; +22 dBu max output; 482×205×89 mm, about 4 kg |
 | Phonic GEQ1500 | Dual-channel 1U rack analogue graphic equalizer | 15 sliders/channel, nominal 25 Hz–16 kHz | Input gain, output LED metering and channel controls; comparison model, not a 16-band EQ |
 | JB Systems GEQ215 | Dual-channel 1U analogue graphic EQ | 25, 40, 63, 100, 160, 250, 400, 630, 1k, 1.6k, 2.5k, 4k, 6.3k, 10k, 16k Hz | ±12 dB, balanced XLR/jack I/O, >95 dB S/N, 20 Hz–20 kHz response, bypass and 50 Hz low cut; 15 bands |
 
-The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz spread. The Pioneer manual documents the exact centres and ±12 dB range, but does not publish the internal filter topology or Q law; StrattTrack therefore borrows its frequency layout, not its proprietary implementation. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies use the exact published Pioneer DEH-P8850MP 16-band set; they also closely match the standard rounded preferred-number progression used in fixed graphic equalizers. This is not a claim to reproduce its DSP hardware.
+The documented Klark-Teknik DN332 and Pioneer DEH-P8850MP both use the exact same sixteen centres from 20 Hz to 20 kHz, with ±12 dB adjustment; the DN332 is a direct professional analogue hardware reference, while the Pioneer manual independently confirms the frequency family in a digital processor. The DN332 specifies ±0.5 dB flat response, THD+N below 0.01%, noise below −90 dBu and +22 dBu maximum output, and its proprietary MELT thick-film circuit is not reproduced. Neither product's full internal coefficient/topology data is published; StrattTrack borrows the frequency layout and publicly documented control behaviour, not proprietary circuitry. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies use the exact published Pioneer DEH-P8850MP 16-band set; they also closely match the standard rounded preferred-number progression used in fixed graphic equalizers. This is not a claim to reproduce its DSP hardware.
 
 ## Software references and design lessons
 
@@ -49,6 +50,8 @@ These are listening zones, not universal correction targets: instrument, microph
 ## Sources
 
 - Rane GQ15/GQ30 manufacturer datasheet: https://www.ranecommercial.com/legacy/pdf/old/gqdat.pdf
+- Klark-Teknik DN332 official product page: https://www.klarkteknik.com/en/products/0821-ABN
+- Klark-Teknik DN332 technical specifications (MELT, I/O, noise, THD, headroom, dimensions): https://device.report/m/788b0808486590d7bf534724d7c93fbdb5e5e33e031cf07dec0162956366bbb3.pdf
 - Pioneer DEH-P8850MP manual, 16-band EQ specifications: https://www.manualslib.com/manual/129935/Pioneer-Super-Tuner-Iii-D-Deh-P8850mp.html?page=77
 - Phonic GEQ1500/GEQ3100 manufacturer cut sheet: https://www.phonic.com/index.php/download-center/category/6-english-cutsheets?download=75%3Ads-geq1500-geq3100-en-pdf&start=60
 - JB Systems GEQ215 specifications: https://musicdelivery.net/en/products/jb-systems-geq215

@@ -297,6 +297,7 @@ assert "constexpr float kGraphicEqQMax=2.146f;" in src
 assert "graphicEqQ(graphicEqGains[band])" in src
 assert "proportional-Q" in readme
 assert "−12 to +12 dB" in readme and "GRAPHIC-EQ-RESEARCH.md" in readme
+assert "Klark-Teknik DN332" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "Voxengo Marvel GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "Voxengo Overtone GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "CamillaDSP" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
