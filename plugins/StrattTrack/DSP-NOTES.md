@@ -6,7 +6,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
 
 ## Signal path and algorithms
 - Input gain consolidation: Preamp is the first user-facing input gain and the only active input trim. The former Input parameter ID remains as a hidden, non-automatable zero-range compatibility slot; no Input gain or smoother is read by the DSP.
-- Input/preamp: linear dB gain with smoothing and finite input guards.
+- Preamp: the only active user input-gain stage, linear dB gain with sample-rate-invariant smoothing and finite input guards. The former Input ID remains only as an inert, non-automatable compatibility slot; it is not read by the DSP.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: shared second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, 10 ms logarithmic smoothing and 64-frame coefficient refresh.
 - Pulse Techniques EQP-1A stage (after filters, before four-band EQ):
@@ -103,6 +103,10 @@ The compressor's static gain-computer lookup now uses a 256-interval fourth-powe
 ## Compressor gain-computer headroom (1.2.2)
 
 The compressor lookup spans 1×–8,388,608× detector overdrive using 1,024 fourth-power intervals. The previous 32,768× ceiling could saturate the lookup index when several input, preamp and EQ boosts accumulated ahead of the compressor, causing the effective ratio to collapse on extreme peaks. The expanded table preserves the analytic hard-knee amplitude law through approximately +138.5 dB above threshold. Its fourth-power coordinate is inverted with two square roots per sample; the table is rebuilt at control-block rate only while the smoothed ratio changes. Independent numerical checks cover ratios 1:1, 2:1, 4:1, 10:1 and 20:1 throughout the complete range, with relative interpolation error below 0.2%.
+
+## Input gain consolidation (1.2.4)
+
+The separate Input trim and its −24 to +24 dB gain stage have been removed. Its former maximum contribution was +24 dB, or 15.85× linear gain; the old compressor overdrive requirement attributed to this stage is therefore reduced by exactly 24 dB (a factor of 15.85). The 8,388,608× compressor LUT ceiling is intentionally retained as conservative margin for the combined EQ response rather than narrowed from a theoretical estimate. The 45-slot VST parameter order, presets and saved-state IDs remain stable through a hidden zero-range, non-automatable legacy slot at index 1. Preamp is the first INPUT-page control and the only active user input-gain stage.
 
 
 ## Real-time polarity fallback (1.2.3)
