@@ -301,6 +301,10 @@ assert "Voxengo Marvel GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "Voxengo Overtone GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "CamillaDSP" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 # Independent RBJ peaking response and pole-stability oracle for all sixteen bands.
+# Proportional-Q broadens at small moves and focuses progressively at large moves.
+def graphic_eq_q(gain_db):
+    amount=max(0.0,min(1.0,abs(gain_db)/12.0))
+    return 0.70710678+(2.146-0.70710678)*amount
 def graphic_peak(sr,fc,q,gain):
     w=2.0*math.pi*fc/sr
     c,sn=math.cos(w),math.sin(w)
@@ -327,10 +331,6 @@ for sample_rate in (44100.0,48000.0,96000.0):
 ratios=[graphic_freq[i+1]/graphic_freq[i] for i in range(15)]
 assert max(ratios)-min(ratios)<0.04
 assert abs(math.sqrt(2.0**(2.0/3.0))/(2.0**(2.0/3.0)-1.0)-2.146)<0.01
-# Proportional-Q broadens at small moves and focuses progressively at large moves.
-def graphic_eq_q(gain_db):
-    amount=max(0.0,min(1.0,abs(gain_db)/12.0))
-    return 0.70710678+(2.146-0.70710678)*amount
 q_curve=[graphic_eq_q(g) for g in (0,1,3,6,9,12)]
 assert abs(q_curve[0]-0.70710678)<1.0e-8
 assert abs(q_curve[-1]-2.146)<1.0e-8
