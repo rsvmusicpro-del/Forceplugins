@@ -138,7 +138,7 @@ assert "kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq" in src
 assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
 assert "ptLfF*8.0f" in src and "ptHighBoost.resonantBoost" in src
 assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
-assert "applyPolarity(consoleL*ig*pg,0,phaseTargetL)" in src and "applyPolarity(consoleR*ig*pg,1,phaseTargetR)" in src and "panL_.next" in src
+assert "applyPolarity(consoleL*pg,0,phaseTargetL)" in src and "applyPolarity(consoleR*pg,1,phaseTargetR)" in src and "panL_.next" in src
 assert "phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f" in src
 assert "phaseHasPrevious_[0]=phaseHasPrevious_[1]=false;" in src
 assert "phaseHasPrevious_[channel]=true;" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
@@ -305,7 +305,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1203;" in src
+assert "x.version=1204;" in src
 # The DC/near-DC polarity fallback coefficient is prepared once per sample rate,
 # never evaluated with exp() in the real-time per-sample transition.
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));" in src
