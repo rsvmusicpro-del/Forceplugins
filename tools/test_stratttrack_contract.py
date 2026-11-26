@@ -373,7 +373,6 @@ for gain_db in (-12.0,12.0):
 ratios=[graphic_freq[i+1]/graphic_freq[i] for i in range(15)]
 assert max(ratios)-min(ratios)<0.04
 assert not any(token in src for token in ("s.lf.run","s.lm.run","s.hm.run","s.hf.run","ch_[c].lf.bell","lfFreq_.snap"))
-assert not any(token in src for token in ("s.lf.run","s.lm.run","s.hm.run","s.hf.run","ch_[c].lf.bell","lfFreq_.snap"))
 
 
 # Input page Q-Link contract and appended, project-safe stereo controls.
