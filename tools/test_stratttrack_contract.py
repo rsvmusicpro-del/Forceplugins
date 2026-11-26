@@ -118,6 +118,8 @@ assert "csHpOld=ch_[c].csHp" in src and "csLpOld=ch_[c].csLp" in src
 assert "csHpOrderFade_.next(1.0f,sampleSmooth)" in src and "csLpOrderFade_.next(1.0f,sampleSmooth)" in src
 assert "ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);" in src
 assert "ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);" in src
+assert "Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads" in notes
+assert "LF/HF shelves" not in notes
 assert "ctx.outputs[0][i]=xL*oL*og;" in src and "ctx.outputs[1][i]=xR*oR*og;" in src
 assert "fader_" not in src and "kFader" not in src
 # Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
