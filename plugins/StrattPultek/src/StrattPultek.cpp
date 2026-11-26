@@ -13,6 +13,7 @@
 // remains a separate validation step.
 
 #include "mpc_plugin.h"
+#include "dsp/airwindows_console7.h"
 #include "dsp/biquad.h"
 #include "dsp/smoother.h"
 #include "dsp/onepole.h"
@@ -30,7 +31,7 @@ enum Params
     kHighFreq, kHighBoost, kBandwidth,
     kHighAttenFreq, kHighAtten,
     kGrain, kDrive, kMix, kDriveMix, kFader,
-    kHpFreq, kLpFreq, kNumParams
+    kHpFreq, kLpFreq, kConsoleFader, kNumParams
 };
 
 static float dbToGain(float db)
@@ -307,6 +308,7 @@ static float highAttenuationPole(float selectorHz, double sampleRate)
 
 struct Channel
 {
+    stratt::dsp::Console7Channel console;
     CleansweepOnePole highpass{CleansweepOnePole::Mode::Highpass};
     CleansweepOnePole lowpass{CleansweepOnePole::Mode::Lowpass};
     OnePoleLP lowBoost, lowAtten, highAtten;
@@ -322,6 +324,7 @@ struct Channel
     float previousTubeDcInput = 0.0f, previousTubeDcOutput = 0.0f;
     void reset()
     {
+        console.reset();
         highpass.reset(); lowpass.reset();
         lowBoost.reset(); lowAtten.reset();
         highBoost.reset(); highAtten.reset();
@@ -388,12 +391,13 @@ public:
         // Appended only: preserve the established 0..13 parameter contract.
         addParam(logParam("hp_freq", "HP Freq", 20.0f, 11000.0f, 20.0f, "Hz", 0));
         addParam(logParam("lp_freq", "LP Freq", 20.0f, 22000.0f, 22000.0f, "Hz", 0));
+        addParam(floatParam("console_fader", "Console Fader", 0.0f, 1.0f, 0.772f, "", 3));
 
-        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
-        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
-        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
-        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
-        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f, 0.0f, 20.0f, 22000.0f});
+        addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
+        addProgram("Low Lift", {0.0f, 2.0f, 5.0f, 3.0f, 3.0f, 0.0f, 55.0f, 1.0f, 0.0f, 12.0f, 10.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
+        addProgram("Air", {0.0f, 1.0f, 0.0f, 0.0f, 5.0f, 5.0f, 65.0f, 2.0f, 2.0f, 18.0f, 12.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
+        addProgram("Warm Drive", {0.0f, 2.0f, 2.0f, 1.0f, 2.0f, 2.0f, 40.0f, 1.0f, 1.0f, 65.0f, 55.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
+        addProgram("Subtle Glue", {0.0f, 2.0f, 1.5f, 1.0f, 3.0f, 1.5f, 55.0f, 1.0f, 1.0f, 30.0f, 18.0f, 80.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
     }
 
     void prepare(double sampleRate, int /*maxBlockSize*/) override
@@ -401,7 +405,7 @@ public:
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
         dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
-        for (Channel& c : channels_) c.grainDensity.prepare(sampleRate_);
+        for (Channel& c : channels_) { c.grainDensity.prepare(sampleRate_); c.console.prepare(sampleRate_); }
         // Precompute the Drive's -6 dBFS sine fundamental makeup curve outside
         // the audio callback. Per-sample use is a bounded table interpolation.
         for (int i = 0; i <= kDriveMakeupSteps; ++i)
@@ -415,6 +419,7 @@ public:
         mix_.setTime(15.0f, sampleRate_);
         driveMix_.setTime(15.0f, sampleRate_);
         fader_.setTime(15.0f, sampleRate_);
+        consoleFader_.setTime(15.0f, sampleRate_);
         reset();
     }
 
@@ -427,6 +432,7 @@ public:
         mix_.snap(readParam(kMix, 100.0f, 0.0f, 100.0f) * 0.01f);
         driveMix_.snap(readParam(kDriveMix, 100.0f, 0.0f, 100.0f) * 0.01f);
         fader_.snap(dbToGain(readParam(kFader, 0.0f, -60.0f, 6.0f)));
+        consoleFader_.snap(readParam(kConsoleFader, 0.772f, 0.0f, 1.0f));
 
         // State restoration and program changes must take effect immediately.
         eqLowFreq_ = lowFrequency(readChoice(kLowFreq, 2, 3));
@@ -455,6 +461,7 @@ public:
         mix_.setTarget(readParam(kMix, 100.0f, 0.0f, 100.0f) * 0.01f);
         driveMix_.setTarget(readParam(kDriveMix, 100.0f, 0.0f, 100.0f) * 0.01f);
         fader_.setTarget(dbToGain(readParam(kFader, 0.0f, -60.0f, 6.0f)));
+        consoleFader_.setTarget(readParam(kConsoleFader, 0.772f, 0.0f, 1.0f));
 
         constexpr int kControlQuantum = 64;
         const int channels = mpc::clamp(ctx.numOutputs, 0, 2);
@@ -472,6 +479,7 @@ public:
             const float mix = mix_.process();
             const float driveMix = driveMix_.process();
             const float finalFader = fader_.process();
+            const float consoleFader = consoleFader_.process();
             const float driveGain = 1.0f + 2.5f * drive;
 
             for (int ch = 0; ch < channels; ++ch)
@@ -491,7 +499,8 @@ public:
                 // are gentle first-order shelves (6 dB/oct), not RBJ 2-pole shelves.
                 // bx_cleansweep V2-style first-order 6 dB/octave filters, HP then LP.
                 // The global EQ Mix remains the final parallel blend against dry.
-                float filtered = channels_[ch].highpass.process(safeDry);
+                const float consoleInput = channels_[ch].console.process(safeDry, consoleFader);
+                float filtered = channels_[ch].highpass.process(consoleInput);
                 filtered = channels_[ch].lowpass.process(filtered);
                 float wet = filtered + (lowBoostGain_ - 1.0f) * channels_[ch].lowBoost.process(filtered);
                 wet += (lowAttenGain_ - 1.0f) * channels_[ch].lowAtten.process(wet);
@@ -552,7 +561,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1909;
+        i.version = 1910;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -643,7 +652,7 @@ private:
     float hpFreq_ = 20.0f, lpFreq_ = 22000.0f;
     Channel channels_[2];
     float driveMakeupTable_[kDriveMakeupSteps + 1] = {};
-    Smoother output_, grain_, drive_, mix_, driveMix_, fader_;
+    Smoother output_, grain_, drive_, mix_, driveMix_, fader_, consoleFader_;
 };
 
 MPC_PLUGIN_ENTRY(StrattPultek)
