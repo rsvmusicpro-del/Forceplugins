@@ -26,6 +26,8 @@ jobs:
         run: python tools/test_strattpultek_contract.py
       - name: Verify valve transfer primitives and short-interval ADAA math
         run: python tools/test_strattpultek_valve.py
+      - name: Verify Drive fundamental level matching
+        run: python tools/test_strattpultek_drive.py
       - name: Verify Cleansweep filter responses and cutoff safety
         run: |
           c++ -std=c++11 -O2 -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_strattpultek_filters
