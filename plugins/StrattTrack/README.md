@@ -12,6 +12,9 @@ The Pultec stage combines first-order low shelves, the measured higher attenuati
 
 The four-band EQ uses RBJ cookbook biquads; HP/LP are second-order Butterworth sections. Input pan, polarity, Pultec controls, existing EQ controls, gate/compressor thresholds and ratios, makeup and circuit drive glide over a 10 ms control interval to reduce parameter-step artefacts. Dynamics values are smoothed in dB space before conversion to linear gain; the compressor lookup curve follows the smoothed ratio. Gate and compressor use independent linked-stereo peak envelopes, 3 dB gate hysteresis and the hard-knee amplitude-domain compressor law. Circuit Mix at 0% bypasses the entire nonlinear colour path. No allocation, locks or I/O occur in the audio callback.
 
+## UI and visual identity
+StrattTrack follows the StrattPultek visual standard: MPC amber kit and focus accent (#D89A48), charcoal background (#17191C), warm off-white text, muted grey labels, matching film-strip knobs, switches and faders, and the same 1280×628 panel background. The shared visual treatment is applied consistently to INPUT, FILTERS, PULTEC, EQ, DYNAMICS and CIRCUIT pages. The background artwork is supplied as `assets/stratt-bg.png`, with editable vector source `assets/stratt-bg.svg`. Only presentation is shared; StrattTrack retains its own controls, signal path and DSP.
+
 ## Build and test
 ```sh
 python tools/build.py plugins/StrattTrack
@@ -19,4 +22,4 @@ python tools/validate.py plugins/StrattTrack
 python tools/package.py plugins/StrattTrack
 ```
 
-The GitHub Actions workflow on `feature/stratttrack` builds native, ARM32 and ARM64, validates the deployable folder, and exercises the host simulator at multiple sample rates and block sizes.
+The GitHub Actions workflow builds native, ARM32 and ARM64, validates the deployable folder, and exercises the host simulator at multiple sample rates and block sizes.
