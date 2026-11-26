@@ -39,7 +39,7 @@
   ],
   "file32": "VST/stratttrack-arm32.so",
   "file64": "VST/stratttrack-arm64.so",
-  "description": "StrattTrack stereo channel strip with a fixed-frequency 16-band graphic EQ, serial filters, Console7 input emulation, M/S stereo tools, Pultec EQ, linked dynamics and circuit colour.",
+  "description": "StrattTrack stereo channel strip with Airwindows Console7 input emulation, fixed-frequency 16-band graphic EQ, serial filters, M/S stereo tools, Pultec EQ, linked dynamics and circuit colour.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
