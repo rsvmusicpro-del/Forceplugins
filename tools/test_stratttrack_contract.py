@@ -5,6 +5,14 @@ root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
+reset_match=re.search(r"void reset\(\) override \{(.*?)\n    \}\n    void process",src,re.S)
+assert reset_match, "StrattTrack reset block not found"
+reset_body=reset_match.group(1)
+for line in reset_body.splitlines():
+    if ".snap(" in line:
+        assert any(token in line for token in ("finiteClamp(", "getBool(", "mpc::clamp(")), line
+assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
+assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
