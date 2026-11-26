@@ -1,5 +1,9 @@
 # UI kit: film-strip knobs, faders and switches
 
+## Hybrid brushed-metal control finish
+
+The standard and small rotary controls now use an original procedural brushed-metal treatment: a machined outer rim, restrained radial face marks, engraved scale ticks and a fixed 127-frame MPC film-strip. The amber value arc and the existing charcoal / ivory palette remain the visual reference for StrattPultek and StrattTrack. This translates the material language of Osmic's [Audio knobs, button, sliders etc.](https://opengameart.org/content/audio-knobs-button-sliders-etc) into the SDK-native renderer rather than embedding a static PNG as a moving control. The source pack is CC-BY 3.0; this renderer is an independent implementation and does not redistribute its PNGs.
+
 A themed set of control graphics for MPC plugin skins, drawn by `tools/make_ui_kit.py`
 (standard-library Python, no image libraries). The pre-rendered default theme is in
 `ui-kit/mpc-red/`; every other theme is rendered on demand. The assets are MIT-licensed with
