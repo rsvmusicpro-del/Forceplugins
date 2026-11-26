@@ -5,7 +5,7 @@ root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
-reset_match=re.search(r"void reset\(\) override \{(.*?)\\n    \\}\\n    void process",src,re.S)
+reset_match=re.search(r"void reset\(\) override \{(.*?)\n    \}\n    void process",src,re.S)
 assert reset_match, "StrattTrack reset block not found"
 reset_body=reset_match.group(1)
 for line in reset_body.splitlines():
