@@ -16,6 +16,7 @@
 #include "circuit_adaa.h"
 #include "dsp/airwindows_console7.h"
 #include <cmath>
+#include <cstdio>
 
 namespace {
 enum P {
@@ -417,6 +418,14 @@ public:
         addParam(compGr);
         addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
         addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
+    }
+    // Host-facing text formatter; called by the UI, not the real-time audio callback.
+    bool formatValue(int index,float plainValue,std::string& out) override {
+        if(index!=kCompGR) return false;
+        char buffer[24];
+        std::snprintf(buffer,sizeof(buffer),"%.1f dB",finiteClamp(plainValue,0.0f,60.0f,0.0f));
+        out=buffer;
+        return true;
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
