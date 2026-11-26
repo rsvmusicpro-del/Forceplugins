@@ -1,4 +1,4 @@
-# StrattPultek — 64 calculs mathématiques et physiques (v1.9.8)
+# StrattPultek — 69 calculs mathématiques et physiques (v1.9.8)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
