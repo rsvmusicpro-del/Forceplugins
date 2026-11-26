@@ -18,7 +18,13 @@
         {
           "param": "Console Fader",
           "widget": "knob"
-        },
+        }
+      ]
+    },
+    {
+      "name": "FILTERS",
+      "background": "strattpultek-bg.png",
+      "controls": [
         {
           "param": "HP Freq",
           "widget": "knob"
@@ -26,7 +32,9 @@
         {
           "param": "LP Freq",
           "widget": "knob"
-        }
+        },
+        "empty",
+        "empty"
       ]
     },
     {
