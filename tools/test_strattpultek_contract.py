@@ -33,7 +33,7 @@ referenced = {
     if isinstance(control, dict) and "param" in control
 }
 if "i.version = 1910;" not in source:
-    raise SystemExit("PluginInfo version does not match the 1.9.9 manifest")
+    raise SystemExit("PluginInfo version does not match the 1.9.10 manifest")
 if '#include "grain_engine.h"' not in source or "channels_[ch].grainDensity.process(" not in source:
     raise SystemExit("Level-independent Grain continuity detector is missing from the audio path")
 if "grainDensity(previousDriveInput, densitySample)" in source:
