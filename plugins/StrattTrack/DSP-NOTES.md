@@ -1,10 +1,10 @@
 # StrattTrack DSP notes
 
-## Signal path and algorithms
-
 ## Shared HP/LP filter standard (1.1.2)
 
 StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec/channel EQ stages.
+
+## Signal path and algorithms
 - Input/preamp: linear dB gain with smoothing and finite input guards.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: shared second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, 10 ms logarithmic smoothing and 64-frame coefficient refresh.
