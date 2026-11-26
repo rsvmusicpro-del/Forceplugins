@@ -1,5 +1,38 @@
 # Changelog
 
+## StrattPultek 1.9.5
+
+- Move parameter 0 (Output) after the fixed nonlinear valve-colour stage so the MPC host's load-time parameter nudge changes level only, not saturation or harmonic content.
+- Keep the dedicated Fader as the final signal-path multiplication.
+- Add a regression contract check for the post-colour master-gain invariant.
+- Preserve all 16 parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
+## StrattPultek 1.9.4
+
+- Guard every audio-path parameter read against NaN/Inf and clamp it to the declared control range before smoothing or selector conversion.
+- Prevent malformed host automation from permanently contaminating smoother state or producing invalid frequency-selector indices; normal finite automation and the saved-project contract remain unchanged.
+- Preserve parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
+## StrattPultek 1.9.3
+
+- Stabilized first-order ADAA for tiny intervals crossing the ±1/±2 polynomial knees with split five-point Gauss-Legendre integration, exact for the degree-eight asymmetric transfer on each segment.
+- Added deterministic regression coverage for all four knees, both interval directions and widths from 1e-4 to 1e-10; retained the existing local Taylor and closed-form paths elsewhere.
+- Preserved all parameter IDs/order, factory programs, UI pages and MPC Sample 3+3 knob assignments.
+
+
+## StrattPultek 1.9.1
+
+- Bound finite input samples to ±16.0 (24 dBFS) before recursive DSP to prevent pathological host values from overflowing filter or ADAA state while preserving normal programme headroom.
+- Added final non-finite output containment with per-channel DSP-state recovery; NaN/Inf cannot propagate into the MPC mix bus.
+- Preserved parameter IDs/order, presets, UI and MPC Sample knob assignments.
+
+## StrattPultek 1.9.0
+
+- Retained the first-order Cleansweep HP/LP topology and moved coefficient design to double precision with prewarped analog-prototype documentation.
+- Added non-finite sample/state recovery to the recursive HP/LP filters and guarded incoming host samples before recursive DSP processing.
+- Expanded filter verification across 44.1–192 kHz, -3 dB cutoff calibration, 6 dB/octave slopes, extreme cutoffs, long-run boundedness and NaN recovery.
+- Preserved all 16 parameter IDs and indices, factory programs, MPC Sample 3+3 knob mappings, and the filter-before-EQ signal path.
+
 All notable changes to the MPC Plugin SDK are recorded here, newest first.
 
 ## Unreleased (will become 1.1)
