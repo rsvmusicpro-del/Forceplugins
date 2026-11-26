@@ -162,3 +162,65 @@ References:
 - Mullard ECC82 / 12AU7: https://shop.ehx.com/catalog/tubes-specs/12AU7Mullard.pdf
 - Mullard EL34: https://tubedata.tubes.se/sheets/129/e/EL34_Mullard.pdf
 - RCA 6L6GC: https://www.robkalmeijer.nl/techniek/electronica/datasheets/6/6l6gc.pdf
+
+
+## StrattTrack 1.2.8 — correlation confidence floor
+
+The broadband normalized correlation estimate remains
+`rho = E[LR] / sqrt(E[L²] E[R²])`, with 50 ms exponential averaging.
+The negative-correlation side safeguard is now gated unless both channel
+mean-square estimates exceed `1e-9` (−90 dBFS RMS for normalized float audio).
+This prevents quantization residue and near-silence from being treated as a
+reliable stereo relationship and spuriously attenuating Side. The gate does not
+alter audible programme above the floor, the M/S matrix, Width law, mono sum,
+or any parameter identity. It is a confidence floor, not a phase-alignment
+algorithm or a replacement for listening to the mono fold-down.
+
+### Hardware design references and target principles
+
+- **SPL Stereo Vitalizer Mk2-T** — inter-channel phase-derived stereo expander; its
+  manufacturer-published specifications include 10 Hz–100 kHz (−3 dB), 0.0019%
+  THD+N, 121 dB dynamic range, −99 dBu A-weighted noise, balanced XLR/TRS I/O.
+  Its manual explicitly recommends goniometer/mono checks at aggressive settings.
+  https://spl.audio/de/alle-technischen-daten/?post_id=17918
+  https://www.spl.audio/wp-content/uploads/stereo_vitalizer_mk2_9526_manual.pdf
+- **Drawmer 1976** — three independent low/mid/high width and saturation bands,
+  M/S width processing, 70 Hz–1.5 kHz and 800 Hz–15 kHz crossovers; manufacturer
+  specs list 20 Hz–20 kHz ±0.2 dB, crosstalk below −75 dB at 1 kHz and 0.007% THD+N
+  at 1 kHz (0 dB ref +4 dBu). Its manual warns that width changes band level and
+  supplies band-level compensation.
+  https://www.drawmer.com/products/70s_series/1976_three_band_saturation.php
+  https://drawmer.com/uploads/manuals/1976_operators_manual.pdf
+- **Dangerous Music S&M** — analog M/S encode/insert/decode matrix for separate
+  centre and side processing; manufacturer specs: 1 Hz–100 kHz ±0.1 dB,
+  THD+N below 0.002%, IMD60 4:1 below 0.002%, M/S separation −78 dB,
+  dynamic range 108 dB, +23 dBu maximum input.
+  https://www.dangerousmusic.com/product/s-m
+- **Maselec MTC-1X** — mastering image section with an elliptical filter that
+  folds non-correlated low-frequency content toward mono and a two-step stereo
+  width control; its manual states that these image functions preserve the mono
+  signal. The available manual copy is secondary-hosted, so values are not
+  represented here as manufacturer-verified electrical specifications.
+  https://studyres.com/doc/7801228/mtc-1x---maselec
+
+### Mathematical and psychoacoustic acceptance criteria
+
+Use the explicit M/S convention already used by StrattTrack:
+`M=(L+R)/2`, `S=(L-R)/2`, `L'=M+wS`, `R'=M-wS`.
+Therefore `(L'+R')/2=M` for every finite width `w`: widening must not change
+the mono fold-down. Width 0% is mono, 100% is unity reconstruction, and 200%
+doubles Side without inventing Side for a dual-mono input. The normalized
+correlation coefficient is bounded to [−1,+1]; +1 means identical channels,
+0 means uncorrelated channels, and −1 means polarity-opposed channels.
+The input pan uses the equal-power law `gL=cos((p+1)π/4)`,
+`gR=sin((p+1)π/4)`, so `gL²+gR²=1`. The polarity switch remains a discrete
+0°/180° inversion committed at a zero crossing, with a bounded 1 ms fallback
+for DC-like material; it is not described as continuous phase rotation.
+
+Reference foundations:
+- Wickelmaier & Choisel, AES, M/S-based stereo-width manipulation and listening tests:
+  https://www.mathpsy.uni-tuebingen.de/wickelmaier/pubs/WickelmaierChoisel2005AES.pdf
+- CMU, loudness concepts and equal-power panning laws:
+  https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/
+- Audio Engineering Society, stereo imaging and perception literature:
+  https://aes.org/
