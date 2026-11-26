@@ -5,25 +5,45 @@ on:
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
+      - "tools/test_stratttrack_cleansweep.cpp"
+      - "tools/test_airwindows_console7.py"
+      - "tools/test_strattpultek_filters.cpp"
+      - "tools/test_strattpultek_valve.py"
+      - "tools/test_stratttrack_valve.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
+      - "AGENTS.md"
+      - ".github/**"
+      - "docs/STRATTTRACK-AI-WORKFLOW.md"
       - ".github/workflows/stratttrack.yml"
   pull_request:
-    branches: ["main"]
+    branches: ["main", "feature/stratttrack"]
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
+      - "tools/test_stratttrack_cleansweep.cpp"
+      - "tools/test_airwindows_console7.py"
+      - "tools/test_strattpultek_filters.cpp"
+      - "tools/test_strattpultek_valve.py"
+      - "tools/test_stratttrack_valve.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
+      - "AGENTS.md"
+      - ".github/**"
+      - "docs/STRATTTRACK-AI-WORKFLOW.md"
       - ".github/workflows/stratttrack.yml"
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: stratttrack-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build-test-package:
     runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,6 +51,20 @@ jobs:
           python-version: "3.11"
       - name: Static parameter and DSP contract
         run: python tools/test_stratttrack_contract.py
+      - name: Verify Airwindows Console7 transfer, ADAA and integration
+        run: python tools/test_airwindows_console7.py
+      - name: Verify StrattTrack Cleansweep Butterworth orders and corner response
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iplugins/StrattTrack/src tools/test_stratttrack_cleansweep.cpp -o /tmp/test_stratttrack_cleansweep
+          /tmp/test_stratttrack_cleansweep
+      - name: Verify shared valve transfer and short-interval ADAA math
+        run: python tools/test_strattpultek_valve.py
+      - name: Verify StrattTrack hybrid triode ADAA and antiderivative stability
+        run: python tools/test_stratttrack_valve.py
+      - name: Verify shared second-order Butterworth HP/LP response and stability
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_shared_filters
+          /tmp/test_shared_filters
       - name: Build native, ARM32 and ARM64; generate UI and validate
         run: python tools/build.py plugins/StrattTrack
       - name: Exercise host simulator across sample rates and block sizes

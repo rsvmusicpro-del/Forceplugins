@@ -62,6 +62,15 @@ struct BiquadCoeffs
         const float A = std::pow(10.0f, gainDb / 40.0f);
         return normalise(1.0f + alpha * A, -2.0f * c, 1.0f - alpha * A, 1.0f + alpha / A, -2.0f * c, 1.0f - alpha / A);
     }
+    // Unity feed-through plus a unity-peak second-order RLC band-pass branch.
+    // The requested centre gain is exact; Q controls the resonance width.
+    static BiquadCoeffs resonantBoost(double sr, float hz, float q, float gainDb)
+    {
+        float w, c, s, alpha; common(sr, hz, q, w, c, s, alpha);
+        const float a0 = 1.0f + alpha, a1 = -2.0f * c, a2 = 1.0f - alpha;
+        const float branch = std::pow(10.0f, gainDb / 20.0f) - 1.0f;
+        return normalise(a0 + branch * alpha, a1, a2 - branch * alpha, a0, a1, a2);
+    }
     static BiquadCoeffs lowShelf(double sr, float hz, float q, float gainDb)
     {
         float w, c, s, alpha; common(sr, hz, q, w, c, s, alpha);

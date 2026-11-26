@@ -1,4 +1,38 @@
+## StrattTrack 1.3.1\n\n- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.\n- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.\n- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.\n\n## StrattTrack 1.2.9
+
+- Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.
+- Refresh input/output Pan, Width, Invert L-R and Bass Mono controls every 64 frames using elapsed-frame 10 ms smoothing, preventing host-block-sized stereo-image automation steps.
+- Preserve discrete zero-crossing Phase L/R polarity inversion, raised-cosine Mid-preserving L-R inversion, equal-power pan and the existing 50 parameter IDs/order, presets, UI and MPC Sample mappings.
+- Document Maselec MTC-1X, Drawmer 1976, Dangerous Music S&M hardware design references and independent response/mono-invariance tests.
+
+## StrattTrack 1.2.8
+
+- Gate the negative-correlation Side safeguard below −90 dBFS RMS on either channel, preventing near-silence/quantization residue from being treated as a reliable stereo relationship.
+- Preserve the 50 ms normalized correlation estimator, Mid/Side reconstruction, mono fold-down, Width range, pan law, polarity transition, all 50 parameter IDs/order, presets and MPC Sample mappings.
+- Document hardware references, mathematical invariants, mono-compatibility acceptance criteria and the distinction between polarity inversion and continuous phase rotation.
+
+## StrattTrack 1.2.6
+
+- Refresh LF/LM/HM/HF RBJ biquad coefficients every 64 frames instead of once per host callback; advance their 10 ms smoothers using the actual chunk length to reduce zipper-like automation steps at large host block sizes.
+- Preserve static EQ response, neutral settings, all 50 parameter IDs/order, factory programs, and MPC Sample 3+3 mapping.
+
+## StrattTrack 1.2.4
+
+- Remove the active −24…+24 dB Input trim and gain multiplication; Preamp becomes the only active user input-gain stage after Console7.
+- Retain the former `input` ID as a hidden, zero-range, non-automatable compatibility tombstone at parameter index 1, preserving all 50 parameter indices, factory-program values and saved-state IDs.
+- Remap MPC Sample SHIFT knob 1 to Preamp (parameter 2); keep Output, HP Freq and LP Freq mappings unchanged, as well as Drive and Circuit.
+- Expand compressor gain-computer lookup to 1,024 fourth-power intervals over 1×–8,388,608× detector overdrive, preserving the hard-knee law and sub-0.2% interpolation error.
+- Adopt the shared native MPC red UI kit and preserve the full six-page/Q-Link layout.
+- Update INPUT Q-Link ordering, documentation and regression assertions for the compatibility slot, absence of the Input gain path and expanded compressor range.
+
 # Changelog
+
+## StrattTrack 1.2.5
+
+- Precompute the 1 ms polarity-fallback coefficient and 20 ms zero-crossing timeout in `prepare()` using the validated sample rate.
+- Correct the DSP notes: LF/HF channel EQ are peaking (bell) biquads, not shelves; add a contract assertion to prevent the implementation and engineering documentation drifting apart.
+- Remove exponential evaluation and sample-rate-to-timeout conversion from the per-sample polarity-switch path; preserve zero-crossing behavior, fallback timing, parameter identity and DSP transfer.
+
 
 ## StrattPultek 1.9.5
 
@@ -95,3 +129,18 @@ Key 61, Key 37, Force (32-bit) and MPC Live III, MPC XL and later (64-bit).
   cookbook, UI guide and reference, presets, troubleshooting, FAQ and legal notes.
 - **Agent skills** (`.claude/skills/`, `.agents/skills/`): new, dsp, ui, build, test, package,
   presets, deploy and troubleshoot, plus `AGENTS.md` / `CLAUDE.md`.
+
+
+## StrattTrack 1.2.7 — hybrid valve voicing
+
+- Refined the permanent valve coloration stage with a normalized 72/28 ECC83/12AX7-like and 6SN7-like triode curve blend, retaining unity small-signal gain and the same stage position.
+- Added exact closed-form hybrid ADAA antiderivative plus five-point Gauss–Legendre handling for short intervals split at both nonlinear knees and zero.
+- Added subtle 18 kHz filtering of the nonlinear residual only; retained the 3 Hz DC blocker, parameter IDs/order, state contract and MPC Sample Q-Link mapping.
+- No new user parameter or UI control; DSP notes document equations, valve electrical references, assumptions and limitations.
+
+
+## StrattTrack 1.3.0 — selectable Mono Compatibility
+
+- Added Mono Compatibility Off/Auto/Full and an adjustable Auto correlation threshold to the OUTPUT page.
+- Auto progressively reduces M/S Side below the selected negative-correlation threshold; Full removes Side immediately before the permanent valve stage. The protection is smoothed and preserves Mid.
+- Appended the two new parameters after the existing 50 slots; retained prior parameter indices, factory-program values and MPC Sample mappings.
