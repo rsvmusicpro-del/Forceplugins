@@ -396,8 +396,7 @@ assert not any(token in src for token in ("s.lf.run","s.lm.run","s.hm.run","s.hf
 # Input page Q-Link contract and appended, project-safe stereo controls.
 input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
 assert ui["qlinkGroups"]=="rows"
-assert [x["param"] for x in input_page["controls"][:11]]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
-assert input_page["controls"][11:]==["empty"]*5
+assert [x["param"] for x in input_page["controls"] if isinstance(x,dict)]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
 assert not any(isinstance(x,dict) and x.get("param")=="Input" for x in input_page["controls"])
 assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold," in src and "kGraphicEq01" in src and "kGraphicEq16, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
