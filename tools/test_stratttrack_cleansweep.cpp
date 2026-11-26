@@ -6,7 +6,9 @@ static double measure(stratt::dsp::CleansweepButterworth::Mode mode,int order,do
  stratt::dsp::CleansweepButterworth f(mode);f.set(sr,static_cast<float>(fc),order);
  const int total=static_cast<int>(sr*0.5),begin=total-8192;double in=0,out=0;
  for(int i=0;i<total;++i){const float x=0.1f*static_cast<float>(std::sin(2.0*3.14159265358979323846*fc*i/sr));
-  const float y=f.process(x);if(!std::isfinite(y))return -1;if(i>=begin){in+=x*x;out+=y*y;}}
+  const float y=f.process(x);
+  if(!std::isfinite(y)) return -1;
+  if(i>=begin){in+=static_cast<double>(x)*x;out+=static_cast<double>(y)*y;}}
  return std::sqrt(out/in);
 }
 int main(){const double rates[]={44100,48000,96000};

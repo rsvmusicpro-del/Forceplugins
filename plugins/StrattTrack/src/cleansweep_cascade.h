@@ -13,8 +13,10 @@ public:
  void set(double sampleRate,float cutoffHz,int order){
   if(!std::isfinite(sampleRate)||sampleRate<8000.0||sampleRate>384000.0)sampleRate=44100.0;
   const double sr=sampleRate; double fc=std::isfinite(cutoffHz)?cutoffHz:20.0;
-  if(fc<1.0)fc=1.0; if(fc>0.45*sr)fc=0.45*sr;
-  if(order<1)order=1; if(order>6)order=6;
+  if(fc<1.0) fc=1.0;
+  if(fc>0.45*sr) fc=0.45*sr;
+  if(order<1) order=1;
+  if(order>6) order=6;
   firstOrder_=(order&1)!=0; sectionCount_=order/2;
   if(firstOrder_){const double k=std::tan(3.14159265358979323846*fc/sr),inv=1.0/(1.0+k);
    firstB0_=static_cast<float>(mode_==Mode::Lowpass?k*inv:inv);
