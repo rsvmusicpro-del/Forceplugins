@@ -18,7 +18,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
 - Gate threshold/range, compressor threshold/ratio/makeup and circuit drive use a 10 ms control-rate smoother; dynamics thresholds and makeup glide in dB space before conversion to linear amplitude. The compressor curve LUT is rebuilt from the smoothed ratio, avoiding abrupt gain-computer changes without adding per-sample transcendental math.
 - Four-band EQ: RBJ LF/HF shelves and LM/HM peaking sections, neutral at 0 dB.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
-- Circuit: bounded rational drive, asymmetric valve-inspired transfer and 3 Hz DC blocker; complete nonlinear path is parallel-blended, so 0% is true clean bypass.
+- Circuit: bounded rational Drive/Circuit colour is parallel-blended and fully bypassed at 0%; the separate fixed ADAA valve-inspired stage and 3 Hz DC blocker remain active independently after the blend.
 - Output: tone-neutral master trim and smoothed stereo balance.
 
 ## Verification equations
