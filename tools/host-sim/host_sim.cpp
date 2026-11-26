@@ -1249,9 +1249,13 @@ static int runTest(const std::string& path, const TestOptions& opt)
             setPhase("effSetChunk");
             VstIntPtr ok = disp(e, effSetChunk, 0, n, saved.data());
             r.run("render (after effSetChunk)", 2.0 * opt.block / opt.sr, opt.block, none, !instrument, false, false, nullptr);
-            int bad = 0, quant = 0;
+            int bad = 0, quant = 0, checked = 0, skipped = 0;
             for (int i = 0; i < numParams; ++i)
             {
+                // Non-automatable parameters may be live meters or compatibility outputs.
+                // Their current readings are not project state and can change during this render.
+                if (!p.automatable[(size_t)i]) { ++skipped; continue; }
+                ++checked;
                 float now = getParam(e, i);
                 if (std::fabs(now - savedVals[(size_t)i]) <= 1e-4f) continue;
                 if (getStr(e, effGetParamDisplay, i) == savedText[(size_t)i]) { ++quant; continue; }
@@ -1263,8 +1267,9 @@ static int runTest(const std::string& path, const TestOptions& opt)
             }
             if (ok == 0) rep.info("effSetChunk returned 0 (the MPC ignores the return value)");
             if (bad) rep.fail("state round-trip: %d parameter(s) did not come back from the saved chunk", bad);
-            else rep.pass("state round-trip: all %d parameters restored from the chunk%s", numParams,
+            else rep.pass("state round-trip: all %d automatable parameters restored from the chunk%s", checked,
                           quant ? " (discrete values quantised, text identical)" : "");
+            if (skipped) rep.info("state round-trip: excluded %d non-automatable telemetry/compatibility parameter(s)", skipped);
 
             void* again = nullptr;
             VstIntPtr n2 = disp(e, effGetChunk, 0, 0, &again);
