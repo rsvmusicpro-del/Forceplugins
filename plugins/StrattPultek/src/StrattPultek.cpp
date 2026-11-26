@@ -17,6 +17,7 @@
 #include "dsp/smoother.h"
 #include "dsp/onepole.h"
 #include "dsp/cleansweep_filter.h"
+#include "grain_engine.h"
 
 #include <cmath>
 
@@ -71,19 +72,6 @@ static inline double softClipSquareIntegral(double x)
     const double integral = t + t2 + t3 / 3.0 - 0.5 * t4 - 0.2 * t5
                           + t6 / 6.0 + t7 / 7.0 - t8 / 8.0 + t9 / 36.0;
     return std::copysign(1.0 / 3.0 + integral, x);
-}
-
-// Psychoacoustic density weighting for the Grain blend. Pair the previous
-// driven dry sample with the current shaped sample, as in the published
-// sample-density principle: sustained waveform body receives more colour,
-// while sharp high-frequency transitions pass more cleanly. Smoothstep gives
-// zero slope at both blend limits, reducing control-law modulation without
-// adding detector state, latency, allocation or transcendental work.
-static inline float grainDensity(float previousSample, float shapedSample)
-{
-    const float raw = mpc::clamp(0.5f * std::fabs(previousSample + shapedSample),
-                                 0.0f, 1.0f);
-    return raw * raw * (3.0f - 2.0f * raw);
 }
 
 // Point value of the asymmetric static transfer used by the ADAA integrator.
@@ -323,6 +311,7 @@ struct Channel
     CleansweepOnePole lowpass{CleansweepOnePole::Mode::Lowpass};
     OnePoleLP lowBoost, lowAtten, highAtten;
     Biquad highBoost;
+    strattpultek::GrainDensityDetector grainDensity;
     float previousDriveInput = 0.0f;
     bool hasPreviousDriveInput = false;
     float previousDcInput = 0.0f, previousDcOutput = 0.0f;
@@ -336,6 +325,7 @@ struct Channel
         highpass.reset(); lowpass.reset();
         lowBoost.reset(); lowAtten.reset();
         highBoost.reset(); highAtten.reset();
+        grainDensity.reset();
         previousDriveInput = previousDcInput = previousDcOutput = 0.0f;
         hasPreviousDriveInput = false;
         previousTubeInput = previousTubeDcInput = previousTubeDcOutput = 0.0f;
@@ -411,6 +401,7 @@ public:
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
         dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
+        for (Channel& c : channels_) c.grainDensity.prepare(sampleRate_);
         // Precompute the Drive's -6 dBFS sine fundamental makeup curve outside
         // the audio callback. Per-sample use is a bounded table interpolation.
         for (int i = 0; i <= kDriveMakeupSteps; ++i)
@@ -521,14 +512,16 @@ public:
                 channels_[ch].previousDriveInput = driveInput;
                 channels_[ch].hasPreviousDriveInput = true;
 
-                // Airwindows PurestDrive-inspired density weighting: the
-                // previous/current sample sum naturally backs off at sharp
-                // zero-crossings and lets sustained waveform body carry more
-                // colour. Unlike the original sine shaper, this uses our
-                // polynomial ADAA transfer and keeps the MPC CPU budget low.
-                const float densitySample = static_cast<float>(
+                // Measure continuity in the same shaped-signal domain at
+                // both endpoints. The level-independent detector backs off
+                // immediately on polarity reversals or abrupt amplitude steps,
+                // then restores colour over 0.5 ms without adding audio latency.
+                const float previousDensitySample = static_cast<float>(
+                    softClipTransfer(previousDriveInput, 0.0));
+                const float currentDensitySample = static_cast<float>(
                     softClipTransfer(driveInput, 0.0));
-                const float density = grainDensity(previousDriveInput, densitySample);
+                const float density = channels_[ch].grainDensity.process(
+                    previousDensitySample, currentDensitySample);
                 const float driveWet = colour * drive * driveMix * density;
                 wet += (saturated - wet) * driveWet;
                 // Filter cutoffs remain independent of the Pultec/circuit wet-dry control.
@@ -564,7 +557,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1908;
+        i.version = 1909;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
