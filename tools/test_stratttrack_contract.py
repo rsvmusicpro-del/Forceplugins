@@ -72,6 +72,6 @@ assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
 
 # First-order DC blocker has a zero at DC.
 r=math.exp(-2.0*math.pi*3.0/44100.0)
-assert abs((1.0-r)/(1.0-r)) < 1.0e-12
+assert abs((1.0-1.0)/(1.0-r)) < 1.0e-12  # H(z=1) = 0
 
 print("StrattTrack contract and independent DSP equation checks OK")
