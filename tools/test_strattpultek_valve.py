@@ -134,7 +134,7 @@ class ValveTransferTests(unittest.TestCase):
         self.assertIn("hasPreviousTubeInput ? previousTubeInput : driven", source)
         # The asymmetric DC term is removed with a one-pole blocker.
         self.assertIn("previousTubeDcInput + pole * previousTubeDcOutput", source)
-        self.assertNotRegex(source, r'addParam\\([^\\n]*(?:valve|tube)')
+        self.assertNotRegex(source, r'addParam\([^\n]*(?:valve|tube)')
 
     def test_c2_join_values_and_derivatives(self):
         # F, F' and F'' agree at the linear/knee and knee/plateau joins.
