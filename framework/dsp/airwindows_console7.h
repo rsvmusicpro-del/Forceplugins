@@ -71,6 +71,16 @@ public:
             return 0.0f;
         }
 
+        // Flush subnormal recursive/ADAA memory on ARM CPUs; values this small
+        // are inaudible, but can trigger very slow software denormal handling.
+        constexpr double kDenormalFloor = 1.0e-30;
+        if (std::fabs(z1_) < kDenormalFloor) z1_ = 0.0;
+        if (std::fabs(z2_) < kDenormalFloor) z2_ = 0.0;
+        if (std::fabs(previous_) < kDenormalFloor) {
+            previous_ = 0.0;
+            hasPrevious_ = false;
+        }
+
         const double amount = std::isfinite(fader) ? std::max(0.0, std::min(1.0, static_cast<double>(fader))) : 0.772;
         const double gain = amount * 1.272019649514069;
         if (gain <= 1.0e-8)
