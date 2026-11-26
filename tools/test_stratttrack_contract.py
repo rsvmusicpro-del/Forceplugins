@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.8"
+assert manifest["version"]=="1.2.9"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -51,7 +51,7 @@ for fragment in (
     assert fragment in src, fragment
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1208;" in src
+assert "x.version=1209;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
@@ -301,7 +301,7 @@ assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in
 assert 'addParam(mpc::logParam("bass_mono","Bass Mono",20,400,120,"Hz",0))' in src
 assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR);" in src
 assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
-assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
+assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
 assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
 
@@ -317,7 +317,8 @@ for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
     assert abs((mid-side)-right)<1.0e-12
 assert abs((1.0+1.0)*0.5-1.0)<1.0e-12  # mono input has zero Side, so Width cannot invent stereo
 assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
-assert "const float shapedSide=(side-bassMonoState_)*width*sideSafety;" in src
+assert "const float bassMonoSide=bassMonoSideHp_.run(side);" in src
+assert "const float shapedSide=bassMonoSide*width*sideSafety;" in src
 
 # Invert L-R is an M/S Side sign transition: Mid remains exactly invariant.
 assert "const float swapMid=0.5f*(xL+xR);" in src
@@ -451,3 +452,38 @@ assert side_safety(floor*0.99,1.0,-1.0,1.0)==1.0
 assert side_safety(floor,floor,-1.0,1.0)==1.0
 assert side_safety(floor*1.01,floor*1.01,-1.0,1.0)==0.0
 assert side_safety(floor*1.01,floor*1.01,1.0,1.0)==1.0
+
+
+# Stereo controls refresh on bounded 64-frame chunks, independent of host block size.
+assert "const float filterSmooth=1.0f-std::exp(-static_cast<float>(blockFrames)/(0.010f*" in src
+assert "panL_.next(finiteClamp(get(kPanL)*0.01f,-1,1,-1),filterSmooth)" in src
+assert "invertLR_.next(getBool(kInvertLR)?1.0f:0.0f,filterSmooth)" in src
+assert "width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,filterSmooth)" in src
+assert "outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),filterSmooth)" in src
+assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
+assert "Biquad bassMonoSideHp_;" in src
+# The 2nd-order Butterworth Side high-pass is -3.0103 dB at cutoff and
+# approaches 12 dB/octave attenuation per octave below its corner.
+for sr in (44100.0,48000.0,96000.0):
+    fc=120.0
+    omega=2.0*math.pi*fc/sr
+    c,sn=math.cos(omega),math.sin(omega)
+    alpha=sn/(2.0/math.sqrt(2.0))
+    b=((1+c)*0.5,-(1+c),(1+c)*0.5)
+    a=(1+alpha,-2*c,1-alpha)
+    b=tuple(v/a[0] for v in b)
+    a=(a[1]/a[0],a[2]/a[0])
+    assert abs(magnitude(b,a,omega)-1.0/math.sqrt(2.0))<2.0e-5
+    below=magnitude(b,a,omega/2.0)
+    assert below < 0.25
+# The Butterworth Side high-pass does not touch Mid, so mono fold-down is
+# unchanged regardless of Bass Mono cutoff or Width.
+for left,right in ((1.0,1.0),(0.4,-0.2),(-0.8,0.3)):
+    mid=(left+right)*0.5
+    side=(left-right)*0.5
+    for hp_side in (0.0,0.2,0.70710678,1.0):
+        for width in (0.0,0.5,1.0,2.0):
+            out_l=mid+hp_side*side*width
+            out_r=mid-hp_side*side*width
+            assert abs((out_l+out_r)*0.5-mid)<1.0e-12
+print("StrattTrack stereo-image refinement checks OK")
