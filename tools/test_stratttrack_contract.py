@@ -254,5 +254,5 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1170;" in src
+assert "x.version=1180;" in src
 print("StrattTrack polarity transition checks OK")
