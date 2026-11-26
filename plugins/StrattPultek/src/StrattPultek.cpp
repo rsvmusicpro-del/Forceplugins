@@ -1,8 +1,8 @@
-// StrattPultek — Pultec-inspired passive EQ curves + calibrated Cleansweep filtering.
+// StrattPultek — Pultec-inspired passive EQ curves + shared Butterworth HP/LP filtering.
 // SPDX-License-Identifier: MIT
 //
 // Signal path per channel:
-//   input -> 6 dB/oct HP -> 6 dB/oct LP -> LF boost/attenuation shelves
+//   input -> 12 dB/oct Butterworth HP -> 12 dB/oct Butterworth LP -> LF boost/attenuation shelves
 //         -> HF bell boost -> HF shelf attenuation -> asymmetric harmonic saturation
 //         -> global EQ dry/wet -> fixed valve colour -> Output master gain -> final Fader.
 // The EQ curves are practical digital approximations of the EQP-1A control
@@ -17,7 +17,7 @@
 #include "dsp/biquad.h"
 #include "dsp/smoother.h"
 #include "dsp/onepole.h"
-#include "dsp/cleansweep_filter.h"
+#include "dsp/two_pole_filter.h"
 #include "grain_engine.h"
 
 #include <cmath>
@@ -253,6 +253,15 @@ static float smoothFrequency(float current, float target, int frames, double sam
     return std::exp(std::log(safeCurrent) + alpha * (std::log(safeTarget) - std::log(safeCurrent)));
 }
 
+static float smoothFilterFrequency(float current, float target, int frames, double sampleRate)
+{
+    if (frames <= 0 || sampleRate <= 0.0) return target;
+    const float alpha = 1.0f - std::exp(-static_cast<float>(frames) / (0.010f * static_cast<float>(sampleRate)));
+    const float safeCurrent = mpc::clamp(current, 1.0f, 192000.0f);
+    const float safeTarget = mpc::clamp(target, 1.0f, 192000.0f);
+    return std::exp(std::log(safeCurrent) + alpha * (std::log(safeTarget) - std::log(safeCurrent)));
+}
+
 static float lowFrequency(int index)
 {
     static const float f[] = {20.0f, 30.0f, 60.0f, 100.0f};
@@ -309,8 +318,8 @@ static float highAttenuationPole(float selectorHz, double sampleRate)
 struct Channel
 {
     stratt::dsp::Console7Channel console;
-    CleansweepOnePole highpass{CleansweepOnePole::Mode::Highpass};
-    CleansweepOnePole lowpass{CleansweepOnePole::Mode::Lowpass};
+    TwoPoleButterworth highpass{TwoPoleButterworth::Mode::Highpass};
+    TwoPoleButterworth lowpass{TwoPoleButterworth::Mode::Lowpass};
     OnePoleLP lowBoost, lowAtten, highAtten;
     Biquad highBoost;
     strattpultek::GrainDensityDetector grainDensity;
@@ -389,8 +398,8 @@ public:
         // Dedicated post-chain master fader; appended to preserve saved projects.
         addParam(floatParam("fader", "Fader", -60.0f, 6.0f, 0.0f, "dB", 1));
         // Appended only: preserve the established 0..13 parameter contract.
-        addParam(logParam("hp_freq", "HP Freq", 20.0f, 11000.0f, 20.0f, "Hz", 0));
-        addParam(logParam("lp_freq", "LP Freq", 20.0f, 22000.0f, 22000.0f, "Hz", 0));
+        addParam(logParam("hp_freq", "HP Freq", 20.0f, 1000.0f, 20.0f, "Hz", 0));
+        addParam(logParam("lp_freq", "LP Freq", 1000.0f, 22000.0f, 22000.0f, "Hz", 0));
         addParam(floatParam("console_fader", "Console Fader", 0.0f, 1.0f, 0.772f, "", 3));
 
         addProgram("Classic", {0.0f, 2.0f, 3.0f, 2.0f, 3.0f, 3.0f, 50.0f, 1.0f, 2.0f, 20.0f, 15.0f, 100.0f, 100.0f, 0.0f, 20.0f, 22000.0f, 0.772f});
@@ -443,8 +452,8 @@ public:
         eqBandwidth_ = readParam(kBandwidth, 50.0f, 0.0f, 100.0f);
         eqHighAttenPole_ = highAttenPoleChoices_[readChoice(kHighAttenFreq, 1, 2)];
         eqHighAtten_ = readParam(kHighAtten, 0.0f, 0.0f, 20.0f);
-        hpFreq_ = readParam(kHpFreq, 20.0f, 20.0f, 11000.0f);
-        lpFreq_ = readParam(kLpFreq, 22000.0f, 20.0f, 22000.0f);
+        hpFreq_ = readParam(kHpFreq, 20.0f, 20.0f, 1000.0f);
+        lpFreq_ = readParam(kLpFreq, 22000.0f, 1000.0f, 22000.0f);
         updateEq();
     }
 
@@ -561,7 +570,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1910;
+        i.version = 1911;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -597,8 +606,8 @@ private:
 
     void smoothEq(int frames)
     {
-        hpFreq_ = smoothFrequency(hpFreq_, readParam(kHpFreq, 20.0f, 20.0f, 11000.0f), frames, sampleRate_);
-        lpFreq_ = smoothFrequency(lpFreq_, readParam(kLpFreq, 22000.0f, 20.0f, 22000.0f), frames, sampleRate_);
+        hpFreq_ = smoothFilterFrequency(hpFreq_, readParam(kHpFreq, 20.0f, 20.0f, 1000.0f), frames, sampleRate_);
+        lpFreq_ = smoothFilterFrequency(lpFreq_, readParam(kLpFreq, 22000.0f, 1000.0f, 22000.0f), frames, sampleRate_);
         eqLowFreq_ = smoothFrequency(eqLowFreq_, lowFrequency(readChoice(kLowFreq, 2, 3)), frames, sampleRate_);
         eqLowBoost_ = smoothBlock(eqLowBoost_, readParam(kLowBoost, 0.0f, 0.0f, 14.0f), frames, sampleRate_);
         eqLowAtten_ = smoothBlock(eqLowAtten_, readParam(kLowAtten, 0.0f, 0.0f, 18.0f), frames, sampleRate_);
@@ -633,8 +642,8 @@ private:
         highAttenGain_ = dbToGain(-eqHighAtten_);
         for (Channel& c : channels_)
         {
-            c.highpass.setCutoff(hpFreq_, sampleRate_);
-            c.lowpass.setCutoff(lpFreq_, sampleRate_);
+            c.highpass.setCutoff(sampleRate_, hpFreq_);
+            c.lowpass.setCutoff(sampleRate_, lpFreq_);
             c.lowBoost.setCutoff(eqLowFreq_, sampleRate_);
             c.lowAtten.setCutoff(lowAttenCorner, sampleRate_);
             c.highBoost.setCoeffs(hb);
