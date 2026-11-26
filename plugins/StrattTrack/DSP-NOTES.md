@@ -17,7 +17,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
   - HF attenuation is a first-order high shelf at 5/10/20 kHz.
   - Controls are smoothed in log-frequency or linear gain space; coefficients are calculated once per block; filter memory is per channel.
 - Gate threshold/range, compressor threshold/ratio/makeup and circuit drive use a 10 ms control-rate smoother; dynamics thresholds and makeup glide in dB space before conversion to linear amplitude. The compressor curve LUT is rebuilt from the smoothed ratio, avoiding abrupt gain-computer changes without adding per-sample transcendental math.
-- Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads; LF and HF are deliberately not shelves. LF/HF use fixed Q=0.7071, LM/HM use their user-selected Q (0.4–4.0), and every band is exactly unity at 0 dB.
+- Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads; LF and HF are deliberately not shelves. LF/HF use fixed Q=0.7071, LM/HM use their user-selected Q (0.4–4.0), and every band is exactly unity at 0 dB. Frequency, gain and Q smoothers advance on a 64-frame cadence, and all four biquad coefficient sets are refreshed at that same cadence using the elapsed-frame one-pole coefficient `1-exp(-N/(0.010·fs))`; this bounds automation steps independently of the host callback size.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
 - Circuit: bounded rational Drive/Circuit colour is parallel-blended and fully bypassed at 0%; the separate fixed ADAA valve-inspired stage and 3 Hz DC blocker remain active independently after the blend.
 - Output: tone-neutral master trim and smoothed stereo balance.
@@ -125,3 +125,8 @@ The separate −24 to +24 dB Input trim and its gain multiplication have been re
 ## Documentation/implementation contract correction
 
 The four-band channel EQ is implemented as four peaking (bell) biquads. Older wording that described LF/HF as shelves was incorrect; the README, C++ coefficient setup and contract tests all specify peaking responses. This correction records the actual shipped transfer function and prevents a future maintainer from changing the LF/HF topology unintentionally.
+
+
+## StrattTrack 1.2.6 — parametric EQ automation refinement
+
+The four channel-EQ bands now advance their 10 ms parameter smoothers and recalculate RBJ coefficients every 64 frames, matching the existing HP/LP refresh cadence. Previously, LF/LM/HM/HF coefficients were updated only once per host callback; with a 512-frame callback this produced comparatively coarse control steps during fast automation. The revised cadence reduces zipper-like modulation while preserving the static response, neutral gain, parameter IDs/order, factory programs, signal-path position and MPC Sample mapping. The one-pole coefficient for each update uses the actual chunk length N: `α = 1 − exp(−N/(τ·fs))`, with τ = 10 ms, so partial final chunks and variable host block sizes retain the intended time constant.
