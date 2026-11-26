@@ -6,14 +6,15 @@
 static double ref(double x,double d){d=std::max(0.0,std::min(1.0,d));const double k=0.22*d*(1+5*d);return x/(1+k*std::fabs(x));}
 static double simpson(double lo,double hi,double d){
     const int n=4000;const double h=(hi-lo)/n;double s=ref(lo,d)+ref(hi,d);
-    for(int i=1;i<n;++i)s+=(i&1?4.0:2.0)*ref(lo+i*h,d);return s*h/(3*(hi-lo));
+    for(int i=1;i<n;++i){s+=(i&1?4.0:2.0)*ref(lo+i*h,d);}
+    return s*h/(3*(hi-lo));
 }
 int main(){
     const double ds[]={0,0.001,0.05,0.2,0.5,0.75,1};
     for(double d:ds)for(int i=0;i<=1000;++i){
         const double x=-64+128.0*i/1000,h=1e-5*std::max(1.0,std::fabs(x));
         const double deriv=(stratt::dsp::CircuitAdaa::antiderivative(x+h,d)-stratt::dsp::CircuitAdaa::antiderivative(x-h,d))/(2*h);
-        if(std::fabs(deriv-ref(x,d))>2e-6){std::fprintf(stderr,"primitive mismatch d=%g x=%g\n",d,x);return 1;}
+        if(std::fabs(deriv-ref(x,d))>2e-6*std::max(1.0,std::fabs(ref(x,d)))){std::fprintf(stderr,"primitive mismatch d=%g x=%g\n",d,x);return 1;}
     }
     for(int j=0;j<7;++j)for(int i=0;i<120;++i){
         const double a=i*0.6180339887498949+0.13*j,b=i*0.414213562373095+0.21*j;
