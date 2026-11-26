@@ -12,9 +12,13 @@
   },
   "pages": [
     {
-      "name": "INPUT",
+      "name": "CONSOLE",
       "background": "stratt-bg.png",
       "controls": [
+        {
+          "param": "Console Fader",
+          "widget": "knob"
+        },
         {
           "param": "Input",
           "widget": "knob"
