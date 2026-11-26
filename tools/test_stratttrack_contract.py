@@ -12,7 +12,7 @@ assert m["numInputs"]==m["numOutputs"]==2 and len(m["knobs"])==len(m["shiftKnobs
 assert all(x["parameter"]<68 for x in m["knobs"]+m["shiftKnobs"])
 assert "x.version=1400;" in s and len(re.findall(r"addParam\(",s))==68
 assert "static const float kGraphicEqFrequencies[16]" in s and "kGraphicEqQ=2.146f" in s
-fm=re.search(r"kGraphicEqFrequencies\\[16\\]\\s*=\\s*\\{([^}]*)\\}",s)
+fm=re.search(r"kGraphicEqFrequencies\[16\]\s*=\s*\{([^}]*)\}",s)
 assert fm and [float(x.strip().removesuffix("f")) for x in fm.group(1).split(",")]==freq
 assert "Biquad graphic[16]" in s and "Smooth graphicEqGain_[16]" in s
 assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in s
