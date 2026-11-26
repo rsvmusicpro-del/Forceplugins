@@ -25,7 +25,7 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1180;" in src
+assert "x.version=1190;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Output","Out Pan","Fader"]
@@ -216,7 +216,8 @@ assert "const float shapedSide=(side-bassMonoState_)*width*sideSafety;" in src
 
 # Invert L-R is an M/S Side sign transition: Mid remains exactly invariant.
 assert "const float swapMid=0.5f*(xL+xR);" in src
-assert "const float swapSide=0.5f*(xL-xR)*std::cos(invertLR*kPi);" in src
+assert "const float swapSideGain=std::cos(invertLR*kPi);" in src
+assert "const float swapSide=0.5f*(xL-xR)*swapSideGain;" in src
 assert "xL=swapMid+swapSide;" in src and "xR=swapMid-swapSide;" in src
 for left,right in ((1.0,1.0),(0.25,0.25),(-0.8,-0.8),(1.0,-1.0),(0.3,-0.7)):
     mid=(left+right)*0.5
@@ -254,5 +255,5 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1180;" in src
+assert "x.version=1190;" in src
 print("StrattTrack polarity transition checks OK")

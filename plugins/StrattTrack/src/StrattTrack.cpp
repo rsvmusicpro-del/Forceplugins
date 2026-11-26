@@ -481,6 +481,7 @@ public:
         const float ptHfAttF=smoothLog(ptHighAttenFreq_.v,ptHighAttenFrequency(getInt(kPtHighAttenFreq)),controlBlockSmooth); ptHighAttenFreq_.snap(ptHfAttF);
         const float ptHfAtten=ptHighAtten_.next(finiteClamp(get(kPtHighAtten),0,16,0),controlBlockSmooth);
         const float invertLR=invertLR_.next(getBool(kInvertLR)?1.0f:0.0f,controlBlockSmooth);
+        const float swapSideGain=std::cos(invertLR*kPi);
         const float width=width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,controlBlockSmooth);
         const float correlation=correlation_.next(finiteClamp(get(kCorrelation),0,100,0)*0.01f,controlBlockSmooth);
         const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),controlBlockSmooth);
@@ -527,7 +528,7 @@ public:
             // transition (unlike an equal-power L/R crossfade, which adds +3 dB
             // to identical dual-mono signals at its midpoint).
             const float swapMid=0.5f*(xL+xR);
-            const float swapSide=0.5f*(xL-xR)*std::cos(invertLR*kPi);
+            const float swapSide=0.5f*(xL-xR)*swapSideGain;
             xL=swapMid+swapSide;
             xR=swapMid-swapSide;
             // 50 ms normalized correlation estimate; only sustained negative rho
@@ -606,7 +607,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1180;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1190;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
