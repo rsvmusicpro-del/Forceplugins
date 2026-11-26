@@ -372,7 +372,7 @@ public:
         if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
         const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
-        const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.015f*std::fmax(sr_,1.0f)));
+        const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.0015f*std::fmax(sr_,1.0f)));
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
