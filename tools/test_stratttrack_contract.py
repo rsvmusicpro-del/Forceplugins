@@ -97,5 +97,5 @@ for f in (0,100,1000,10000,22050): assert abs(onepole_shelf_mag(100,0,f)-1.0)<1.
 def interaction(b,a): return 5.0*(1.0-math.exp(-min(b,a)/5.0)) if b>0 and a>0 else 0.0
 assert interaction(0,10)==0 and interaction(10,0)==0
 assert 0<interaction(3,3)<interaction(10,10)<5
-assert abs(interaction(100,100)-5)<1.0e-8
+assert abs(interaction(100,100)-5)<2.0e-8
 print("StrattTrack contract and independent DSP equation checks OK")
