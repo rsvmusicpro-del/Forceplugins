@@ -1,4 +1,10 @@
-## StrattTrack 1.5.2\n\n- Flush Console7 recursive-filter and ADAA-history state below 1e-30 to prevent subnormal slowdowns on ARM during long decays and near-silence; preserve audible transfer and host-state identity.\n- Add compiled C++ stability/recovery coverage at 8.001–384 kHz, across five Console Fader positions, malformed inputs and post-fault recovery; run it in the StrattTrack CI pipeline.\n- Preserve UID S4X3, all parameter IDs/order, presets, UI and MPC Sample 3+3 mapping.\n\n## StrattTrack 1.5.1
+## StrattTrack 1.5.2
+
+- Flush Console7 recursive-filter and ADAA-history state below 1e-30 to prevent subnormal slowdowns on ARM during long decays and near-silence; preserve audible transfer and host-state identity.
+- Add compiled C++ stability/recovery coverage at 8.001–384 kHz, across five Console Fader positions, malformed inputs and post-fault recovery; run it in the StrattTrack CI pipeline.
+- Preserve UID S4X3, all parameter IDs/order, presets, UI and MPC Sample 3+3 mapping.
+
+## StrattTrack 1.5.1
 
 - Replace linear interpolation in Q with a smoothstep gain-to-octave-bandwidth law, narrowing from 1.9 octaves toward each band's actual fractional-octave spacing as cut/boost increases.
 - Convert bandwidth to Q with the RBJ bilinear-transform frequency-warp relation, and cap bandwidth against the available Nyquist margin so the top band remains finite and stable at 44.1/48 kHz.
@@ -10,7 +16,13 @@
 - Keep the Pioneer DEH-P8850MP documented 16-band frequency layout, ±12 dB range, stereo-linked RBJ cascade, 10 ms smoothing, 64-frame coefficient refresh, minimum-phase response and zero added latency.
 - Add independent proportional-Q curve, centre-gain and pole-stability checks across all sixteen bands and 44.1/48/96 kHz sample rates; bump StrattTrack to 1.5.0.
 
-## StrattTrack 1.3.1\n\n- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.\n- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.\n- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.\n\n## StrattTrack 1.2.9
+## StrattTrack 1.3.1
+
+- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.
+- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.
+- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.
+
+## StrattTrack 1.2.9
 
 - Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.
 - Refresh input/output Pan, Width, Invert L-R and Bass Mono controls every 64 frames using elapsed-frame 10 ms smoothing, preventing host-block-sized stereo-image automation steps.
