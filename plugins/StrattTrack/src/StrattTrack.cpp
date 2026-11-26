@@ -7,7 +7,7 @@
 // All clean stages use linear gain and stable cookbook biquads. Only the
 // explicitly blended circuit stage is nonlinear. The fixed valve-inspired
 // transfer is part of that same colour path and cannot be adjusted separately.
-// No allocation, locks, I/O or transcendental functions occur in process().
+// No allocation, locks, I/O or per-sample transcendental functions occur in process().
 
 #include "mpc_plugin.h"
 #include <cmath>
@@ -140,7 +140,7 @@ public:
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
-        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true;
+        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
@@ -164,6 +164,16 @@ public:
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         const float makeup=db(get(kCompMakeup));
+        // Rebuild the static compressor curve only when its ratio changes. The
+        // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
+        if(ratio!=compRatioCached_) {
+            const float exponent=-(1.0f-1.0f/ratio);
+            for(int i=0;i<=256;++i) {
+                const float over=1.0f+(2047.0f/256.0f)*static_cast<float>(i);
+                compCurve_[i]=std::pow(over,exponent);
+            }
+            compRatioCached_=ratio;
+        }
         const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
         const float inL=finiteClamp(get(kPanL)*0.01f,-1,1,-1), inR=finiteClamp(get(kPanR)*0.01f,-1,1,1);
@@ -210,7 +220,10 @@ public:
             detector_=envCoef*detector_+(1.0f-envCoef)*peak;
             const float over=detector_/std::fmax(compThreshold,1.0e-9f);
             // Conventional hard-knee compressor law in the amplitude domain.
-            const float targetComp=over>1.0f?std::pow(over,-(1.0f-1.0f/ratio)):1.0f;
+            const float curvePos=finiteClamp((over-1.0f)*(256.0f/2047.0f),0.0f,256.0f,0.0f);
+            const int curveIndex=static_cast<int>(curvePos);
+            const float curveFrac=curvePos-static_cast<float>(curveIndex);
+            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
             const float cc=targetComp<compGain_?compAtk:compRel;
             compGain_=cc*compGain_+(1.0f-cc)*targetComp;
             // 3 dB hysteresis prevents gate chatter around its opening threshold.
@@ -255,6 +268,8 @@ private:
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
+    float compCurve_[257]{};
+    float compRatioCached_=-1.0f;
     float valveDcCoef_=0.999572f;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)
