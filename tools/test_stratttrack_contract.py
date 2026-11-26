@@ -14,8 +14,8 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.5"
-assert "## StrattTrack 1.2.5" in (root.parents[1]/"docs"/"changelog.md").read_text()
+assert manifest["version"]=="1.2.6"
+assert "## StrattTrack 1.2.6" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
 assert "the fixed, low-level ADAA valve stage remains active independently" in readme
@@ -36,8 +36,22 @@ assert "CleansweepButterworth" in src and "csHp.set(sr_,csHp,csHpOrder)" in src 
 assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
+# Parametric EQ coefficients must refresh with the same bounded cadence as HP/LP,
+# rather than stepping only once per host callback (especially at 512-frame blocks).
+for fragment in (
+    "lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),filterSmooth)",
+    "lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),filterSmooth)",
+    "lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),filterSmooth)",
+    "lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),filterSmooth)",
+    "hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),filterSmooth)",
+    "hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),filterSmooth)",
+    "hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),filterSmooth)",
+    "hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),filterSmooth)",
+):
+    assert fragment in src, fragment
+assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1205;" in src
+assert "x.version=1206;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
@@ -131,8 +145,7 @@ for control in ("output_", "preamp_", "circuitMix_"):
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
                 "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
-                "lfFreq_", "lmFreq_", "hmFreq_",
-                "hfFreq_", "ptLowBoost_", "ptLowAtten_", "ptHighBoost_",
+                "ptLowBoost_", "ptLowAtten_", "ptHighBoost_",
                 "ptBandwidth_", "ptHighAtten_"):
     line = next(line for line in src.splitlines()
                 if control + ".next(" in line or control + ".v," in line)
