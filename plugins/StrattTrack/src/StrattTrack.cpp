@@ -384,6 +384,8 @@ public:
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
         valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);
+        phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));
+        phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);
         for(auto &c:ch_) c.console.prepare(sr_);
         reset();
     }
@@ -663,7 +665,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1204;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1205;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -680,15 +682,14 @@ private:
                 if((phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f) || std::fabs(x)<1.0e-7f) {
                     phaseGain_[channel]=desired;
                     phaseWait_[channel]=0;
-                } else if(++phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)) {
+                } else if(++phaseWait_[channel]>=phaseWaitLimit_) {
                     // DC or near-DC material may never cross zero; use a 1 ms
                     // one-pole polarity glide as a bounded click-safe fallback.
                     phaseFallback_[channel]=true;
                 }
             }
             if(phaseFallback_[channel]) {
-                const float alpha=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));
-                phaseGain_[channel]+=alpha*(desired-phaseGain_[channel]);
+                phaseGain_[channel]+=phaseFallbackAlpha_*(desired-phaseGain_[channel]);
                 if(std::fabs(desired-phaseGain_[channel])<1.0e-4f) {
                     phaseGain_[channel]=desired;
                     phaseFallback_[channel]=false;
@@ -719,5 +720,7 @@ private:
     float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
     float valveDcCoef_=0.999572f;
+    float phaseFallbackAlpha_=0.022420575f;
+    int phaseWaitLimit_=882;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)
