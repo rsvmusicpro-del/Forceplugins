@@ -19,7 +19,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.7":
+if manifest["version"] != "1.9.9":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
@@ -32,8 +32,12 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
-if "i.version = 1907;" not in source:
-    raise SystemExit("PluginInfo version does not match the 1.9.7 manifest")
+if "i.version = 1909;" not in source:
+    raise SystemExit("PluginInfo version does not match the 1.9.9 manifest")
+if '#include "grain_engine.h"' not in source or "channels_[ch].grainDensity.process(" not in source:
+    raise SystemExit("Level-independent Grain continuity detector is missing from the audio path")
+if "grainDensity(previousDriveInput, densitySample)" in source:
+    raise SystemExit("Legacy mixed-domain Grain density path is still present")
 if "calculateDriveMakeupGain" not in source or "driveMakeupTable_" not in source or "* driveMakeupGain(drive)" not in source:
     raise SystemExit("Precomputed Drive fundamental makeup is missing from the audio path")
 if "kDriveMakeupSteps = 100" not in source or "for (int i = 0; i <= kDriveMakeupSteps; ++i)" not in source:
