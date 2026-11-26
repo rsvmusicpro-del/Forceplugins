@@ -226,7 +226,7 @@ assert input_page["controls"][:4]==["empty"]*4
 assert [x["param"] for x in input_page["controls"][4:8]]==["Bass Mono","Drive","Console Fader","Input"]
 assert [x["param"] for x in input_page["controls"][8:12]]==["Pan L","Pan R","Width","Correlation"]
 assert [x["param"] for x in input_page["controls"][12:16]]==["Preamp","Phase L","Phase R","Invert L-R"]
-assert "kInvertLR, kWidth, kCorrelation, kBassMono, kCount" in src
+assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
 assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in src
