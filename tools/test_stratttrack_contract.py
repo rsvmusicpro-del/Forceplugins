@@ -26,6 +26,7 @@ assert "const float gateSlew=coeff(2.0f,sr_);" in src
 assert "kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq" in src
 assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
 assert "ptLfF*8.0f" in src and "ptHighBoost.bell" in src
+assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
 assert "phaseL_.next" in src and "panL_.next" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.
@@ -98,4 +99,10 @@ def interaction(b,a): return 5.0*(1.0-math.exp(-min(b,a)/5.0)) if b>0 and a>0 el
 assert interaction(0,10)==0 and interaction(10,0)==0
 assert 0<interaction(3,3)<interaction(10,10)<5
 assert abs(interaction(100,100)-5)<2.0e-8
+# The hardware sweep comparison reports a 9 dB peak difference from sharp to broad.
+def effective_pt_hf_peak(boost_db, bandwidth):
+    return boost_db*(0.5+0.5*(1.0-bandwidth/100.0))
+assert abs(effective_pt_hf_peak(18,0)-18.0)<1.0e-12
+assert abs(effective_pt_hf_peak(18,100)-9.0)<1.0e-12
+assert abs(effective_pt_hf_peak(18,0)-effective_pt_hf_peak(18,100)-9.0)<1.0e-12
 print("StrattTrack contract and independent DSP equation checks OK")

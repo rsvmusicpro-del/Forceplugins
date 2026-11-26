@@ -8,7 +8,7 @@
   - LF boost and attenuation use first-order low shelves with selectable 20/30/60/100 Hz turnovers.
   - The attenuation turnover is offset by sqrt(2), matching the approximately half-octave higher corner visible in EQP-1A3 response sweeps.
   - A broad LF boost/attenuation interaction bell approximates the measured combined lift-and-dip contour; its depth is bounded and saturating, centred at 8× the selected LF frequency.
-  - HF boost uses an RBJ peaking section at 3/4/5/8/10/12/16 kHz; Q maps from 1.60 (sharp) to 0.45 (broad).
+  - HF boost uses an RBJ peaking section at 3/4/5/8/10/12/16 kHz; Q maps from 1.60 (sharp) to 0.45 (broad); the maximum peak gain is reduced by 9 dB from sharp to broad, matching the published measurement comparison.
   - HF attenuation is a first-order high shelf at 5/10/20 kHz.
   - Controls are smoothed in log-frequency or linear gain space; coefficients are calculated once per block; filter memory is per channel.
 - Four-band EQ: RBJ LF/HF shelves and LM/HM peaking sections, neutral at 0 dB.

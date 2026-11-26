@@ -231,7 +231,7 @@ public:
         const float ptHfQ=1.60f-1.15f*(ptBandwidth*0.01f);
         for(int c=0;c<2;++c) {
             ch_[c].hp.pass(sr_,hp,true); ch_[c].lp.pass(sr_,lp,false);
-            ch_[c].ptHighBoost.bell(sr_,ptHfF,ptHfQ,ptHfBoost);
+            ch_[c].ptHighBoost.bell(sr_,ptHfF,ptHfQ,ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f)));
             ch_[c].ptLfInteraction.bell(sr_,finiteClamp(ptLfF*8.0f,100.0f,sr_*0.45f,800.0f),0.70f,-ptInteractionDb);
             ch_[c].lf.shelf(sr_,lfF,lfG,false);
             ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
