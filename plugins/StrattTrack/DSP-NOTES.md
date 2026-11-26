@@ -44,3 +44,14 @@ This is a deterministic triode-inspired nonlinear model, not a component-level
 simulation of a specified valve, transformer or measured circuit. ADAA reduces
 waveshaper aliasing but is not a claim of zero aliasing; host-simulator renders
 and hardware listening remain necessary validation.
+
+
+## Airwindows Console7 input console stage
+
+The first stage of the signal path is a Console7Channel-derived input console, with the Airwindows reference control retained as a single **Fader** control (0.000–1.000; default 0.772). It reproduces the reference channel topology: 20 kHz low-pass (Q=1.618), the original nonlinear gain law (Fader × 1.2720196495, gain cubed before the transfer and divided by gain afterwards), and the original 80:20 Spiral/Density transfer. The control is smoothed over 15 ms and is processed independently per stereo channel before any plugin-specific input/EQ/filter stage.
+
+For the MPC ARM real-time budget, the trigonometric transfer is replaced by its degree-21 convergent polynomial (maximum static-curve error below 1.5e-7 over the clipped ±1.097 domain) and first-order antiderivative antialiasing. This preserves the Airwindows curve to numerical precision while reducing alias foldback; it is intentionally not bit-identical to the original non-antialiased VST. The original Airwindows Console7Channel source is MIT licensed; this implementation is an attributed adaptation, not a binary/source copy of the VST wrapper. The channel stage is used here as a single-plugin insert; the full multitrack Console system's separate buss decode/summing stage is not represented.
+
+### What engineers seek from a console path
+
+A console pass is generally used for coherent summing, subtle harmonic/intermodulation density, gentle peak rounding, a little dynamic softening and a more cohesive spatial impression while retaining source identity, transient intelligibility and tonal balance. The selected Console7 channel curve contributes this controlled nonlinear density; no noise, arbitrary EQ tilt or aggressive compression is added. The pre-existing valve stage remains a separate output coloration stage with its own analytic ADAA transfer and DC blocker, so the input-console emulation does not replace or bypass it.
