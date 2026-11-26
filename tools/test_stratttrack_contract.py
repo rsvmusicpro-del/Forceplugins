@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.4"
+assert manifest["version"]=="1.2.5"
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
 assert "the fixed, low-level ADAA valve stage remains active independently" in readme
@@ -36,7 +36,7 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1204;" in src
+assert "x.version=1205;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
@@ -169,7 +169,7 @@ assert "applyPolarity(consoleL*pg,0,phaseTargetL)" in src and "applyPolarity(con
 assert "phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f" in src
 assert "phaseHasPrevious_[0]=phaseHasPrevious_[1]=false;" in src
 assert "phaseHasPrevious_[channel]=true;" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
-assert "0.001f*std::fmax(sr_,1.0f)" in src
+assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.
 def magnitude(b, a, omega):
