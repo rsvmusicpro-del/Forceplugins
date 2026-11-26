@@ -34,7 +34,7 @@ import struct
 import sys
 import zlib
 
-KIT_VERSION = 1
+KIT_VERSION = 2
 
 # --------------------------------------------------------------------------------------------
 # Colours
@@ -284,11 +284,30 @@ def knob_static(size, th):
     body_r = ring_in - max(3.0, size * 0.07)
     # unfilled track over the sweep
     arc(c, cx, cy, ring_in, ring_out, -SWEEP / 2.0, SWEEP / 2.0, th["track"])
-    # body: shadow, rim lit from top-left, face with a soft vertical gradient
-    circle(c, cx, cy + 1.5, body_r + 1.0, with_alpha(th["outline"], 150))
-    circle(c, cx, cy, body_r, light_rim(cx, cy, th["bodyLight"], th["bodyDark"]))
-    face_r = body_r - max(1.5, size * 0.035)
-    circle(c, cx, cy, face_r, vgrad(cy - face_r, cy + face_r, mix(th["body"], th["bodyLight"], 0.35), th["body"]))
+    # Mechanical body: shadow, machined outer rim and a brushed-metal face.
+    circle(c, cx, cy + 1.5, body_r + 1.0, with_alpha(th["outline"], 175))
+    circle(c, cx, cy, body_r, light_rim(cx, cy, th["thumbLight"], th["bodyDark"]))
+    ring(c, cx, cy, body_r - max(1.0, size * 0.035), body_r - max(0.2, size * 0.012),
+         with_alpha(th["thumbLight"], 150))
+    face_r = body_r - max(2.0, size * 0.045)
+    circle(c, cx, cy, face_r,
+           vgrad(cy - face_r, cy + face_r, mix(th["thumb"], th["thumbLight"], 0.18), th["body"]))
+    # Fine radial machining marks are fixed to the body, so they never shimmer while turning.
+    for j in range(48):
+        a = (2.0 * math.pi * j) / 48.0
+        r0, r1 = face_r * 0.67, face_r * 0.84
+        x0, y0 = cx + math.sin(a) * r0, cy - math.cos(a) * r0
+        x1, y1 = cx + math.sin(a) * r1, cy - math.cos(a) * r1
+        capsule(c, x0, y0, x1, y1, max(0.45, size * 0.009),
+                with_alpha(th["thumbLight"] if j % 2 == 0 else th["outline"], 42))
+    ring(c, cx, cy, face_r * 0.60, face_r * 0.625, with_alpha(th["thumbLight"], 78))
+    # Small engraved scale marks sit outside the moving value arc.
+    for j in range(11):
+        a = -SWEEP / 2.0 + SWEEP * j / 10.0
+        r0, r1 = ring_in - 1.0, ring_out + 0.5
+        capsule(c, cx + math.sin(a) * r0, cy - math.cos(a) * r0,
+                cx + math.sin(a) * r1, cy - math.cos(a) * r1,
+                max(0.7, size * 0.012), with_alpha(th["thumbLight"], 150))
     return c, (cx, cy, ring_in, ring_out, body_r, face_r)
 
 
