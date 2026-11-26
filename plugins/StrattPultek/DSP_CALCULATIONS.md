@@ -1,4 +1,4 @@
-# StrattPultek — 64 calculs mathématiques et physiques (v1.9.6)
+# StrattPultek — 64 calculs mathématiques et physiques (v1.9.8)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -152,3 +152,17 @@ Les cibles de paramètres sont lues une fois par bloc hôte. Les variables EQ li
 68. Compensation : \\(C(d)=\\operatorname{clamp}(A_r g(d)/B_1(d),1,1.12)\\). L'intégrale est évaluée par Simpson composite à 256 intervalles lors de prepare(), pour chacun des 101 points de la table \\(d_i=i/100\\). Le callback audio effectue uniquement une interpolation linéaire bornée entre deux entrées de la table et multiplie le signal saturé par \\(C(d)\\).
 
 À la valeur maximale de Drive, le calcul donne \\(C(1)\\approx1.09068\\), soit environ +0.76 dB (la borne de sécurité +0.98 dB n'est pas atteinte). Pour \\(d\\le0.4\\), le sinus de référence reste dans la zone linéaire et \\(C(d)=1\\). Ce niveau de référence rend le comportement plus cohérent en niveau ; il ne prétend pas reproduire une courbe de circuit mesurée ni garantir le même niveau perçu pour tous les contenus spectraux.
+
+
+## Grain density law refined in 1.9.8
+
+69. The current sample-density estimate pairs the previous driven dry sample with the current odd-shaped sample:
+\[
+r[n]=\operatorname{clamp}\left(\frac{|u[n-1]+F(u[n])|}{2},0,1\right).
+\]
+The blend weight uses the cubic smoothstep:
+\[
+d[n]=r[n]^2(3-2r[n]),\qquad
+g[n]=Grain\cdot Drive\cdot DriveMix\cdot d[n].
+\]
+This preserves the sample-density concept (sustained waveform body receives more saturation; fast transitions receive less), but makes the blend law C1-continuous at both 0 and 1. The previous implementation used a raw-sample sum with a hard clamp; the updated estimate accounts for the current waveshaper transfer and removes the clamp's slope discontinuity. It requires only one polynomial evaluation and multiplies/additions per sample; it adds no state, latency, oversampling, allocation or transcendental calls. It remains a phenomenological dynamic blend, not a psychoacoustic loudness meter or a model of a physical circuit.
