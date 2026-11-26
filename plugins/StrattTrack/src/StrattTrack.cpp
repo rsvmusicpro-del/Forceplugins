@@ -35,7 +35,7 @@ inline float finiteClamp(float x,float lo,float hi,float fallback) {
 }
 struct Smooth {
     float v=0.0f;
-    float next(float target,float c=0.002f) {
+    float next(float target,float c) {
         if(!std::isfinite(v)) v=std::isfinite(target)?target:0.0f;
         if(!std::isfinite(target)) target=v;
         c=finiteClamp(c,0.0f,1.0f,0.0f);
@@ -432,6 +432,8 @@ public:
         // host block here made the effective smoothing N times too fast (N=frames).
         // Block-rate controls need a coefficient for the elapsed host block.
         const float controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
+        // Per-sample controls use the same 10 ms time constant at every rate.
+        const float sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
         const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.0015f*std::fmax(sr_,1.0f)));
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
@@ -511,9 +513,9 @@ public:
             for(int c=0;c<2;++c) { ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp); }
             const int blockEnd=blockStart+blockFrames;
             for(int i=blockStart;i<blockEnd;++i) {
-            const float ig=input_.next(inGain), og=output_.next(outGain);
-            const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
-            const float mix=circuitMix_.next(cmix);
+            const float ig=input_.next(inGain,sampleSmooth), og=output_.next(outGain,sampleSmooth);
+            const float pg=preamp_.next(preampGain,sampleSmooth), fg=fader_.next(faderGain,sampleSmooth);
+            const float mix=circuitMix_.next(cmix,sampleSmooth);
             const float consoleFader=consoleFader_.next(consoleTarget,consoleSmoothing);
             const float l=(ctx.inputs&&ctx.numInputs>0&&ctx.inputs[0])?ctx.inputs[0][i]:0.0f;
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;

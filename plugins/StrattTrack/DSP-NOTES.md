@@ -85,3 +85,8 @@ Engineering basis: mid/side and mono-sum behaviour are described by iZotope's M/
 ## Click-safe polarity switching (1.1.6)
 
 Phase L/R are polarity inversions (0°/180°), not continuous phase rotation controls. A parameter change now commits at the first per-channel zero crossing after valid previous-sample history has been seeded, preserving full amplitude and avoiding the artificial 10 ms cancellation trough caused by linearly smoothing +1 to -1. The initial reset value is never treated as a real crossing. For DC or near-DC material without a crossing, a 20 ms bounded wait switches to a 1 ms one-pole fallback. The previous sample, requested polarity, wait counter and fallback state are independent per channel and reset deterministically. No allocation, locks, trigonometric operations or I/O are added to the sample path.
+
+
+## Sample-rate-invariant gain smoothing (1.2.0)
+
+Input/output trim, preamp, final fader and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
