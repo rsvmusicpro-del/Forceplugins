@@ -32,11 +32,13 @@
         },
         {
           "param": "Pan L",
-          "widget": "knob"
+          "widget": "knob",
+          "polarity": "bipolar"
         },
         {
           "param": "Pan R",
-          "widget": "knob"
+          "widget": "knob",
+          "polarity": "bipolar"
         },
         {
           "param": "HP Freq",
@@ -56,7 +58,8 @@
         },
         {
           "param": "Fader",
-          "widget": "fader"
+          "widget": "fader",
+          "polarity": "bipolar"
         }
       ]
     },
