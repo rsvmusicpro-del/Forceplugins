@@ -1,3 +1,9 @@
+## StrattTrack 1.5.1
+
+- Replace linear interpolation in Q with a smoothstep gain-to-octave-bandwidth law, narrowing from 1.9 octaves toward each band's actual fractional-octave spacing as cut/boost increases.
+- Convert bandwidth to Q with the RBJ bilinear-transform frequency-warp relation, and cap bandwidth against the available Nyquist margin so the top band remains finite and stable at 44.1/48 kHz.
+- Add independent checks for bandwidth symmetry, monotonic focus, centre gain, half-gain bandwidth and pole stability across all sixteen bands at 44.1/48/96 kHz; preserve all parameter IDs/order and MPC Sample mappings.
+
 ## StrattTrack 1.5.0
 
 - Upgrade the 16-band graphic EQ from fixed-Q to gain-dependent proportional-Q: subtle moves remain broad and larger cuts/boosts progressively focus, matching classic analogue graphic-EQ interaction while retaining symmetric boost/cut and exact unity at 0 dB.
