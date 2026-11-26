@@ -54,6 +54,8 @@ for branch, plugin, ui_name, param_count, ver in [
     ("feature/strattpultek", "StrattPultek", "CONSOLE", 17, "1.9.10"),
 ]:
     project=root/"plugins"/plugin
+    if not project.exists():
+        continue
     source=(project/"src"/(plugin+".cpp")).read_text()
     manifest=json.loads((project/"plugin.json").read_text())
     ui=json.loads((project/"ui.json").read_text())
