@@ -413,7 +413,10 @@ public:
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
         if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
-        const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
+        // Smooth::next() is called once per sample below, so its coefficient must
+        // represent one sample of a 10 ms one-pole time constant. Using the whole
+        // host block here made the effective smoothing N times too fast (N=frames).
+        const float controlSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
         const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.0015f*std::fmax(sr_,1.0f)));
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
@@ -557,7 +560,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1120;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1130;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
