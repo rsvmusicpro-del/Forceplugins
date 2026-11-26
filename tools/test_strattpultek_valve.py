@@ -2,6 +2,7 @@
 """Numerical regression checks for StrattPultek's fixed valve ADAA transfer."""
 import math
 import random
+import pathlib
 import unittest
 
 
@@ -118,6 +119,23 @@ def simpson_average(x, previous, steps=200):
 
 
 class ValveTransferTests(unittest.TestCase):
+    def test_fixed_valve_stage_is_always_on_after_colour_and_before_fader(self):
+        source_path = (pathlib.Path(__file__).resolve().parents[1]
+                       / "plugins" / "StrattPultek" / "src" / "StrattPultek.cpp")
+        source = source_path.read_text()
+        self.assertIn("constexpr float tubeDrive = 1.15f;", source)
+        self.assertIn("constexpr float tubeAsymmetry = 0.045f;", source)
+        self.assertIn("adaaSoftClip(driven, previous, tubeAsymmetry) / tubeDrive", source)
+        self.assertIn("channels_[ch].tubeStage(processed, dcPole_)", source)
+        self.assertIn("const float outputSample = tubeOutput * outGain * finalFader;", source)
+        self.assertLess(source.index("const float processed ="), source.index("tubeStage(processed, dcPole_)"))
+        self.assertLess(source.index("tubeStage(processed, dcPole_)"), source.index("const float outputSample ="))
+        # The first live sample seeds the ADAA history, avoiding a false transient.
+        self.assertIn("hasPreviousTubeInput ? previousTubeInput : driven", source)
+        # The asymmetric DC term is removed with a one-pole blocker.
+        self.assertIn("previousTubeDcInput + pole * previousTubeDcOutput", source)
+        self.assertNotRegex(source, r'addParam\\([^\\n]*(?:valve|tube)')
+
     def test_c2_join_values_and_derivatives(self):
         # F, F' and F'' agree at the linear/knee and knee/plateau joins.
         knee = lambda t: 1.0 + t - t**3 + 0.5*t**4
