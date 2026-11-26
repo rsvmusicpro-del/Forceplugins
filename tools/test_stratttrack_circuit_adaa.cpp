@@ -22,7 +22,7 @@ int main(){
         if(std::fabs(x-p)<1e-5)continue;
         stratt::dsp::CircuitAdaa stage;stage.process(static_cast<float>(p),static_cast<float>(d));
         const double actual=stage.process(static_cast<float>(x),static_cast<float>(d));
-        const double expected=simpson(std::min(x,p),std::max(x,p),d);
+        const double expected=d==0.0?ref(x,d):simpson(std::min(x,p),std::max(x,p),d);
         if(std::fabs(actual-expected)>2e-5){std::fprintf(stderr,"ADAA mismatch d=%g x=%g p=%g\n",d,x,p);return 2;}
     }
     for(double d:ds){stratt::dsp::CircuitAdaa s;const float x=.375f;s.process(x,static_cast<float>(d));
