@@ -11,6 +11,7 @@
 // No allocation, locks, I/O or per-sample transcendental functions occur in process().
 
 #include "mpc_plugin.h"
+#include "dsp/airwindows_console7.h"
 #include <cmath>
 
 namespace {
@@ -23,7 +24,7 @@ enum P {
     kCompThresh, kCompRatio, kCompAttack, kCompRelease, kCompMakeup,
     kDrive, kCircuitMix, kOutPan, kFader,
     kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq,
-    kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kCount
+    kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kConsoleFader, kCount
 };
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
@@ -249,11 +250,12 @@ static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 
 struct Channel {
     Biquad hp,lp,lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
+    stratt::dsp::Console7Channel console;
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float previousTubeInput=0.0f;
     bool hasPreviousTubeInput=false;
     float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
-    void reset(){hp.reset();lp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
+    void reset(){console.reset();hp.reset();lp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         previousTubeInput=previousTubeDcInput=previousTubeDcOutput=0.0f;
@@ -336,14 +338,16 @@ public:
         addParam(mpc::floatParam("pt_bandwidth","PT Bandwidth",0,100,50,"%",0));
         addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att",{"5k","10k","20k"},1));
         addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
-        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
-        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
+        addParam(mpc::floatParam("console_fader","Console Fader",0,1,0.772f,"",3));
+        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0,0.772f});
+        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0,0.772f});
     }
-    void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
+    void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); for(auto &c:ch_) c.console.prepare(sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
         detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
+        consoleFader_.snap(finiteClamp(get(kConsoleFader),0,1,0.772f));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
         gateThreshDb_.snap(finiteClamp(get(kGateThresh),-80,0,-80));
@@ -367,6 +371,8 @@ public:
         const int n=mpc::clamp(ctx.numFrames,0,2048);
         if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
         const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
+        const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
+        const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.015f*std::fmax(sr_,1.0f)));
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
@@ -431,10 +437,13 @@ public:
             const float ig=input_.next(inGain), og=output_.next(outGain);
             const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
             const float mix=circuitMix_.next(cmix);
+            const float consoleFader=consoleFader_.next(consoleTarget,consoleSmoothing);
             const float l=(ctx.inputs&&ctx.numInputs>0&&ctx.inputs[0])?ctx.inputs[0][i]:0.0f;
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
-            const float a=finiteClamp(l,-16,16,0)*ig*pg*phaseL;
-            const float b=finiteClamp(r,-16,16,0)*ig*pg*phaseR;
+            const float consoleL=ch_[0].console.process(finiteClamp(l,-16,16,0),consoleFader);
+            const float consoleR=ch_[1].console.process(finiteClamp(r,-16,16,0),consoleFader);
+            const float a=consoleL*ig*pg*phaseL;
+            const float b=consoleR*ig*pg*phaseR;
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
             float *samples[2]={&xL,&xR};
             // Clean filtering and EQ precede the linked dynamics detector.
@@ -496,11 +505,11 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1100;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1110;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
-    Smooth output_,input_,preamp_,fader_,circuitMix_;
+    Smooth output_,input_,preamp_,fader_,circuitMix_,consoleFader_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
