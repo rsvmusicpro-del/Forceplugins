@@ -419,7 +419,7 @@ public:
         mix_.setTime(15.0f, sampleRate_);
         driveMix_.setTime(15.0f, sampleRate_);
         fader_.setTime(15.0f, sampleRate_);
-        consoleFader_.setTime(15.0f, sampleRate_);
+        consoleFader_.setTime(1.5f, sampleRate_);
         reset();
     }
 
