@@ -512,16 +512,11 @@ public:
                 channels_[ch].previousDriveInput = driveInput;
                 channels_[ch].hasPreviousDriveInput = true;
 
-                // Measure continuity in the same shaped-signal domain at
-                // both endpoints. The level-independent detector backs off
-                // immediately on polarity reversals or abrupt amplitude steps,
-                // then restores colour over 0.5 ms without adding audio latency.
-                const float previousDensitySample = static_cast<float>(
-                    softClipTransfer(previousDriveInput, 0.0));
-                const float currentDensitySample = static_cast<float>(
-                    softClipTransfer(driveInput, 0.0));
+                // Measure continuity from adjacent driven samples before
+                // the waveshaper, so saturation cannot hide a large transient.
+                // Both endpoints share one domain and the ratio is level-independent.
                 const float density = channels_[ch].grainDensity.process(
-                    previousDensitySample, currentDensitySample);
+                    previousDriveInput, driveInput);
                 const float driveWet = colour * drive * driveMix * density;
                 wet += (saturated - wet) * driveWet;
                 // Filter cutoffs remain independent of the Pultec/circuit wet-dry control.
