@@ -249,6 +249,8 @@ assert "constexpr double kHighMuAsymmetry=0.032;" in src
 assert "constexpr double kMediumMuAsymmetry=0.060;" in src
 assert "tubeIntegral(xd)-tubeIntegral(pd)" in src
 assert "integrateShortTubeInterval(lo,hi)/(hi-lo)" in src
+assert "if(ax<=1.0/kMediumMuScale && ap<=1.0/kMediumMuScale)" in src
+assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
@@ -393,7 +395,7 @@ def jbase(x):
     q=t+t*t+t**3/3-0.5*t**4-0.2*t**5+t**6/6+t**7/7-t**8/8+t**9/36
     return math.copysign(1/3+q,x)
 def ftube(x): return (1-W)*fbase(x,ETA1)+W*fbase(K*x,ETA2)/K
-def atube(x): return (1-W)*(gbase(x)+ETA1*jbase(x))+W*(gbase(K*x)/K**2+ETA2*jbase(K*x)/K**3)
+def atube(x): return (1-W)*(gbase(x)+ETA1*jbase(x))+W*(gbase(K*x)/K**2+ETA2*jbase(K*x)/K**2)
 for x in (-3,-1.7,-0.6,0,0.6,1.7,3):
     h=1e-6
     assert abs((atube(x+h)-atube(x-h))/(2*h)-ftube(x))<3e-6
@@ -401,3 +403,36 @@ h=1e-5
 assert abs((ftube(h)-ftube(-h))/(2*h)-1)<2e-5
 assert abs(ftube(1.4)+ftube(-1.4))>1e-3
 print("StrattTrack hybrid valve transfer and antiderivative checks OK")
+
+
+# Five-point Gauss-Legendre ADAA fallback matches an independent Simpson integral
+# around every knee of both blended triode branches and around the zero crossing.
+_GL_NODES=(0.5384693101056831,0.9061798459386640)
+_GL_WEIGHTS=(0.5688888888888889,0.4786286704993665,0.2369268850561891)
+_GL_BOUNDARIES=sorted((-2.0,-2.0/K,-1.0,-1.0/K,0.0,1.0/K,1.0,2.0/K,2.0))
+def gauss5_segment(lo,hi):
+    mid=(lo+hi)*0.5
+    half=(hi-lo)*0.5
+    p0=ftube(mid-_GL_NODES[0]*half)+ftube(mid+_GL_NODES[0]*half)
+    p1=ftube(mid-_GL_NODES[1]*half)+ftube(mid+_GL_NODES[1]*half)
+    return half*(_GL_WEIGHTS[0]*ftube(mid)+_GL_WEIGHTS[1]*p0+_GL_WEIGHTS[2]*p1)
+def gauss5_average(lo,hi):
+    total=0.0
+    start=lo
+    for boundary in _GL_BOUNDARIES:
+        if lo<boundary<hi:
+            total+=gauss5_segment(start,boundary)
+            start=boundary
+    total+=gauss5_segment(start,hi)
+    return total/(hi-lo)
+def simpson_average(lo,hi,steps=1000):
+    step=(hi-lo)/steps
+    total=ftube(lo)+ftube(hi)
+    for i in range(1,steps):
+        total+=(4 if i%2 else 2)*ftube(lo+i*step)
+    return total/(3*steps)
+for knee in _GL_BOUNDARIES:
+    for width in (1.0e-3,1.0e-4,1.0e-5):
+        lo,hi=knee-0.37*width,knee+0.63*width
+        assert abs(gauss5_average(lo,hi)-simpson_average(lo,hi))<2.0e-10
+print("StrattTrack hybrid valve ADAA quadrature checks OK")

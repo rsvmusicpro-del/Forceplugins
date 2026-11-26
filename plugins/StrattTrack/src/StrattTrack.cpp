@@ -169,7 +169,7 @@ static inline double tubeIntegral(double x)
     const double k=kMediumMuScale;
     const double hi=softClipIntegral(x)+kHighMuAsymmetry*softClipSquareIntegral(x);
     const double med=softClipIntegral(k*x)/(k*k)
-                    +kMediumMuAsymmetry*softClipSquareIntegral(k*x)/(k*k*k);
+                    +kMediumMuAsymmetry*softClipSquareIntegral(k*x)/(k*k);
     return (1.0-kTriodeBlend)*hi+kTriodeBlend*med;
 }
 
@@ -202,6 +202,23 @@ static inline float adaaTube(float x,float previousX)
     if(ad==0.0) return static_cast<float>(tubeTransfer(xd));
     const double scale=std::fmax(1.0,std::fmax(std::fabs(xd),std::fabs(pd)));
     if(ad<=1.0e-4*scale) {
+        const double ax=std::fabs(xd), ap=std::fabs(pd);
+        const double midpoint=0.5*(xd+pd);
+        const double d2=delta*delta;
+        // Quiet programme samples remain in the two linear branches: exact
+        // quadratic ADAA avoids the multi-node fallback on the common path.
+        if(ax<=1.0/kMediumMuScale && ap<=1.0/kMediumMuScale) {
+            const double eta=(1.0-kTriodeBlend)*kHighMuAsymmetry
+                            +kTriodeBlend*kMediumMuAsymmetry*kMediumMuScale;
+            return static_cast<float>(midpoint+eta*(midpoint*midpoint+d2/12.0));
+        }
+        // Both branches are constant beyond the outer knee on the same polarity.
+        if(ax>=2.0 && ap>=2.0 && std::signbit(xd)==std::signbit(pd)) {
+            const double sign=std::signbit(xd)?-1.0:1.0;
+            const double plateau=(1.0-kTriodeBlend)*(sign*1.5+kHighMuAsymmetry*2.25)
+                +kTriodeBlend*(sign*1.5+kMediumMuAsymmetry*2.25)/kMediumMuScale;
+            return static_cast<float>(plateau);
+        }
         const double lo=std::fmin(xd,pd), hi=std::fmax(xd,pd);
         return static_cast<float>(integrateShortTubeInterval(lo,hi)/(hi-lo));
     }
