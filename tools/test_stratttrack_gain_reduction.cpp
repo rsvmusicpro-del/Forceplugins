@@ -43,7 +43,7 @@ int main()
 {
     StrattTrack plugin;
     plugin.prepare(48000.0, kFrames);
-    if (plugin.numParams() != 69 || plugin.param(kCompGR).automatable) {
+    if (plugin.numParams() != 69 || plugin.param(kCompGR).automatable || !plugin.param(kCompGR).transient) {
         std::fprintf(stderr, "Comp GR must be the appended non-automatable parameter\n");
         return 1;
     }
