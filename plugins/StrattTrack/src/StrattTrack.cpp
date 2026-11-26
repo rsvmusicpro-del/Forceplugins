@@ -247,6 +247,15 @@ struct Channel {
         previousTubeInput=previousTubeColor=previousTubeDcInput=previousTubeDcOutput=0.0f;
         hasPreviousTubeInput=false;}
     float tubeStage(float x,float pole,float hfAlpha) {
+        // Fail closed on corrupted upstream state and bound the ADAA input so
+        // one pathological sample cannot poison the antiderivative or DC memory.
+        if(!std::isfinite(x)) {
+            previousTubeInput=previousTubeColor=0.0f;
+            previousTubeDcInput=previousTubeDcOutput=0.0f;
+            hasPreviousTubeInput=false;
+            return 0.0f;
+        }
+        x=mpc::clamp(x,-64.0f,64.0f);
         constexpr float tubeDrive=1.15f;
         const float driven=x*tubeDrive;
         const float previous=hasPreviousTubeInput?previousTubeInput:driven;
@@ -678,7 +687,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1300;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1301;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
