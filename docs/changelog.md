@@ -137,3 +137,10 @@ Key 61, Key 37, Force (32-bit) and MPC Live III, MPC XL and later (64-bit).
 - Added exact closed-form hybrid ADAA antiderivative plus five-point Gauss–Legendre handling for short intervals split at both nonlinear knees and zero.
 - Added subtle 18 kHz filtering of the nonlinear residual only; retained the 3 Hz DC blocker, parameter IDs/order, state contract and MPC Sample Q-Link mapping.
 - No new user parameter or UI control; DSP notes document equations, valve electrical references, assumptions and limitations.
+
+
+## StrattTrack 1.3.0 — selectable Mono Compatibility
+
+- Added Mono Compatibility Off/Auto/Full and an adjustable Auto correlation threshold to the OUTPUT page.
+- Auto progressively reduces M/S Side below the selected negative-correlation threshold; Full removes Side immediately before the permanent valve stage. The protection is smoothed and preserves Mid.
+- Appended the two new parameters after the existing 50 slots; retained prior parameter indices, factory-program values and MPC Sample mappings.

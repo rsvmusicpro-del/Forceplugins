@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 // Signal flow: Airwindows Console7 input stage -> preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> serial Cleansweep HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
-// compressor -> user-controlled drive colour (parallel blend) -> permanent
+// compressor -> user-controlled drive colour -> Mono Compatibility -> permanent
 // invisible ADAA valve stage -> output balance -> tone-neutral master Output gain.
 //
 // All clean stages use linear gain and stable cookbook biquads. The Drive/Circuit
@@ -27,7 +27,8 @@ enum P {
     kDrive, kCircuitMix, kOutPan,
     kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq,
     kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kConsoleFader, kInvertLR, kWidth, kCorrelation, kBassMono,
-    kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder, kCount
+    kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,
+    kMonoCompatibility, kMonoThreshold, kCount
 };
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
@@ -341,8 +342,11 @@ public:
         addParam(mpc::boolParam("cs_lp_on","CS LP On",false));
         addParam(mpc::logParam("cs_lp_freq","CS LP Freq",20,22000,22000,"Hz",0));
         addParam(mpc::choiceParam("cs_lp_order","CS LP Ord",{"1","2","3","4","5","6"},0));
-        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0});
-        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0});
+        // Appended mono-protection controls preserve all existing parameter indices.
+        addParam(mpc::choiceParam("mono_compatibility","Mono Compatibility",{"Off","Auto","Full"},0));
+        addParam(mpc::floatParam("mono_threshold","Mono Threshold",0,100,50,"%",0));
+        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50});
+        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50});
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
@@ -389,6 +393,10 @@ public:
         width_.snap(finiteClamp(get(kWidth),0,200,100)*0.01f);
         correlation_.snap(finiteClamp(get(kCorrelation),0,100,0)*0.01f);
         bassMonoFreq_.snap(finiteClamp(get(kBassMono),20,400,120));
+        monoCompatibility_.snap(finiteClamp(static_cast<float>(getInt(kMonoCompatibility)),0,2,0));
+        monoThreshold_.snap(finiteClamp(get(kMonoThreshold),0,100,50)*0.01f);
+        monoSafety_.snap(1.0f);
+        monoCorrPowerL_=monoCorrPowerR_=monoCorrCross_=0.0f;
         bassMonoSideHp_.reset();
         bassMonoSideHp_.pass(sr_,bassMonoFreq_.v,true);
         corrPowerL_=corrPowerR_=corrCross_=0.0f;
@@ -469,6 +477,7 @@ public:
         const float ptHfAttF=smoothLog(ptHighAttenFreq_.v,ptHighAttenFrequency(getInt(kPtHighAttenFreq)),controlBlockSmooth); ptHighAttenFreq_.snap(ptHfAttF);
         const float ptHfAtten=ptHighAtten_.next(finiteClamp(get(kPtHighAtten),0,16,0),controlBlockSmooth);
         const float correlationAlpha=1.0f-std::exp(-1.0f/(0.050f*sr_));
+        const float monoCorrelationAlpha=correlationAlpha;
         const float ptLowBoostAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF/sr_);
         const float ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_);
         const float ptHighAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptHfAttF/sr_);
@@ -496,6 +505,8 @@ public:
             const float swapSideGain=std::cos(invertLR*kPi);
             const float width=width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,filterSmooth);
             const float correlation=correlation_.next(finiteClamp(get(kCorrelation),0,100,0)*0.01f,filterSmooth);
+            const float monoMode=monoCompatibility_.next(finiteClamp(static_cast<float>(getInt(kMonoCompatibility)),0,2,0),filterSmooth);
+            const float monoThreshold=monoThreshold_.next(finiteClamp(get(kMonoThreshold),0,100,50)*0.01f,filterSmooth);
             const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),filterSmooth);
             bassMonoFreq_.snap(bassFreq);
             bassMonoSideHp_.pass(sr_,bassFreq,true);
@@ -630,6 +641,25 @@ public:
                 const float driveWet=circuit(clean,drive);
                 *samples[ch]=clean+(driveWet-clean)*mix;
             }
+            // Mono Compatibility is deliberately the final stereo-image stage before Valve.
+            // Estimate correlation after all channel processing, then attenuate only Side.
+            monoCorrPowerL_+=monoCorrelationAlpha*(xL*xL-monoCorrPowerL_);
+            monoCorrPowerR_+=monoCorrelationAlpha*(xR*xR-monoCorrPowerR_);
+            monoCorrCross_+=monoCorrelationAlpha*(xL*xR-monoCorrCross_);
+            const bool monoCorrActive=monoCorrPowerL_>1.0e-9f && monoCorrPowerR_>1.0e-9f;
+            const float monoDenom=std::sqrt(std::fmax(monoCorrPowerL_*monoCorrPowerR_,1.0e-20f));
+            const float monoRho=monoCorrActive?finiteClamp(monoCorrCross_/monoDenom,-1.0f,1.0f,0.0f):0.0f;
+            float monoSafetyTarget=1.0f;
+            if(monoMode>=1.5f) monoSafetyTarget=0.0f;
+            else if(monoMode>=0.5f && monoCorrActive && monoRho <= -monoThreshold) {
+                const float span=std::fmax(1.0f-monoThreshold,1.0e-4f);
+                monoSafetyTarget=finiteClamp((1.0f+monoRho)/span,0.0f,1.0f,1.0f);
+            }
+            const float monoSafety=monoSafety_.next(monoSafetyTarget,sampleSmooth);
+            const float monoMid=0.5f*(xL+xR);
+            const float monoSide=0.5f*(xL-xR)*monoSafety;
+            xL=monoMid+monoSide;
+            xR=monoMid-monoSide;
             // Permanent, invisible valve-amplifier coloration: independent of
             // Circuit Mix, after all tone/dynamics stages and before output gain.
             // The same ADAA triode-inspired stage is used by StrattPultek.
@@ -648,7 +678,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1209;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1300;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -694,6 +724,8 @@ private:
     int phaseWait_[2]={0,0};
     bool phaseFallback_[2]={false,false};
     Smooth invertLR_,width_,correlation_,bassMonoFreq_;
+    Smooth monoCompatibility_,monoThreshold_,monoSafety_;
+    float monoCorrPowerL_=0.0f, monoCorrPowerR_=0.0f, monoCorrCross_=0.0f;
     Biquad bassMonoSideHp_;
     float corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;

@@ -237,6 +237,15 @@
       "name": "OUTPUT",
       "controls": [
         {
+          "param": "Mono Compatibility",
+          "widget": "knob",
+          "overlay": "menu"
+        },
+        {
+          "param": "Mono Threshold",
+          "widget": "knob"
+        },
+        {
           "param": "Circuit Mix",
           "widget": "knob"
         },

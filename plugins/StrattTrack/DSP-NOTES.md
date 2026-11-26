@@ -243,3 +243,8 @@ Stereo-image references for 1.2.9:
 - Drawmer 1976 operator manual: independent low/mid/high width, gain compensation, mono auditioning and advice to keep lows mono: https://drawmer.com/uploads/manuals/1976_operators_manual.pdf
 - Dangerous Music S&M: analogue M/S encode/insert/decode architecture and channel separation specification: https://www.dangerousmusic.com/product/s-m
 - CMU equal-power pan law derivation: https://www.cs.cmu.edu/~music/icm-online/readings/panlaws/
+
+
+## Mono Compatibility (1.3.0)
+
+Mono Compatibility is the final stereo-image stage immediately before the permanent valve stage, after filters, EQ, dynamics and Drive/Circuit. Its dedicated 50 ms normalized L/R correlation estimator therefore measures the signal that is about to enter the valve. Off leaves Side unchanged. Auto uses an adjustable threshold T (0–100%, interpreted as rho threshold −T/100); at or below that threshold, Side gain ramps linearly to zero at rho=−1. Full sets Side gain to zero, yielding dual mono at the valve input. The protection gain is smoothed over 10 ms and Mid is never changed. Auto reduces correlation-related mono risk but does not mathematically guarantee compatibility for every subsequent nonlinear or time-varying process. Out Pan remains downstream and is not constrained by this protection.

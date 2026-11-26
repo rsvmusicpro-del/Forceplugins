@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.9"
+assert manifest["version"]=="1.3.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -51,13 +51,13 @@ for fragment in (
     assert fragment in src, fragment
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1209;" in src
+assert "x.version=1300;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan"))
 assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
-assert len(re.findall(r"addParam\(",src))==50
+assert len(re.findall(r"addParam\(",src))==52
 parameter_ids=[]
 for line in src.splitlines():
     if "addParam(legacyInput)" in line:
@@ -73,7 +73,8 @@ assert parameter_ids==[
     "comp_ratio","comp_attack","comp_release","comp_makeup","drive","circuit_mix","out_pan",
     "pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth",
     "pt_hf_atten_freq","pt_hf_atten","console_fader","invert_lr","width","correlation",
-    "bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order"
+    "bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order",
+    "mono_compatibility","mono_threshold"
 ], "Parameter IDs/order are a serialized host-state contract"
 programs=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',src)
 assert programs and all(len(values.split(","))==len(parameter_ids) for _,values in programs), "Preset values must match the parameter count"
@@ -487,3 +488,15 @@ for left,right in ((1.0,1.0),(0.4,-0.2),(-0.8,0.3)):
             out_r=mid-hp_side*side*width
             assert abs((out_l+out_r)*0.5-mid)<1.0e-12
 print("StrattTrack stereo-image refinement checks OK")
+
+# Mono Compatibility controls are appended, live on OUTPUT and run immediately before Valve.
+assert 'addParam(mpc::choiceParam("mono_compatibility","Mono Compatibility",{"Off","Auto","Full"},0))' in src
+assert 'addParam(mpc::floatParam("mono_threshold","Mono Threshold",0,100,50,"%",0))' in src
+assert "monoSafety_.next(monoSafetyTarget,sampleSmooth)" in src
+assert "monoRho <= -monoThreshold" in src
+assert "if(monoMode>=1.5f) monoSafetyTarget=0.0f;" in src
+mono_stage=src.index("// Mono Compatibility is deliberately the final stereo-image stage before Valve.")
+valve_stage=src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)")
+assert mono_stage < valve_stage
+assert src.index("xL=monoMid+monoSide;",mono_stage) < valve_stage
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
