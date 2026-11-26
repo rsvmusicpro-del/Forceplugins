@@ -5,8 +5,8 @@ root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 m=json.loads((root/"plugin.json").read_text()); u=json.loads((root/"ui.json").read_text())
 s=(root/"src"/"StrattTrack.cpp").read_text(); n=(root/"DSP-NOTES.md").read_text()
 r=(root/"README.md").read_text(); research=(root/"GRAPHIC-EQ-RESEARCH.md").read_text()
-freq=[20.,31.7,50.2,79.6,126.,200.,317.,502.,796.,1260.,2000.,3170.,5020.,7960.,12600.,20000.]
-names=["20 Hz","31.7 Hz","50.2 Hz","79.6 Hz","126 Hz","200 Hz","317 Hz","502 Hz","796 Hz","1.26 kHz","2 kHz","3.17 kHz","5.02 kHz","7.96 kHz","12.6 kHz","20 kHz"]
+freq=[20.,31.5,50.,80.,125.,200.,315.,500.,800.,1250.,2000.,3150.,5000.,8000.,12500.,20000.]
+names=["20 Hz","31.5 Hz","50 Hz","80 Hz","125 Hz","200 Hz","315 Hz","500 Hz","800 Hz","1.25 kHz","2 kHz","3.15 kHz","5 kHz","8 kHz","12.5 kHz","20 kHz"]
 assert (m["name"],m["manufacturer"],m["version"],m["uid"])==("StrattTrack","Stratt","1.4.0","S4X3")
 assert m["numInputs"]==m["numOutputs"]==2 and len(m["knobs"])==len(m["shiftKnobs"])==3
 assert all(x["parameter"]<68 for x in m["knobs"]+m["shiftKnobs"])
@@ -33,7 +33,7 @@ for line in s.splitlines():
   if z: ids.append(z.group(1))
 assert len(ids)==68
 assert ids[:52]==["output","input","preamp","phase_l","phase_r","pan_l","pan_r","hp_freq","lp_freq","lf_freq","lf_gain","lm_freq","lm_gain","lm_q","hm_freq","hm_gain","hm_q","hf_freq","hf_gain","gate_thresh","gate_range","gate_attack","gate_release","comp_thresh","comp_ratio","comp_attack","comp_release","comp_makeup","drive","circuit_mix","out_pan","pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth","pt_hf_atten_freq","pt_hf_atten","console_fader","invert_lr","width","correlation","bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order","mono_compatibility","mono_threshold"]
-assert ids[52:]==["eq_20","eq_31_7","eq_50_2","eq_79_6","eq_126","eq_200","eq_317","eq_502","eq_796","eq_1260","eq_2000","eq_3170","eq_5020","eq_7960","eq_12600","eq_20000"]
+assert ids[52:]==["eq_20","eq_31_5","eq_50","eq_80","eq_125","eq_200","eq_315","eq_500","eq_800","eq_1250","eq_2000","eq_3150","eq_5000","eq_8000","eq_12500","eq_20000"]
 p=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',s)
 assert len(p)>=2 and all(len(v.split(","))==68 for _,v in p)
 assert [(x["parameter"],x["label"]) for x in m["knobs"]]==[(0,"Output"),(7,"HP Freq"),(8,"LP Freq")]
