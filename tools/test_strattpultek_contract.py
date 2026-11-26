@@ -33,7 +33,7 @@ referenced = {
     if isinstance(control, dict) and "param" in control
 }
 if "i.version = 1907;" not in source:
-    raise SystemExit("PluginInfo version does not match the 1.9.6 manifest")
+    raise SystemExit("PluginInfo version does not match the 1.9.7 manifest")
 if "calculateDriveMakeupGain" not in source or "driveMakeupTable_" not in source or "* driveMakeupGain(drive)" not in source:
     raise SystemExit("Precomputed Drive fundamental makeup is missing from the audio path")
 if "kDriveMakeupSteps = 100" not in source or "for (int i = 0; i <= kDriveMakeupSteps; ++i)" not in source:
