@@ -275,3 +275,8 @@ CI independently differentiates the primitive, compares interval averages with h
 ## Graphic-EQ numerical hardening (1.5.2)
 
 The existing proportional-Q law remains defined in octave bandwidth: (BW(g)=BW_b+(BW_n-BW_b)s(t)), with (t=\mathrm{clamp}(|g|/12,0,1)) and (s(t)=t^2(3-2t)). The digital Q inversion uses the RBJ bilinear-warp term (\omega_0/\sin(\omega_0)), now evaluated in double precision. The peaking-biquad coefficient normalizer also uses double intermediates, then validates the stored float denominator with the second-order Jury conditions (|a_2|<1), (1+a_1+a_2>0), and (1-a_1+a_2>0); non-finite or unstable updates are rejected without replacing the last valid coefficients. This guard applies to the plugin's biquad designs and adds no work to the per-sample audio loop.
+
+
+## Real-time compressor gain-reduction telemetry (1.6.1)
+
+A non-automatable `Comp GR` telemetry parameter publishes the linked compressor's actual gain coefficient as a positive reduction magnitude, `GR = -20 log10(g_comp)`, clamped to 0–60 dB. It refreshes once per existing 64-frame processing chunk, not per sample; the logarithm therefore adds bounded low-rate work and no per-sample transcendental cost. The value excludes the independent gate gain and compressor makeup, so it isolates the compressor's gain computer. The parameter is appended after all existing controls, and its DYNAMICS-page knob slot sits between Comp Release and Comp Makeup; existing parameter IDs, indices, presets, signal flow and MPC Sample knob assignments remain intact.
