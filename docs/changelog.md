@@ -1,3 +1,11 @@
+## StrattTrack 1.6.0
+
+- Add first-order antiderivative antialiasing (ADAA) to the user-controlled Drive/Circuit rational saturator, preserving its static transfer curve, parallel mix, exact 0% bypass and independent per-channel history.
+- Evaluate the ADAA primitive with a range-reduced polynomial logarithm and cancellation-safe short-interval handling; bound input and clear history on non-finite samples.
+- Add independent derivative, numerical integration, short-interval and fault-recovery regression coverage to the StrattTrack CI workflow.
+- Carry forward the 1.5.2 double-precision graphic-EQ coefficient design and Jury/Schur stability checks, plus 1.5.3 Console7 denormal-state hardening and recovery tests.
+- Preserve UID S4X3, parameter IDs/order, factory-program layout and MPC Sample knob mappings.
+
 ## StrattTrack 1.5.3
 
 - Final PR-head validation rerun: no DSP or host-state changes beyond the release notes; see the PR checks for the full native/ARM and MPC simulator/package matrix.
