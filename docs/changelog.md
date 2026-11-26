@@ -1,3 +1,8 @@
+## StrattTrack 1.2.6
+
+- Refresh LF/LM/HM/HF RBJ biquad coefficients every 64 frames instead of once per host callback; advance their 10 ms smoothers using the actual chunk length to reduce zipper-like automation steps at large host block sizes.
+- Preserve static EQ response, neutral settings, all 50 parameter IDs/order, factory programs, and MPC Sample 3+3 mapping.
+
 ## StrattTrack 1.2.4
 
 - Remove the active −24…+24 dB Input trim and gain multiplication; Preamp becomes the only active user input-gain stage after Console7.
