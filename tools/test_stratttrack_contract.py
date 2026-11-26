@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.3.0"
+assert manifest["version"]=="1.3.1"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -51,7 +51,7 @@ for fragment in (
     assert fragment in src, fragment
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1300;" in src
+assert "x.version=1301;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
