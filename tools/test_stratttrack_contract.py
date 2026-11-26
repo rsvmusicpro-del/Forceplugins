@@ -5,7 +5,9 @@ root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
-reset_match=re.search(r"void reset\(\) override \{(.*?)\n    \}\n    void process",src,re.S)
+reset_match=re.search(r"void reset\(\) override \{(.*?)
+    \}
+    void process",src,re.S)
 assert reset_match, "StrattTrack reset block not found"
 reset_body=reset_match.group(1)
 for line in reset_body.splitlines():
@@ -14,8 +16,8 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.6"
-assert "## StrattTrack 1.2.6" in (root.parents[1]/"docs"/"changelog.md").read_text()
+assert manifest["version"]=="1.2.7"
+assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
 assert "the fixed, low-level ADAA valve stage remains active independently" in readme
@@ -51,7 +53,7 @@ for fragment in (
     assert fragment in src, fragment
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1206;" in src
+assert "x.version=1207;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
@@ -242,8 +244,18 @@ assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
 # First-order DC blocker has H(z=1)=0; a DC step decays to zero.
 assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
 assert "adaaTube(driven,previous)/tubeDrive" in src
-assert "constexpr float tubeDrive=1.15f;" in src\nassert "constexpr double kTriodeBlend=0.28;" in src\nassert "constexpr double kMediumMuScale=1.18;" in src\nassert "constexpr double kHighMuAsymmetry=0.032;" in src\nassert "constexpr double kMediumMuAsymmetry=0.060;" in src\nassert "tubeIntegral(xd)-tubeIntegral(pd)" in src\nassert "integrateShortTubeInterval(lo,hi)/(hi-lo)" in src\nassert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src\nassert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src\nassert "float tubeStage(float x,float pole,float hfAlpha)" in src\nassert "x.version=1207;" in src
-assert "previousTubeDcInput=shaped;" in src and "previousTubeDcOutput=y;" in src
+assert "constexpr float tubeDrive=1.15f;" in src
+assert "constexpr double kTriodeBlend=0.28;" in src
+assert "constexpr double kMediumMuScale=1.18;" in src
+assert "constexpr double kHighMuAsymmetry=0.032;" in src
+assert "constexpr double kMediumMuAsymmetry=0.060;" in src
+assert "tubeIntegral(xd)-tubeIntegral(pd)" in src
+assert "integrateShortTubeInterval(lo,hi)/(hi-lo)" in src
+assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
+assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
+assert "float tubeStage(float x,float pole,float hfAlpha)" in src
+assert "x.version=1207;" in src
+assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
@@ -253,7 +265,7 @@ for _ in range(100000):
     x_prev = x
 assert abs(y) < 1.0e-12
 # A constant tube-stage input settles to zero after DC blocking.
-assert "const float y=shaped-previousTubeDcInput+pole*previousTubeDcOutput;" in src
+assert "const float y=voiced-previousTubeDcInput+pole*previousTubeDcOutput;" in src
 
 def onepole_shelf_mag(fc,gain_db,freq,sr=44100.0):
     alpha=1.0-math.exp(-2.0*math.pi*fc/sr)
@@ -348,12 +360,13 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1206;" in src
+assert "x.version=1207;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
 polarity_start=src.index("float applyPolarity(")
-polarity_end=src.index("\n    }",polarity_start)
+polarity_end=src.index("
+    }",polarity_start)
 polarity_body=src[polarity_start:polarity_end]
 assert not any(token in polarity_body for token in ("std::exp(", "std::sin(", "std::cos(", "std::pow(", "std::log(")), "polarity fallback must not evaluate transcendental functions per sample"
 print("StrattTrack polarity transition checks OK")
