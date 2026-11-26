@@ -10,6 +10,8 @@ project = root / "plugins" / "StrattPultek"
 source = (project / "src" / "StrattPultek.cpp").read_text(encoding="utf-8")
 ui = json.loads((project / "ui.json").read_text(encoding="utf-8"))
 manifest = json.loads((project / "plugin.json").read_text(encoding="utf-8"))
+readme = (project / "README.md").read_text(encoding="utf-8")
+dsp_notes = (project / "DSP-NOTES.md").read_text(encoding="utf-8")
 
 ids = re.findall(r'addParam\(\w+Param\("([^"]+)"', source)
 expected = [
@@ -21,6 +23,10 @@ if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
 if manifest["version"] != "1.9.10":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
+if not readme.startswith(f"# StrattPultek {manifest['version']}\n"):
+    raise SystemExit("README version heading does not match plugin.json")
+if not dsp_notes.startswith(f"# StrattPultek {manifest['version']} DSP notes"):
+    raise SystemExit("DSP-NOTES version heading does not match plugin.json")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["CONSOLE", "EQ", "CIRCUIT"]:
     raise SystemExit(f"Unexpected page layout: {pages!r}")
