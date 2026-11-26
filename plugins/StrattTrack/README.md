@@ -1,9 +1,9 @@
-# StrattTrack 1.2.7
+# StrattTrack 1.2.9
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
 ## Signal path
-Stereo input → Console7 input stage → preamp → smoothed L/R polarity and channel exchange → equal-power dual input pan → M/S width and negative-correlation side safeguard → low-frequency Side reduction (Bass Mono) → original 12 dB/oct Butterworth HP/LP → optional serial Cleansweep HP/LP (independent HP/LP enable, 20 Hz–11 kHz / 20 Hz–22 kHz, 1st–6th-order Butterworth) → Pulse Techniques EQP-1A response-curve model → four-band parametric EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive and fixed valve-inspired transfer → smoothed stereo balance → tone-neutral Output master trim.
+Stereo input → Console7 input stage → preamp → smoothed L/R polarity and channel exchange → equal-power dual input pan → M/S width and negative-correlation side safeguard → 2nd-order Butterworth low-frequency Side high-pass (Bass Mono) (Bass Mono) → original 12 dB/oct Butterworth HP/LP → optional serial Cleansweep HP/LP (independent HP/LP enable, 20 Hz–11 kHz / 20 Hz–22 kHz, 1st–6th-order Butterworth) → Pulse Techniques EQP-1A response-curve model → four-band parametric EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive and fixed valve-inspired transfer → smoothed stereo balance → tone-neutral Output master trim.
 
 The dedicated PULTEC page exposes the EQP-1A controls: 20/30/60/100 Hz low boost and attenuation, 3/4/5/8/10/12/16 kHz high peak boost with sharp-to-broad bandwidth, and 5/10/20 kHz high shelving attenuation. The stage sits after HP/LP and before the four-band channel EQ. Control ranges follow Pulse Techniques' published specifications.
 
@@ -85,3 +85,8 @@ safeguard while either channel's smoothed mean-square level is below −90 dBFS
 (`1e-9` mean square). This prevents silence and quantization residue from
 driving an unnecessary Side reduction. The M/S equations, mono fold-down,
 width range, pan law and all existing parameter IDs remain unchanged.
+
+
+## Stereo image refinements (1.2.9)
+
+Phase L/R remains a zero-crossing polarity inversion with a bounded DC fallback; Invert L-R smoothly reverses Side while preserving Mid. Width remains mono-sum invariant and equal-power Pan retains its constant-power law. Pan, Width and M/S inversion automation now refreshes every 64 frames with elapsed-frame smoothing rather than stepping once per host callback. Bass Mono now uses a dedicated second-order Butterworth high-pass on Side (12 dB/octave, 20–400 Hz), keeping the centre signal unchanged; the design is informed by Maselec MTC-1X elliptical filtering and Drawmer 1976 low-band width practice, without claiming exact hardware emulation.
