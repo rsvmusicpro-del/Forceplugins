@@ -126,7 +126,7 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # original Butterworth fi
 assert "float csHpWet=s.csHp.process(x);" in src and "float csLpWet=s.csLp.process(x);" in src
 assert "csHpOld=ch_[c].csHp" in src and "csLpOld=ch_[c].csLp" in src
 assert "csHpOrderFade_.next(1.0f,sampleSmooth)" in src and "csLpOrderFade_.next(1.0f,sampleSmooth)" in src
-assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in src
+assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQ(graphicEqGains[band]),graphicEqGains[band]);" in src
 assert "Graphic EQ: sixteen stereo-linked RBJ peaking/bell biquads" in notes
 assert "Fixed centres: 20 / 31.5 / 50 / 80 / 125 / 200 / 315 / 500 / 800 / 1.25k / 2k / 3.15k / 5k / 8k / 12.5k / 20k Hz" in notes
 assert "ctx.outputs[0][i]=xL*oL*og;" in src and "ctx.outputs[1][i]=xR*oR*og;" in src
