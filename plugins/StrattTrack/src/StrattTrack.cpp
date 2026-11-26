@@ -138,7 +138,7 @@ public:
         addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0});
         addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0});
     }
-    void prepare(double sr,int) override { sr_=(float)sr; reset(); }
+    void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
@@ -215,7 +215,7 @@ public:
                 const float valveIn=driven*1.04f;
                 const float valveStatic=(valveIn/(1.0f+0.035f*std::fabs(valveIn))
                                          +0.003f*valveIn*valveIn)/1.04f;
-                s.valveDc=0.999572f*(s.valveDc+valveStatic-s.valvePrev);
+                s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);
                 s.valvePrev=valveStatic;
                 *samples[ch]=s.valveDc;
             }
@@ -236,5 +236,6 @@ private:
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_;
+    float valveDcCoef_=0.999572f;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)
