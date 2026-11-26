@@ -142,7 +142,7 @@ public:
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
-        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
+        detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
@@ -165,6 +165,9 @@ public:
         const float ratio=finiteClamp(get(kCompRatio),1,20,1);
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
+        // Gate timing belongs to its own detector; a short fixed gain slew only
+        // removes control discontinuities after the hysteretic state decision.
+        const float gateSlew=coeff(2.0f,sr_);
         const float makeup=db(finiteClamp(get(kCompMakeup),0,24,0));
         // Rebuild the static compressor curve only when its ratio changes. The
         // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
@@ -226,14 +229,17 @@ public:
             const int curveIndex=static_cast<int>(curvePos);
             const float curveFrac=curvePos-static_cast<float>(curveIndex);
             const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
-            const float cc=targetComp<compGain_?compAtk:compRel;
-            compGain_=cc*compGain_+(1.0f-cc)*targetComp;
+            // The compressor envelope already supplies the specified attack/release.
+            // Applying a second identical smoother to gain would double its timing.
+            compGain_=targetComp;
+            // Independent gate envelope: gate timing must not follow compressor timing.
+            const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;
+            gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;
             // 3 dB hysteresis prevents gate chatter around its opening threshold.
             const float gateClose=gateThreshold*db(-3.0f);
-            if(gateOpen_ ? detector_<gateClose : detector_>gateThreshold) gateOpen_=!gateOpen_;
+            if(gateOpen_ ? gateDetector_<gateClose : gateDetector_>gateThreshold) gateOpen_=!gateOpen_;
             const float gateTarget=gateOpen_?1.0f:gateFloor;
-            const float gc=gateTarget<gateGain_?gateAtk:gateRel;
-            gateGain_=gc*gateGain_+(1.0f-gc)*gateTarget;
+            gateGain_=gateSlew*gateGain_+(1.0f-gateSlew)*gateTarget;
             for(int ch=0;ch<2;++ch) {
                 Channel &s=ch_[ch];
                 *samples[ch]=*samples[ch]*gateGain_*compGain_*makeup;
@@ -268,7 +274,7 @@ private:
     Smooth output_,input_,preamp_,fader_,circuitMix_;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
     // Linked dynamics state is separate from per-channel filter/colour state.
-    float detector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
+    float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
     float compCurve_[257]{};
     float compRatioCached_=-1.0f;
