@@ -34,8 +34,15 @@ inline float finiteClamp(float x,float lo,float hi,float fallback) {
 }
 struct Smooth {
     float v=0.0f;
-    float next(float target,float c=0.002f) { v += c*(target-v); return v; }
-    void snap(float x) { v=x; }
+    float next(float target,float c=0.002f) {
+        if(!std::isfinite(v)) v=std::isfinite(target)?target:0.0f;
+        if(!std::isfinite(target)) target=v;
+        c=finiteClamp(c,0.0f,1.0f,0.0f);
+        v += c*(target-v);
+        if(!std::isfinite(v)) v=target;
+        return v;
+    }
+    void snap(float x) { v=std::isfinite(x)?x:0.0f; }
 };
 struct Biquad {
     float b0=1,b1=0,b2=0,a1=0,a2=0,z1=0,z2=0;
@@ -342,30 +349,54 @@ public:
         addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0,0.772f});
         addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0,0.772f});
     }
-    void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); for(auto &c:ch_) c.console.prepare(sr_); reset(); }
+    void prepare(double sr,int) override {
+        sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
+        valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);
+        for(auto &c:ch_) c.console.prepare(sr_);
+        reset();
+    }
     void reset() override {
         for(auto &c:ch_) c.reset();
         detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
-        output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
+        // Host state can be restored before prepare/reset. Never seed a smoother
+        // with NaN/Inf: one invalid initial value would otherwise poison it forever.
+        output_.snap(db(finiteClamp(get(kOutput),-24,24,0)));
+        input_.snap(db(finiteClamp(get(kInput),-24,24,0)));
         consoleFader_.snap(finiteClamp(get(kConsoleFader),0,1,0.772f));
-        preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
-        circuitMix_.snap(get(kCircuitMix)*0.01f);
+        preamp_.snap(db(finiteClamp(get(kPreamp),-18,18,0)));
+        fader_.snap(db(finiteClamp(get(kFader),-60,12,0)));
+        circuitMix_.snap(finiteClamp(get(kCircuitMix),0,100,0)*0.01f);
         gateThreshDb_.snap(finiteClamp(get(kGateThresh),-80,0,-80));
         gateRangeDb_.snap(finiteClamp(get(kGateRange),0,80,60));
         compThreshDb_.snap(finiteClamp(get(kCompThresh),-40,0,0));
         compRatio_.snap(finiteClamp(get(kCompRatio),1,20,2));
         compMakeupDb_.snap(finiteClamp(get(kCompMakeup),0,24,0));
-        drive_.snap(finiteClamp(get(kDrive)*0.01f,0,1,0));
-        panL_.snap(get(kPanL)*0.01f); panR_.snap(get(kPanR)*0.01f); outPan_.snap(get(kOutPan)*0.01f);
-        phaseL_.snap(getBool(kPhaseL)?-1.0f:1.0f); phaseR_.snap(getBool(kPhaseR)?-1.0f:1.0f);
-        ptLowFreq_.snap(ptLowFrequency(getInt(kPtLowFreq))); ptLowBoost_.snap(get(kPtLowBoost)); ptLowAtten_.snap(get(kPtLowAtten));
-        ptHighFreq_.snap(ptHighFrequency(getInt(kPtHighFreq))); ptHighBoost_.snap(get(kPtHighBoost)); ptBandwidth_.snap(get(kPtBandwidth));
-        ptHighAttenFreq_.snap(ptHighAttenFrequency(getInt(kPtHighAttenFreq))); ptHighAtten_.snap(get(kPtHighAtten));
-        hpFreq_.snap(get(kHpFreq)); lpFreq_.snap(get(kLpFreq));
-        lfFreq_.snap(get(kLfFreq)); lfGain_.snap(get(kLfGain));
-        lmFreq_.snap(get(kLmFreq)); lmGain_.snap(get(kLmGain)); lmQ_.snap(get(kLmQ));
-        hmFreq_.snap(get(kHmFreq)); hmGain_.snap(get(kHmGain)); hmQ_.snap(get(kHmQ));
-        hfFreq_.snap(get(kHfFreq)); hfGain_.snap(get(kHfGain));
+        drive_.snap(finiteClamp(get(kDrive),0,100,0)*0.01f);
+        panL_.snap(finiteClamp(get(kPanL),-100,100,-100)*0.01f);
+        panR_.snap(finiteClamp(get(kPanR),-100,100,100)*0.01f);
+        outPan_.snap(finiteClamp(get(kOutPan),-100,100,0)*0.01f);
+        phaseL_.snap(getBool(kPhaseL)?-1.0f:1.0f);
+        phaseR_.snap(getBool(kPhaseR)?-1.0f:1.0f);
+        ptLowFreq_.snap(ptLowFrequency(mpc::clamp(getInt(kPtLowFreq),0,3)));
+        ptLowBoost_.snap(finiteClamp(get(kPtLowBoost),0,13.5f,0));
+        ptLowAtten_.snap(finiteClamp(get(kPtLowAtten),0,17.5f,0));
+        ptHighFreq_.snap(ptHighFrequency(mpc::clamp(getInt(kPtHighFreq),0,6)));
+        ptHighBoost_.snap(finiteClamp(get(kPtHighBoost),0,18,0));
+        ptBandwidth_.snap(finiteClamp(get(kPtBandwidth),0,100,50));
+        ptHighAttenFreq_.snap(ptHighAttenFrequency(mpc::clamp(getInt(kPtHighAttenFreq),0,2)));
+        ptHighAtten_.snap(finiteClamp(get(kPtHighAtten),0,16,0));
+        hpFreq_.snap(finiteClamp(get(kHpFreq),20,1000,20));
+        lpFreq_.snap(finiteClamp(get(kLpFreq),1000,22000,22000));
+        lfFreq_.snap(finiteClamp(get(kLfFreq),30,450,100));
+        lfGain_.snap(finiteClamp(get(kLfGain),-15,15,0));
+        lmFreq_.snap(finiteClamp(get(kLmFreq),100,2000,400));
+        lmGain_.snap(finiteClamp(get(kLmGain),-15,15,0));
+        lmQ_.snap(finiteClamp(get(kLmQ),0.4f,4.0f,1.0f));
+        hmFreq_.snap(finiteClamp(get(kHmFreq),500,8000,2500));
+        hmGain_.snap(finiteClamp(get(kHmGain),-15,15,0));
+        hmQ_.snap(finiteClamp(get(kHmQ),0.4f,4.0f,1.0f));
+        hfFreq_.snap(finiteClamp(get(kHfFreq),2000,20000,12000));
+        hfGain_.snap(finiteClamp(get(kHfGain),-15,15,0));
     }
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
