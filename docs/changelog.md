@@ -1,3 +1,10 @@
+## StrattTrack 1.2.9
+
+- Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.
+- Refresh input/output Pan, Width, Invert L-R and Bass Mono controls every 64 frames using elapsed-frame 10 ms smoothing, preventing host-block-sized stereo-image automation steps.
+- Preserve discrete zero-crossing Phase L/R polarity inversion, raised-cosine Mid-preserving L-R inversion, equal-power pan and the existing 50 parameter IDs/order, presets, UI and MPC Sample mappings.
+- Document Maselec MTC-1X, Drawmer 1976, Dangerous Music S&M hardware design references and independent response/mono-invariance tests.
+
 ## StrattTrack 1.2.8
 
 - Gate the negative-correlation Side safeguard below −90 dBFS RMS on either channel, preventing near-silence/quantization residue from being treated as a reliable stereo relationship.
