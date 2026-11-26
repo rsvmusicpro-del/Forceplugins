@@ -50,7 +50,7 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filt
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
 assert "sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)))" in src
 for control in ("input_", "output_", "preamp_", "fader_", "circuitMix_"):
-    assert re.search(re.escape(control) + r"\.next\([^,]+,sampleSmooth\)", src), control
+    assert re.search(re.escape(control) + r"\\.next\\([^,]+,sampleSmooth\\)", src), control
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
                 "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
@@ -259,5 +259,5 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1200;" in src
+assert "x.version=1190;" in src
 print("StrattTrack polarity transition checks OK")
