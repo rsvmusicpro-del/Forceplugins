@@ -1,13 +1,15 @@
-# StrattPultek 1.9.10 DSP notes and verification plan
+# StrattPultek 1.9.11 DSP notes and verification plan
 
-## Filter page — bx_cleansweep V2-style HP/LP
+## Shared FILTERS page — second-order Butterworth HP/LP
 
 | Control | Range | DSP stage |
 |---|---|---|
-| HP Freq | 20 Hz–11 kHz | Continuously variable first-order bilinear high-pass, 6 dB/octave |
-| LP Freq | 20 Hz–22 kHz | Continuously variable first-order bilinear low-pass, 6 dB/octave |
+| HP Freq | 20 Hz–1 kHz | Continuously variable second-order Butterworth high-pass, Q=0.7071, 12 dB/octave |
+| LP Freq | 1–22 kHz | Continuously variable second-order Butterworth low-pass, Q=0.7071, 12 dB/octave |
 
-Both filters are independent per stereo channel, cascaded HP then LP before the Pultec EQ, smoothed logarithmically over 1.5 ms, and clamped below Nyquist for sample-rate safety. The original 14 parameter indices are preserved; these controls are appended as indices 14 and 15. This matches the documented bx_cleansweep V2 topology/ranges, not the proprietary Anti-Crush implementation. Coefficients are designed in double precision; malformed non-finite samples reset the affected filter state. The first-order analog prototype is intentionally retained: Butterworth and Bessel have the same first-order magnitude response, so a named curve blend would not add a distinct response without changing the 6 dB/octave design.
+The HP/LP pair is the same shared mpc::dsp::TwoPoleButterworth implementation used by StrattTrack. Both plugins use identical cutoff ranges, coefficient equations, 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. The two independent stereo-channel sections are cascaded HP then LP after Console7 and before the Pultec EQ. Coefficients are designed in double precision and stored as float; cutoff is bounded to 0.45 × sample rate. Invalid samples reset only the affected filter state. These are linear filters with no saturation or added gain coloration.
+
+The HP and LP parameter IDs and indices (14 and 15) are unchanged, so saved projects retain their control mapping. Existing projects containing values outside the shared ranges are clamped to the new common range: HP 20 Hz–1 kHz, LP 1–22 kHz. The former Cleansweep-style first-order stage is retired.
 
 ## EQ control coverage
 
@@ -129,8 +131,13 @@ The dedicated Grain regression test covers polarity symmetry, scale invariance, 
 
 ## Airwindows Console7 input console stage
 
-The first stage is an Airwindows Console7Channel-derived input console. Its single Console Fader control retains the reference range (0.000–1.000) and default (0.772). The implementation preserves the reference 20 kHz low-pass (Q=1.618), nonlinear gain law (Fader × 1.2720196495, gain cubed before the transfer and divided by gain afterwards), and 80:20 Spiral/Density transfer. The 1.5 ms smoothed stage runs independently on left and right before Cleansweep or the Pultec EQ.
+The first stage is an Airwindows Console7Channel-derived input console. Its single Console Fader control retains the reference range (0.000–1.000) and default (0.772). The implementation preserves the reference 20 kHz low-pass (Q=1.618), nonlinear gain law (Fader × 1.2720196495, gain cubed before the transfer and divided by gain afterwards), and 80:20 Spiral/Density transfer. The 1.5 ms smoothed stage runs independently on left and right before the shared second-order Butterworth HP/LP section and Pultec EQ.
 
 The trigonometric transfer is represented by a degree-21 convergent polynomial whose maximum static-curve error is below 1.5e-7 over the clipped ±1.097 domain, then processed with first-order antiderivative antialiasing. This retains the reference curve to numerical precision while reducing foldback and avoiding per-sample sin()/pow() on the MPC ARM CPU. It is not bit-identical to the original non-antialiased VST. Airwindows Console7Channel is MIT licensed; the adaptation is attributed in framework/dsp/airwindows_console7.h. This is the channel insert portion, not the full multitrack channel-plus-buss Console decode/summing system.
 
 Engineers typically use console coloration for subtle harmonic/intermodulation density, gentle peak rounding, a more cohesive spatial impression and controlled summing while preserving transients, tonal balance and source identity. The input console stage is deliberately subtle and adds no noise, arbitrary EQ tilt or aggressive compression. The existing fixed valve stage remains separate at the output and retains its analytic ADAA transfer and DC blocker.
+
+
+## Shared filter standard (1.9.11)
+
+StrattPultek and StrattTrack now use the same TwoPoleButterworth class from framework/dsp/two_pole_filter.h. It implements the RBJ bilinear-transform second-order Butterworth high-pass and low-pass equations at Q=1/sqrt(2), with double-precision coefficient design, finite input/state recovery and a 0.45 × sample-rate upper cutoff bound. Both controls share HP 20–1000 Hz and LP 1000–22000 Hz ranges. Each plugin applies the same 10 ms logarithmic glide and refreshes coefficients every 64 audio frames. The former Cleansweep one-pole section is no longer part of StrattPultek's signal path. tools/test_strattpultek_filters.cpp verifies -3.01 dB corner response, 12 dB/octave asymptotes, stability across sample rates and recovery from non-finite input.
