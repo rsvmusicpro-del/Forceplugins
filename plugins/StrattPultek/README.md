@@ -5,7 +5,6 @@
 ## Included processing
 
 - bx_cleansweep V2-style first-order high-pass and low-pass filters on the Filter page. HP spans 20 Hz–11 kHz and LP 20 Hz–22 kHz; both are continuously variable, logarithmically smoothed and use a prewarped bilinear first-order analog-prototype response (6 dB/octave), with double-precision coefficient design and non-finite-state recovery. The filters run before the Pultec EQ.
-
 - Selectable first-order low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
 - First-order high-frequency shelf attenuation (5, 10, 20 kHz); the selector is calibrated near the documented mid-attenuation point rather than the -3 dB pole, using a sample-rate-aware digital response solve.
@@ -27,8 +26,6 @@ A published open-source EQP-1A study using Wave Digital Filters demonstrates tha
 
 The digital HP/LP pair is derived from the normalized analog first-order prototypes HLP(s)=wc/(s+wc) and HHP(s)=s/(s+wc). The prewarped bilinear substitution K=tan(pi*fc/fs) maps the analog -3 dB corner to the requested digital cutoff; its pole remains strictly inside the unit circle for the supported cutoff interval. Coefficients are calculated in double precision and stored as float for the ARM audio loop. Non-finite host samples are rejected before they can contaminate recursive filter state, and the filter itself resets safely on a non-finite input/output. Butterworth and Bessel first-order prototypes have the same single-pole response; there is no legitimate first-order magnitude-curve blend to add without changing the documented 6 dB/octave topology. The implementation therefore preserves the Cleansweep response rather than inventing a hybrid curve. This remains a linear filter stage: no saturation, harmonic generation or gain coloration is introduced by HP/LP filtering.
 
-
-
 The public bx_cleansweep V2 documentation specifies the HP/LP ranges and first-order 6 dB/octave slopes. This clean-room implementation uses a bilinear-transform one-pole pair with those documented frequency ranges. Brainworx's proprietary Anti-Crush curve implementation is not public, so bit-identical or circuit-identical behaviour cannot be claimed. This is a topology-level functional emulation, not a reverse-engineered copy.
 
 ## Permanent valve output stage
@@ -47,7 +44,7 @@ The MPC touch UI is divided into three pages: FILTER (HP/LP), EQ (all Pultec fre
 
 ## CPU and realtime
 
-One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. Output (parameter 0) is a tone-neutral post-colour master gain; the separate Fader is the final -60 to +6 dB multiplication after it; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The density estimate is \`r[n] = clamp(0.5·|u[n−1] + F(u[n])|, 0, 1)\`; its smoothstep weight is \`d[n] = r[n]²(3 − 2r[n])\`, and the final colour blend is \`g = Grain × Drive × DriveMix × d[n]\`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
+One stereo biquad and three stereo first-order shelves are updated once per block, with a 15 ms block-size-compensated parameter glide. Output, Grain, Drive, Drive Mix, the global Mix and the final Fader use 15 ms one-pole smoothing. Output (parameter 0) is a tone-neutral post-colour master gain; the separate Fader is the final -60 to +6 dB multiplication after it; 0 dB is unity. The colour stage uses an asymmetric polynomial waveshaper and its closed-form antiderivatives evaluated in double precision for the ADAA divided difference; it avoids per-sample transcendental functions and oversampling while reducing foldback distortion compared with direct sample-by-sample clipping. The density estimate is `r[n] = clamp(0.5·|u[n−1] + F(u[n])|, 0, 1)`; its smoothstep weight is `d[n] = r[n]²(3 − 2r[n])`, and the final colour blend is `g = Grain × Drive × DriveMix × d[n]`; all three controls are normalised to [0, 1]. Drive Mix defaults to 100%, preserving the former default saturation blend and existing parameter indices. At Drive = 0 or Grain = 0 or Drive Mix = 0, the saturation contribution is exactly zero. Frequency selections glide logarithmically. No allocation, locks, or I/O occur in the audio callback. ADAA is not alias-free, especially at extreme drive settings; this remains a trade-off for the MPC ARM CPU budget.
 
 The equations and engineering checks used to review the filter, nonlinear stage, smoothing, gain structure and output path are catalogued in [DSP_CALCULATIONS.md](DSP_CALCULATIONS.md). The list distinguishes analysis equations from the subset implemented in the real-time code.
 
@@ -64,7 +61,9 @@ python tools/validate.py plugins/StrattPultek
 python tools/package.py plugins/StrattPultek
 ```
 
-The touch UI uses the MPC amber widget kit with a restrained charcoal background, amber focus accent, simple film-strip knobs and horizontal faders. The 1280×628 background is shipped as `assets/strattpultek-bg.png`; its editable vector source is `assets/strattpultek-bg.svg`. The SDK build copies the background into `Plugin Skins/` and generates the native TUI and Q-Link mappings. No external GUI framework or third-party artwork is included.
+## Visual identity
+
+StrattPultek uses the repository's shared **MPC red** visual system, matching the native AKAI-inspired palette used across the plugin UI kit: charcoal background (`#1E1D1E`), red focus/accent (`#D31145`), white primary text and muted grey secondary labels. Shared controls come from `ui-kit/mpc-red` (knobs, faders, buttons, segments and toggles). The 1280×628 background is shipped as `assets/strattpultek-bg.png`; its editable vector source is `assets/strattpultek-bg.svg`. The SDK build copies the background into `Plugin Skins/` and generates the native TUI and Q-Link mappings. No external GUI framework or third-party artwork is included.
 
 ## References
 
@@ -78,21 +77,17 @@ The touch UI uses the MPC amber widget kit with a restrained charcoal background
 - [Barrera et al. — Modeling the Pultec EQP-1A with Wave Digital Filters (SMC 2024)](https://smcnetwork.org/smc2024/papers/SMC2024_paper_id132.pdf): circuit-derived passive-network modeling, oversampling and real-time implementation.
 - [ABSounds — EQP-WDF-1A](https://github.com/ABSounds/EQP-WDF-1A): open-source WDF-based implementation used as a technical comparison, not copied into this project.
 
-
 ## Numerical refinement in 1.9.3
 
 The first-order ADAA quotient now has a dedicated path for very short sample intervals that cross one of the transfer's polynomial knees (±1 or ±2). Instead of subtracting nearly equal global antiderivatives, the interval is split at the knee and integrated with five-point Gauss-Legendre quadrature. The asymmetric transfer is degree eight within each segment, and this quadrature is exact through degree nine. Intervals wholly inside one branch retain the existing symmetric local expansion; ordinary and longer intervals retain the closed-form primitive quotient. This is a numerical conditioning improvement, not a change to the static transfer, tone controls or steady-state target curve.
-
 
 ## Host-parameter hardening in 1.9.4
 
 All audio-thread parameter reads now pass through finite-value and range guards. This closes the malformed-host automation path where a NaN could enter a one-pole smoother and persist after the host returned to valid values. Choice values are bounded before integer conversion, preventing invalid selector indices. Valid parameter values and all established parameter identities, presets and MPC Sample mappings are unchanged.
 
-
 ## Tone-neutral master output in 1.9.5
 
 Parameter 0 (Output) is the host-nudged master gain required by the MPC SDK. It now runs after the fixed nonlinear valve-colour stage and before the dedicated final Fader. Loading or nudging parameter 0 therefore changes level only; it can no longer change the valve stage's operating point or harmonic content. Parameter IDs, order, defaults, programs and MPC Sample mappings are unchanged.
-
 
 ## Filter-control interpolation refinement in 1.9.6
 
@@ -101,4 +96,3 @@ EQ parameters retain their 15 ms perceptual smoothing, but the filter coefficien
 ## Grain engine refinement in 1.9.9
 
 The Grain detector now compares the previous and current driven samples before the waveshaper, in the same signal domain. Its continuity ratio is normalized by the sum of sample magnitudes, making the response independent of absolute input level and preventing the saturation plateau from masking large transients. Opposite-polarity samples produce zero density; same-polarity amplitude steps are weighted by their relative continuity. A cubic smoothstep shapes the detector response, followed by immediate transient attack and a 0.5 ms sample-rate-aware release. The detector state is independent per stereo channel, reset with the DSP, and uses no per-sample transcendental calls, allocation, locks, oversampling or added audio latency. Existing Grain, Drive and Drive Mix controls remain unchanged.
-
