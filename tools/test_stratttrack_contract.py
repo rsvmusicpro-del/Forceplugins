@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.7"
+assert manifest["version"]=="1.2.8"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -51,7 +51,7 @@ for fragment in (
     assert fragment in src, fragment
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1207;" in src
+assert "x.version=1208;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
@@ -254,7 +254,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1207;" in src
+assert "x.version=1208;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -436,3 +436,14 @@ for knee in _GL_BOUNDARIES:
         lo,hi=knee-0.37*width,knee+0.63*width
         assert abs(gauss5_average(lo,hi)-simpson_average(lo,hi))<2.0e-10
 print("StrattTrack hybrid valve ADAA quadrature checks OK")
+
+# Correlation safeguard confidence floor: both smoothed channel powers must be
+# above -90 dBFS RMS (1e-9 mean square) before rho can attenuate Side.
+assert "correlationActive=corrPowerL_>1.0e-9f && corrPowerR_>1.0e-9f" in src
+assert "correlationActive?finiteClamp(corrCross_/corrDenom,-1.0f,1.0f,0.0f):0.0f" in src
+floor=1.0e-9
+assert abs(10.0*math.log10(floor)-(-90.0))<1.0e-12
+for power_l,power_r in ((0.0,1.0),(floor*0.99,1.0),(floor, floor),(floor*1.01, floor*1.01)):
+    active=power_l>floor and power_r>floor
+    expected=active
+    assert active==expected
