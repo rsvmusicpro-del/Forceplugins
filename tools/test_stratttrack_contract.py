@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.1"
+assert manifest["version"]=="1.2.2"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
@@ -25,7 +25,7 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1201;" in src
+assert "x.version=1202;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Output","Out Pan","Fader"]
@@ -38,13 +38,15 @@ for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gat
     assert stage in src, stage
 assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
-assert "constexpr float kCompCurveMaxOver=32768.0f;" in src
-assert "std::sqrt(std::sqrt(normalizedOver))*256.0f" in src
+assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
+assert "constexpr int kCompCurveIntervals=1024;" in src
+assert "std::sqrt(std::sqrt(normalizedOver))*static_cast<float>(kCompCurveIntervals)" in src
+assert "float compCurve_[1025]{};" in src
 
 # Independent compressor-LUT accuracy check. The quartic grid must retain
 # the analytic hard-knee ratio near threshold and across the full input range.
-curve_size=256
-curve_max_over=32768.0
+curve_size=1024
+curve_max_over=8388608.0
 for ratio in (1.0, 2.0, 4.0, 10.0, 20.0):
     exponent=-(1.0-1.0/ratio)
     table=[]
