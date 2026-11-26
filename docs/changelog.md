@@ -1,5 +1,7 @@
 ## StrattTrack 1.5.3
 
+- Final PR-head validation rerun: no DSP or host-state changes beyond the release notes; see the PR checks for the full native/ARM and MPC simulator/package matrix.
+
 - Flush Console7 recursive-filter and ADAA-history state below 1e-30 to prevent subnormal slowdowns on ARM during long decays and near-silence.
 - Add compiled C++ stability/recovery coverage at 8.001–384 kHz, across five Console Fader positions, malformed inputs and post-fault recovery; run it in StrattTrack CI.
 - Retain the 1.5.2 double-precision graphic-EQ design and quantized-coefficient Jury/Schur stability checks; preserve UID S4X3 and all host-state compatibility.
