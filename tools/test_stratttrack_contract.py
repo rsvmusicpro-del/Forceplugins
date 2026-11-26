@@ -14,7 +14,7 @@ assert len(re.findall(r"addParam\(",src))==32
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.run") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
-assert "const float exponent=-(1.0f-1.0f/static_cast<float>(r+1));" in src and "curveLo+(curveHi-curveLo)*ratioFrac" in src  # precomputed hard-knee amplitude curves
+assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(colour-clean)*mix" in src  # true circuit bypass at 0%
 assert "hpFreq_.next" in src and "hfGain_.next" in src  # smoothed filter controls
