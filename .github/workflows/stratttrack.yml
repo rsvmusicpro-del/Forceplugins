@@ -31,6 +31,8 @@ jobs:
           python-version: "3.11"
       - name: Static parameter and DSP contract
         run: python tools/test_stratttrack_contract.py
+      - name: Verify Airwindows Console7 transfer, ADAA and integration
+        run: python tools/test_airwindows_console7.py
       - name: Verify shared valve transfer and short-interval ADAA math
         run: python tools/test_strattpultek_valve.py
       - name: Build native, ARM32 and ARM64; generate UI and validate
