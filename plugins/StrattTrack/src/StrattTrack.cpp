@@ -165,6 +165,12 @@ public:
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
+        gateThreshDb_.snap(finiteClamp(get(kGateThresh),-80,0,-80));
+        gateRangeDb_.snap(finiteClamp(get(kGateRange),0,80,60));
+        compThreshDb_.snap(finiteClamp(get(kCompThresh),-40,0,0));
+        compRatio_.snap(finiteClamp(get(kCompRatio),1,20,2));
+        compMakeupDb_.snap(finiteClamp(get(kCompMakeup),0,24,0));
+        drive_.snap(finiteClamp(get(kDrive)*0.01f,0,1,0));
         panL_.snap(get(kPanL)*0.01f); panR_.snap(get(kPanR)*0.01f); outPan_.snap(get(kOutPan)*0.01f);
         phaseL_.snap(getBool(kPhaseL)?-1.0f:1.0f); phaseR_.snap(getBool(kPhaseR)?-1.0f:1.0f);
         ptLowFreq_.snap(ptLowFrequency(getInt(kPtLowFreq))); ptLowBoost_.snap(get(kPtLowBoost)); ptLowAtten_.snap(get(kPtLowAtten));
@@ -179,20 +185,23 @@ public:
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
         if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
+        const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         const float faderGain=db(finiteClamp(get(kFader),-60,12,0));
-        const float gateThreshold=db(finiteClamp(get(kGateThresh),-80,0,-80));
-        const float gateFloor=db(-finiteClamp(get(kGateRange),0,80,60));
-        const float compThreshold=db(finiteClamp(get(kCompThresh),-40,0,0));
-        const float ratio=finiteClamp(get(kCompRatio),1,20,1);
+        // Smooth dynamics thresholds in dB (log-amplitude domain), not in
+        // linear gain, so a knob move has a perceptually uniform trajectory.
+        const float gateThreshold=db(gateThreshDb_.next(finiteClamp(get(kGateThresh),-80,0,-80),controlSmooth));
+        const float gateFloor=db(-gateRangeDb_.next(finiteClamp(get(kGateRange),0,80,60),controlSmooth));
+        const float compThreshold=db(compThreshDb_.next(finiteClamp(get(kCompThresh),-40,0,0),controlSmooth));
+        const float ratio=compRatio_.next(finiteClamp(get(kCompRatio),1,20,2),controlSmooth);
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         // Gate timing belongs to its own detector; a short fixed gain slew only
         // removes control discontinuities after the hysteretic state decision.
         const float gateSlew=coeff(2.0f,sr_);
-        const float makeup=db(finiteClamp(get(kCompMakeup),0,24,0));
+        const float makeup=db(compMakeupDb_.next(finiteClamp(get(kCompMakeup),0,24,0),controlSmooth));
         // Rebuild the static compressor curve only when its ratio changes. The
         // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
         if(ratio!=compRatioCached_) {
@@ -203,9 +212,8 @@ public:
             }
             compRatioCached_=ratio;
         }
-        const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
+        const float drive=drive_.next(finiteClamp(get(kDrive)*0.01f,0,1,0),controlSmooth);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
-        const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
         const float inL=panL_.next(finiteClamp(get(kPanL)*0.01f,-1,1,-1),controlSmooth), inR=panR_.next(finiteClamp(get(kPanR)*0.01f,-1,1,1),controlSmooth);
         const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
         const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),controlSmooth);
@@ -313,6 +321,7 @@ private:
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_;
+    Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
     Smooth ptLowFreq_,ptLowBoost_,ptLowAtten_,ptHighFreq_,ptHighBoost_,ptBandwidth_,ptHighAttenFreq_,ptHighAtten_;
