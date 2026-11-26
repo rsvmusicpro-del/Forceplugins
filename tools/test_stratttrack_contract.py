@@ -16,6 +16,7 @@ assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Dr
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Fader"))
 assert len(re.findall(r"addParam\(",src))==41
 assert "console.process(" in src and "kConsoleFader" in src
+assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("const float a=consoleL*ig*pg*phaseL")
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
