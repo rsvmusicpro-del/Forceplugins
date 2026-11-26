@@ -75,7 +75,7 @@ assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
 assert "s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);" in src
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
-for _ in range(1000):
+for _ in range(100000):
     x = 1.0
     y = r*(y+x-x_prev)
     x_prev = x
