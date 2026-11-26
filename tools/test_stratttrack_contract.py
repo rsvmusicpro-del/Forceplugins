@@ -25,6 +25,19 @@ assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOut
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
+# Sparse pages are deliberately distributed over the full four-row surface; active controls are centered within each Q-Link row group.
+expected_rows={"INPUT":[3,3,3,2],"FILTERS":[2,2,2,2],"PULTEC":[2,2,2,2],"DYNAMICS":[3,2,2,2],"OUTPUT":[2,1,1,1]}
+for page in ui["pages"]:
+    assert len(page["controls"])==16, (page["name"],len(page["controls"]))
+    if page["name"] in expected_rows:
+        counts=[sum(control!="empty" for control in page["controls"][row*4:(row+1)*4]) for row in range(4)]
+        assert counts==expected_rows[page["name"]], (page["name"],counts)
+        for row,count in enumerate(counts):
+            occupied=[col for col,control in enumerate(page["controls"][row*4:(row+1)*4]) if control!="empty"]
+            expected={3:[0,1,2],2:[1,2],1:[1]}[count]
+            assert occupied==expected, (page["name"],row,occupied)
+eq_page=next(page for page in ui["pages"] if page["name"]=="EQ")
+assert all(control!="empty" for control in eq_page["controls"])
 assert ui["kit"]=="mpc-red"
 assert ui["style"]["background"]=="ff1e1d1e" and ui["style"]["accent"]=="ffd31145"
 assert ui["style"]["text"]=="ffffffff" and ui["style"]["muted"]=="ff85878a"
