@@ -1,4 +1,4 @@
-# StrattTrack 1.2.6
+# StrattTrack 1.2.7
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -71,3 +71,8 @@ The separate −24 to +24 dB Input trim and its gain stage have been removed. Pr
 ## Realtime polarity fallback (1.2.5)
 
 The 1 ms fallback coefficient and 20 ms zero-crossing timeout are now calculated once in `prepare()` from the validated sample rate, rather than recalculating an exponential and timeout conversion inside the per-sample polarity-switch path. The click-safe zero-crossing behavior, timeout duration, fallback trajectory, parameter identity and audio transfer remain unchanged; this removes avoidable transcendental work from the real-time callback.
+
+
+## Hybrid valve voicing (1.2.7)
+
+The permanent parameter-free valve stage blends normalized ECC83/12AX7-like high-mu and 6SN7-like medium-mu triode curves (72/28), with asymmetric C2 soft knees, exact hybrid antiderivative ADAA, and subtle 18 kHz nonlinear-residual softening. Its chain position, permanent operation and independence from Drive/Circuit Mix are unchanged; no parameter IDs or Q-Link mappings were added. This is an original curve-informed voicing model, not a component-level simulation or measured vintage-valve capture; see `DSP-NOTES.md` for equations, electrical anchors, references and limitations.
