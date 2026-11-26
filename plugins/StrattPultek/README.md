@@ -102,3 +102,8 @@ EQ parameters retain their 15 ms perceptual smoothing, but the filter coefficien
 
 The Grain detector now compares the previous and current driven samples before the waveshaper, in the same signal domain. Its continuity ratio is normalized by the sum of sample magnitudes, making the response independent of absolute input level and preventing the saturation plateau from masking large transients. Opposite-polarity samples produce zero density; same-polarity amplitude steps are weighted by their relative continuity. A cubic smoothstep shapes the detector response, followed by immediate transient attack and a 0.5 ms sample-rate-aware release. The detector state is independent per stereo channel, reset with the DSP, and uses no per-sample transcendental calls, allocation, locks, oversampling or added audio latency. Existing Grain, Drive and Drive Mix controls remain unchanged.
 
+
+
+## Console emulation
+
+The input Console stage is an attributed MIT-licensed adaptation of Airwindows Console7Channel. It retains the reference Fader law and channel transfer with polynomial ADAA to reduce aliasing on MPC ARM hardware. It is not bit-identical to the original VST and does not include the separate buss decode/summing stage. See DSP-NOTES.md.
