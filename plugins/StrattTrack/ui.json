@@ -1,218 +1,83 @@
 {
-  "kit": {
-    "theme": "amber",
-    "accent": "ffd89a48"
-  },
+  "kit": "mpc-red",
   "qlinkGroups": "rows",
   "style": {
-    "background": "ff17191c",
-    "accent": "ffd89a48",
-    "text": "fff2eee7",
-    "muted": "ff898b8e"
+    "background": "ff1e1d1e",
+    "accent": "ffd31145",
+    "text": "ffffffff",
+    "muted": "ff85878a"
   },
   "pages": [
     {
       "name": "INPUT",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "Input",
-          "widget": "knob"
-        },
-        {
-          "param": "Preamp",
-          "widget": "knob"
-        },
-        {
-          "param": "Phase L",
-          "widget": "switch"
-        },
-        {
-          "param": "Phase R",
-          "widget": "switch"
-        },
-        {
-          "param": "Pan L",
-          "widget": "knob",
-          "polarity": "bipolar"
-        },
-        {
-          "param": "Pan R",
-          "widget": "knob",
-          "polarity": "bipolar"
-        }
+        { "param": "Input", "widget": "knob" },
+        { "param": "Preamp", "widget": "knob" },
+        { "param": "Phase L", "widget": "switch" },
+        { "param": "Phase R", "widget": "switch" },
+        { "param": "Pan L", "widget": "knob", "polarity": "bipolar" },
+        { "param": "Pan R", "widget": "knob", "polarity": "bipolar" }
       ]
     },
     {
       "name": "FILTERS",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "HP Freq",
-          "widget": "knob"
-        },
-        {
-          "param": "LP Freq",
-          "widget": "knob"
-        },
+        { "param": "HP Freq", "widget": "knob" },
+        { "param": "LP Freq", "widget": "knob" },
         "empty",
         "empty"
       ]
     },
     {
       "name": "PULTEC",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "PT LF Freq",
-          "widget": "knob",
-          "overlay": "menu"
-        },
-        {
-          "param": "PT LF Boost",
-          "widget": "knob"
-        },
-        {
-          "param": "PT LF Atten",
-          "widget": "knob"
-        },
-        {
-          "param": "PT HF Freq",
-          "widget": "knob",
-          "overlay": "menu"
-        },
-        {
-          "param": "PT HF Boost",
-          "widget": "knob"
-        },
-        {
-          "param": "PT Bandwidth",
-          "widget": "knob"
-        },
-        {
-          "param": "PT HF Att",
-          "widget": "knob",
-          "overlay": "menu"
-        },
-        {
-          "param": "PT HF Atten",
-          "widget": "knob"
-        }
+        { "param": "PT LF Freq", "widget": "knob", "overlay": "menu" },
+        { "param": "PT LF Boost", "widget": "knob" },
+        { "param": "PT LF Atten", "widget": "knob" },
+        { "param": "PT HF Freq", "widget": "knob", "overlay": "menu" },
+        { "param": "PT HF Boost", "widget": "knob" },
+        { "param": "PT Bandwidth", "widget": "knob" },
+        { "param": "PT HF Att", "widget": "knob", "overlay": "menu" },
+        { "param": "PT HF Atten", "widget": "knob" }
       ]
     },
     {
       "name": "EQ",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "LF Freq",
-          "widget": "knob"
-        },
-        {
-          "param": "LF Gain",
-          "widget": "knob"
-        },
-        {
-          "param": "LM Freq",
-          "widget": "knob"
-        },
-        {
-          "param": "LM Gain",
-          "widget": "knob"
-        },
-        {
-          "param": "LM Q",
-          "widget": "knob"
-        },
-        {
-          "param": "HM Freq",
-          "widget": "knob"
-        },
-        {
-          "param": "HM Gain",
-          "widget": "knob"
-        },
-        {
-          "param": "HM Q",
-          "widget": "knob"
-        },
-        {
-          "param": "HF Freq",
-          "widget": "knob"
-        },
-        {
-          "param": "HF Gain",
-          "widget": "knob"
-        }
+        { "param": "LF Freq", "widget": "knob" },
+        { "param": "LF Gain", "widget": "knob" },
+        { "param": "LM Freq", "widget": "knob" },
+        { "param": "LM Gain", "widget": "knob" },
+        { "param": "LM Q", "widget": "knob" },
+        { "param": "HM Freq", "widget": "knob" },
+        { "param": "HM Gain", "widget": "knob" },
+        { "param": "HM Q", "widget": "knob" },
+        { "param": "HF Freq", "widget": "knob" },
+        { "param": "HF Gain", "widget": "knob" }
       ]
     },
     {
       "name": "DYNAMICS",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "Gate Thresh",
-          "widget": "knob"
-        },
-        {
-          "param": "Gate Range",
-          "widget": "knob"
-        },
-        {
-          "param": "Gate Attack",
-          "widget": "knob"
-        },
-        {
-          "param": "Gate Release",
-          "widget": "knob"
-        },
-        {
-          "param": "Comp Thresh",
-          "widget": "knob"
-        },
-        {
-          "param": "Comp Ratio",
-          "widget": "knob"
-        },
-        {
-          "param": "Comp Attack",
-          "widget": "knob"
-        },
-        {
-          "param": "Comp Release",
-          "widget": "knob"
-        },
-        {
-          "param": "Comp Makeup",
-          "widget": "knob"
-        }
+        { "param": "Gate Thresh", "widget": "knob" },
+        { "param": "Gate Range", "widget": "knob" },
+        { "param": "Gate Attack", "widget": "knob" },
+        { "param": "Gate Release", "widget": "knob" },
+        { "param": "Comp Thresh", "widget": "knob" },
+        { "param": "Comp Ratio", "widget": "knob" },
+        { "param": "Comp Attack", "widget": "knob" },
+        { "param": "Comp Release", "widget": "knob" },
+        { "param": "Comp Makeup", "widget": "knob" }
       ]
     },
     {
       "name": "OUTPUT",
-      "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "Drive",
-          "widget": "knob"
-        },
-        {
-          "param": "Circuit Mix",
-          "widget": "knob"
-        },
-        {
-          "param": "Output",
-          "widget": "knob"
-        },
-        {
-          "param": "Out Pan",
-          "widget": "knob"
-        },
-        {
-          "param": "Fader",
-          "widget": "fader",
-          "polarity": "bipolar"
-        }
+        { "param": "Drive", "widget": "knob" },
+        { "param": "Circuit Mix", "widget": "knob" },
+        { "param": "Output", "widget": "knob" },
+        { "param": "Out Pan", "widget": "knob", "polarity": "bipolar" },
+        { "param": "Fader", "widget": "fader", "polarity": "bipolar" }
       ]
     }
   ]
