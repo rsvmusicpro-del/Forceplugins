@@ -33,7 +33,7 @@ assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isin
 assert len(re.findall(r"addParam\(",src))==45
 assert "console.process(" in src and "kConsoleFader" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
-assert src.index("consoleL=ch_[0].console.process") < src.index("const float a=consoleL*ig*pg*phaseL")
+assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*ig*pg,0,phaseTargetL)")
 for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
