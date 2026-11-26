@@ -34,7 +34,10 @@ assert len(re.findall(r"addParam\(",src))==45
 assert "kOutput=0, kLegacyInputSlot, kPreamp" in src
 assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
 assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
-assert "get(kLegacyInputSlot)" not in src and "input_.next" not in src
+assert "get(kLegacyInputSlot)" not in src and "input_.next" not in src and "inGain" not in src
+assert "consoleL*pg" in src and "consoleR*pg" in src
+assert manifest["knobs"]==[{"parameter":0,"label":"Output"},{"parameter":7,"label":"HP Freq"},{"parameter":8,"label":"LP Freq"}]
+assert manifest["shiftKnobs"]==[{"parameter":2,"label":"Preamp"},{"parameter":28,"label":"Drive"},{"parameter":29,"label":"Circuit"}]
 assert manifest["shiftKnobs"][0]=={"parameter":2,"label":"Preamp"}
 programs=re.findall(r'addProgram\("[^"]+",\s*\{([^}]*)\}\)',src)
 assert len(programs)==2 and all(len(values.split(","))==45 for values in programs)
