@@ -48,6 +48,7 @@ for i in range(1000):
     expected=total*h/(3*(hi-lo))
     assert abs(actual-expected)<2.0e-7
 
+checked = 0
 for branch, plugin, ui_name, param_count, ver in [
     ("feature/stratttrack", "StrattTrack", "CONSOLE", 41, "1.1.1"),
     ("feature/strattpultek", "StrattPultek", "CONSOLE", 17, "1.9.10"),
@@ -64,4 +65,5 @@ for branch, plugin, ui_name, param_count, ver in [
     assert "consoleFader" in source
     assert "dsp/airwindows_console7.h" in source
     assert "Console7" in manifest["description"]
-print("Airwindows Console7 transfer, ADAA primitive and both plugin integrations OK")
+assert checked == 1
+print("Airwindows Console7 transfer, ADAA primitive and branch plugin integration OK")
