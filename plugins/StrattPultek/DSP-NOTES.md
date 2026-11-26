@@ -1,4 +1,4 @@
-# StrattPultek 1.9.7 DSP notes and verification plan
+# StrattPultek 1.9.9 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
@@ -118,3 +118,10 @@ The MPC host may nudge parameter 0 during plugin load. The SDK contract requires
 ## Filter coefficient update cadence (1.9.6)
 
 The 15 ms control smoothing is retained, but smoothed EQ values are applied to filter coefficients in fixed 64-frame control segments inside each host callback. This bounds the time between coefficient updates to 64 / fs (1.45 ms at 44.1 kHz), rather than the host's entire block duration (up to 11.6 ms at 512 frames). It reduces audible stepping during automation on large MPC blocks. Parameter targets remain sampled once per host callback, and coefficient design remains outside the per-sample inner loop. The maximum extra coefficient-design cadence is 8 updates per 512-frame callback. The CI host simulator covers 32/128/512-frame blocks at 44.1/48/96 kHz; physical-device CPU benchmarking remains a separate release check.
+
+
+## Grain engine (1.9.9)
+
+The Grain wet-weight detector operates on the odd waveshaper output at both sample endpoints, rather than mixing a raw previous sample with a shaped current sample. Its normalized continuity ratio is independent of signal amplitude: for same-polarity samples, c = 2·min(|p|,|x|)/(|p|+|x|); opposite polarity or silence yields zero. A cubic smoothstep s(c)=c²(3−2c) removes the hard knee. A per-channel envelope applies immediate downward attack and a 0.5 ms exponential recovery, preventing high-rate gain chatter while retaining transient emphasis. The release coefficient is computed in prepare(); the sample loop performs only finite bounded arithmetic. No parameter, preset, parameter index, Q-Link mapping or audio latency is added.
+
+The dedicated Grain regression test covers polarity symmetry, scale invariance, transient attack, monotonic release, silence and bounded finite output. CI compiles and runs it alongside the existing Drive, valve, filter and host-simulator tests.
