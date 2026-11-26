@@ -144,3 +144,8 @@ Key 61, Key 37, Force (32-bit) and MPC Live III, MPC XL and later (64-bit).
 - Added Mono Compatibility Off/Auto/Full and an adjustable Auto correlation threshold to the OUTPUT page.
 - Auto progressively reduces M/S Side below the selected negative-correlation threshold; Full removes Side immediately before the permanent valve stage. The protection is smoothed and preserves Mid.
 - Appended the two new parameters after the existing 50 slots; retained prior parameter indices, factory-program values and MPC Sample mappings.
+
+
+## StrattTrack 1.4.0 — fixed 16-band graphic EQ
+
+Replaced the active four-band parametric EQ path and EQ-page controls with sixteen fixed-frequency stereo-linked graphic bands (20 Hz–20 kHz, ±12 dB, constant-Q bell filters). Existing EQ parameter slots remain inert at their original indices for saved-session/automation compatibility; sixteen gain-only parameters are appended. Minimum-phase IIR, 10 ms smoothing and 64-frame coefficient refresh avoid linear-phase latency and audio-thread allocation. Research and provenance: `plugins/StrattTrack/GRAPHIC-EQ-RESEARCH.md`.

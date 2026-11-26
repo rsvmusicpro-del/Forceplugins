@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.3.1"
+assert manifest["version"]=="1.4.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -36,28 +36,21 @@ assert "CleansweepButterworth" in src and "csHp.set(sr_,csHp,csHpOrder)" in src 
 assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
-# Parametric EQ coefficients must refresh with the same bounded cadence as HP/LP,
-# rather than stepping only once per host callback (especially at 512-frame blocks).
-for fragment in (
-    "lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),filterSmooth)",
-    "lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),filterSmooth)",
-    "lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),filterSmooth)",
-    "lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),filterSmooth)",
-    "hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),filterSmooth)",
-    "hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),filterSmooth)",
-    "hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),filterSmooth)",
-    "hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),filterSmooth)",
-):
-    assert fragment in src, fragment
-assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("lfFreq_.next(finiteClamp(get(kLfFreq)") < src.index("ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);")
+# Fixed graphic-EQ gain smoothing and coefficient refresh share the bounded 64-frame cadence.
+assert "graphicEqGain_[band].next(" in src
+assert "finiteClamp(get(kGraphicEq01+band),-12.0f,12.0f,0.0f)" in src
+assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in src
+assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
+assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
+assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1301;" in src
+assert "x.version=1400;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan"))
 assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
-assert len(re.findall(r"addParam\(",src))==52
+assert len(re.findall(r"addParam\(",src))==68
 parameter_ids=[]
 for line in src.splitlines():
     if "addParam(legacyInput)" in line:
@@ -74,7 +67,9 @@ assert parameter_ids==[
     "pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth",
     "pt_hf_atten_freq","pt_hf_atten","console_fader","invert_lr","width","correlation",
     "bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order",
-    "mono_compatibility","mono_threshold"
+    "mono_compatibility","mono_threshold",
+    "eq_20","eq_31_5","eq_50","eq_80","eq_125","eq_200","eq_315","eq_500",
+    "eq_800","eq_1250","eq_2000","eq_3150","eq_5000","eq_8000","eq_12500","eq_20000"
 ], "Parameter IDs/order are a serialized host-state contract"
 programs=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',src)
 assert programs and all(len(values.split(","))==len(parameter_ids) for _,values in programs), "Preset values must match the parameter count"
@@ -90,9 +85,9 @@ assert "kOutput=0, kLegacyInputSlot, kPreamp" in src
 assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
 assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
 assert "get(kLegacyInputSlot)" not in src
-for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
+for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
 assert "constexpr int kCompCurveIntervals=1024;" in src
@@ -131,10 +126,9 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # original Butterworth fi
 assert "float csHpWet=s.csHp.process(x);" in src and "float csLpWet=s.csLp.process(x);" in src
 assert "csHpOld=ch_[c].csHp" in src and "csLpOld=ch_[c].csLp" in src
 assert "csHpOrderFade_.next(1.0f,sampleSmooth)" in src and "csLpOrderFade_.next(1.0f,sampleSmooth)" in src
-assert "ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);" in src
-assert "ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);" in src
-assert "Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads" in notes
-assert "LF/HF shelves" not in notes
+assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in src
+assert "Graphic EQ: sixteen stereo-linked RBJ peaking/bell biquads" in notes
+assert "Fixed centres: 20 / 31.5 / 50 / 80 / 125 / 200 / 315 / 500 / 800 / 1.25k / 2k / 3.15k / 5k / 8k / 12.5k / 20k Hz" in notes
 assert "ctx.outputs[0][i]=xL*oL*og;" in src and "ctx.outputs[1][i]=xR*oR*og;" in src
 assert "fader_" not in src and "kFader" not in src
 # Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
@@ -255,7 +249,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1301;" in src
+assert "x.version=1400;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -289,13 +283,56 @@ assert abs(effective_pt_hf_peak(18,100)-9.0)<1.0e-12
 assert abs(effective_pt_hf_peak(18,0)-effective_pt_hf_peak(18,100)-9.0)<1.0e-12
 print("StrattTrack contract and independent DSP equation checks OK")
 
+# The EQ page is a true fixed-frequency 16-band control surface.
+graphic_page=next(p for p in ui["pages"] if p["name"]=="EQ")
+graphic_names=["20 Hz","31.5 Hz","50 Hz","80 Hz","125 Hz","200 Hz","315 Hz","500 Hz","800 Hz","1.25 kHz","2 kHz","3.15 kHz","5 kHz","8 kHz","12.5 kHz","20 kHz"]
+assert len(graphic_page["controls"])==16
+assert [x["param"] for x in graphic_page["controls"]]==graphic_names
+assert all(x["widget"]=="fader" and x["polarity"]=="bipolar" for x in graphic_page["controls"])
+graphic_freq=[20.,31.5,50.,80.,125.,200.,315.,500.,800.,1250.,2000.,3150.,5000.,8000.,12500.,20000.]
+freq_match=re.search(r"kGraphicEqFrequencies\[16\]\s*=\s*\{([^}]*)\}",src)
+assert freq_match and [float(x.strip().removesuffix("f")) for x in freq_match.group(1).split(",")]==graphic_freq
+assert "constexpr float kGraphicEqQ=2.146f;" in src
+assert "−12 to +12 dB" in readme and "GRAPHIC-EQ-RESEARCH.md" in readme
+assert "Voxengo Marvel GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
+assert "Voxengo Overtone GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
+assert "CamillaDSP" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
+# Independent RBJ peaking response and pole-stability oracle for all sixteen bands.
+def graphic_peak(sr,fc,q,gain):
+    w=2.0*math.pi*fc/sr
+    c,sn=math.cos(w),math.sin(w)
+    alpha=sn/(2.0*q)
+    A=10.0**(gain/40.0)
+    a0=1.0+alpha/A
+    b=((1.0+alpha*A)/a0,(-2.0*c)/a0,(1.0-alpha*A)/a0)
+    a=((-2.0*c)/a0,(1.0-alpha/A)/a0)
+    return b,a,w
+for sample_rate in (44100.0,48000.0,96000.0):
+    for centre in graphic_freq:
+        centre=min(centre,sample_rate*0.45)
+        for gain_db in (-12.0,0.0,12.0):
+            b,a,w=graphic_peak(sample_rate,centre,2.146,gain_db)
+            assert abs(magnitude(b,a,w)-10.0**(gain_db/20.0))<1.0e-8
+            if gain_db==0.0:
+                assert abs(magnitude(b,a,0.0)-1.0)<1.0e-8
+                assert abs(magnitude(b,a,math.pi)-1.0)<1.0e-8
+        b,a,_=graphic_peak(sample_rate,centre,2.146,12.0)
+        a1,a2=a
+        disc=complex(a1*a1-4.0*a2)**0.5
+        assert max(abs((-a1+disc)/2.0),abs((-a1-disc)/2.0))<1.0
+ratios=[graphic_freq[i+1]/graphic_freq[i] for i in range(15)]
+assert max(ratios)-min(ratios)<0.04
+assert abs(math.sqrt(2.0**(2.0/3.0))/(2.0**(2.0/3.0)-1.0)-2.146)<0.01
+assert not any(token in src for token in ("s.lf.run","s.lm.run","s.hm.run","s.hf.run","ch_[c].lf.bell","lfFreq_.snap"))
+
+
 # Input page Q-Link contract and appended, project-safe stereo controls.
 input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
 assert ui["qlinkGroups"]=="rows"
 assert [x["param"] for x in input_page["controls"][:11]]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
 assert input_page["controls"][11:]==["empty"]*5
 assert not any(isinstance(x,dict) and x.get("param")=="Input" for x in input_page["controls"])
-assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold, kCount" in src
+assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold," in src and "kGraphicEq01" in src and "kGraphicEq16, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
 assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in src
@@ -362,7 +399,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1301;" in src
+assert "x.version=1400;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
