@@ -318,7 +318,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1100;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1101;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
