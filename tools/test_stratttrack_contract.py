@@ -6,6 +6,7 @@ manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
 framework=(root.parents[1]/"framework"/"mpc_plugin.h").read_text()
+host_sim=(root.parents[1]/"tools"/"host-sim"/"host_sim.cpp").read_text()
 reset_match=re.search(r"void reset\(\) override \{(.*?)\n    \}\n    void process",src,re.S)
 assert reset_match, "StrattTrack reset block not found"
 reset_body=reset_match.group(1)
@@ -646,3 +647,6 @@ assert "bool  transient = false;" in framework
 assert "const float savedPlain = pr.transient ? pr.def : get(i);" in framework
 assert "if (pr.transient)\n                    set(i, pr.def);" in framework
 assert "compGr.transient = true;" in src
+
+assert "if (!p.automatable[(size_t)i]) { ++skipped; continue; }" in host_sim
+assert "all %d automatable parameters restored from the chunk" in host_sim
