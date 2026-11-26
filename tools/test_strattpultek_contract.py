@@ -2,7 +2,6 @@
 """Contract checks for StrattPultek's saved-project and touch-UI compatibility."""
 import json
 import re
-import struct
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
@@ -61,17 +60,16 @@ if not re.search(r"hasPreviousDriveInput\s*\?", source) or not re.search(r"hasPr
 if not referenced.issubset(display_names):
     raise SystemExit(f"UI references undeclared parameters: {sorted(referenced - display_names)}")
 
-# Verify that every MPC skin page uses the packaged, correctly sized background.
+# The native MPC-red kit owns the page appearance; custom legacy page
+# backgrounds must not override the SDK's themed skin.
+if ui.get("kit") != "mpc-red":
+    raise SystemExit(f"Expected native MPC-red UI kit, got {ui.get('kit')!r}")
+style = ui.get("style", {})
+if style.get("accent", "").lower() != "ffd31145":
+    raise SystemExit("MPC-red focus accent changed unexpectedly")
 for page in ui["pages"]:
-    if page.get("background") != "strattpultek-bg.png":
-        raise SystemExit(f"Missing page background on {page['name']}")
-png = (project / "assets" / "strattpultek-bg.png").read_bytes()
-if png[:8] != b"\x89PNG\r\n\x1a\n":
-    raise SystemExit("UI background is not a PNG")
-if struct.unpack(">II", png[16:24]) != (1280, 628):
-    raise SystemExit("UI background must be 1280x628 pixels")
-if not (project / "assets" / "strattpultek-bg.svg").is_file():
-    raise SystemExit("Editable vector source for the UI background is missing")
+    if page.get("background"):
+        raise SystemExit(f"Legacy custom page background still enabled on {page['name']}")
 
 programs = re.findall(r'addProgram\("[^"]+",\s*\{([^}]+)\}\)', source)
 if not programs or any(len(values.split(",")) != len(expected) for values in programs):
