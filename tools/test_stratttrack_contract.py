@@ -395,7 +395,7 @@ def jbase(x):
     q=t+t*t+t**3/3-0.5*t**4-0.2*t**5+t**6/6+t**7/7-t**8/8+t**9/36
     return math.copysign(1/3+q,x)
 def ftube(x): return (1-W)*fbase(x,ETA1)+W*fbase(K*x,ETA2)/K
-def atube(x): return (1-W)*(gbase(x)+ETA1*jbase(x))+W*(gbase(K*x)/K**2+ETA2*jbase(K*x)/K**3)
+def atube(x): return (1-W)*(gbase(x)+ETA1*jbase(x))+W*(gbase(K*x)/K**2+ETA2*jbase(K*x)/K**2)
 for x in (-3,-1.7,-0.6,0,0.6,1.7,3):
     h=1e-6
     assert abs((atube(x+h)-atube(x-h))/(2*h)-ftube(x))<3e-6
