@@ -50,7 +50,8 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filt
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
 assert "sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)))" in src
 for control in ("input_", "output_", "preamp_", "fader_", "circuitMix_"):
-    assert re.search(re.escape(control) + r"\\.next\\([^,]+,sampleSmooth\\)", src), control
+    line = next(line for line in src.splitlines() if control + ".next(" in line)
+    assert ",sampleSmooth)" in line, (control, line)
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
                 "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
