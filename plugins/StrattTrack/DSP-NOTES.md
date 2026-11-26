@@ -17,7 +17,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
   - HF attenuation is a first-order high shelf at 5/10/20 kHz.
   - Controls are smoothed in log-frequency or linear gain space; coefficients are calculated once per block; filter memory is per channel.
 - Gate threshold/range, compressor threshold/ratio/makeup and circuit drive use a 10 ms control-rate smoother; dynamics thresholds and makeup glide in dB space before conversion to linear amplitude. The compressor curve LUT is rebuilt from the smoothed ratio, avoiding abrupt gain-computer changes without adding per-sample transcendental math.
-- Four-band EQ: RBJ LF/HF shelves and LM/HM peaking sections, neutral at 0 dB.
+- Four-band EQ: all four bands (LF, LM, HM and HF) are RBJ peaking/bell biquads; LF and HF are deliberately not shelves. LF/HF use fixed Q=0.7071, LM/HM use their user-selected Q (0.4–4.0), and every band is exactly unity at 0 dB.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
 - Circuit: bounded rational Drive/Circuit colour is parallel-blended and fully bypassed at 0%; the separate fixed ADAA valve-inspired stage and 3 Hz DC blocker remain active independently after the blend.
 - Output: tone-neutral master trim and smoothed stereo balance.
@@ -120,3 +120,8 @@ The [official Brainworx bx_cleansweep Pro manual](https://files.plugin-alliance.
 ## Input gain consolidation (1.2.4)
 
 The separate −24 to +24 dB Input trim and its gain multiplication have been removed. Preamp is the only active user input-gain stage after Console7. The former `input` parameter ID remains as a hidden, zero-range, non-automatable compatibility slot at index 1, preserving the 50-parameter VST order and factory-program layout without an active UI control or audio-path read. The compressor's 8,388,608× lookup ceiling is retained as conservative headroom for combined EQ peaks; its 1,024-interval accuracy is independently verified across ratios 1:1–20:1 with less than 0.2% relative interpolation error.
+
+
+## Documentation/implementation contract correction
+
+The four-band channel EQ is implemented as four peaking (bell) biquads. Older wording that described LF/HF as shelves was incorrect; the README, C++ coefficient setup and contract tests all specify peaking responses. This correction records the actual shipped transfer function and prevents a future maintainer from changing the LF/HF topology unintentionally.
