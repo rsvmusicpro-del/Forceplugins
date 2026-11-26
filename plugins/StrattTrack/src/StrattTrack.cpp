@@ -31,7 +31,7 @@ enum P {
     kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,
     kMonoCompatibility, kMonoThreshold,
     kGraphicEq01, kGraphicEq02, kGraphicEq03, kGraphicEq04, kGraphicEq05, kGraphicEq06, kGraphicEq07, kGraphicEq08,
-    kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCount
+    kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCompGR, kCount
 };
 static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
 // Local fractional-octave widths derived from geometric midpoints between adjacent centres.
@@ -411,6 +411,10 @@ public:
         addParam(mpc::floatParam("eq_8000","8 kHz",-12,12,0,"dB",1));
         addParam(mpc::floatParam("eq_12500","12.5 kHz",-12,12,0,"dB",1));
         addParam(mpc::floatParam("eq_20000","20 kHz",-12,12,0,"dB",1));
+        // Read-only host telemetry: positive dB magnitude of compressor gain reduction.
+        mpc::Param compGr = mpc::floatParam("comp_gr","Comp GR",0,60,0,"dB",1);
+        compGr.automatable = false;
+        addParam(compGr);
         addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
         addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     }
@@ -426,6 +430,7 @@ public:
     void reset() override {
         for(auto &c:ch_) c.reset();
         detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
+        set(kCompGR,0.0f);
         // Host state can be restored before prepare/reset. Never seed a smoother
         // with NaN/Inf: one invalid initial value would otherwise poison it forever.
         output_.snap(db(finiteClamp(get(kOutput),-24,24,0)));
@@ -724,12 +729,16 @@ public:
                 for(int c=2;c<ctx.numOutputs;++c) if(ctx.outputs[c]) ctx.outputs[c][i]=0.0f;
             }
             }
+            // Publish once per 64-frame UI refresh, never inside the per-sample loop.
+            // This is compressor-only reduction; gate attenuation and makeup are excluded.
+            const float compReductionDb = -20.0f*std::log10(finiteClamp(compGain_,1.0e-3f,1.0f,1.0f));
+            set(kCompGR,compReductionDb);
         }
     }
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1600;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1601;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
