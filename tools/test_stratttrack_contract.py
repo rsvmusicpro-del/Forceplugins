@@ -9,11 +9,11 @@ assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<32 for x in manifest["knobs"]+manifest["shiftKnobs"])
-assert [p["name"] for p in ui["pages"]]==["INPUT","EQ","DYNAMICS","CIRCUIT"]
+assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","CIRCUIT"]
 assert len(re.findall(r"addParam\(",src))==32
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.run") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(colour-clean)*mix" in src  # true circuit bypass at 0%
@@ -23,6 +23,10 @@ assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
 assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
 assert "compGain_=targetComp;" in src and "const float cc=targetComp<compGain_?compAtk:compRel;" not in src
 assert "const float gateSlew=coeff(2.0f,sr_);" in src
+assert "kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq" in src
+assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
+assert "ptLfF*8.0f" in src and "ptHighBoost.bell" in src
+assert "phaseL_.next" in src and "panL_.next" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.
 def magnitude(b, a, omega):
@@ -81,4 +85,17 @@ for _ in range(100000):
     x_prev = x
 assert abs(y) < 1.0e-12
 
+def onepole_shelf_mag(fc,gain_db,freq,sr=44100.0):
+    alpha=1.0-math.exp(-2.0*math.pi*fc/sr)
+    omega=2.0*math.pi*freq/sr
+    z=complex(math.cos(-omega),math.sin(-omega))
+    lp=alpha/(1.0-(1.0-alpha)*z)
+    return abs(1.0+(10.0**(gain_db/20.0)-1.0)*lp)
+assert abs(onepole_shelf_mag(100,8,0)-10.0**(8/20))<1.0e-10
+assert abs(onepole_shelf_mag(100,8,22050)-1.0)<1.0e-3
+for f in (0,100,1000,10000,22050): assert abs(onepole_shelf_mag(100,0,f)-1.0)<1.0e-12
+def interaction(b,a): return 5.0*(1.0-math.exp(-min(b,a)/5.0)) if b>0 and a>0 else 0.0
+assert interaction(0,10)==0 and interaction(10,0)==0
+assert 0<interaction(3,3)<interaction(10,10)<5
+assert abs(interaction(100,100)-5)<1.0e-8
 print("StrattTrack contract and independent DSP equation checks OK")

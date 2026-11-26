@@ -1,7 +1,8 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
 // Signal flow: input trim -> preamp -> L/R polarity -> dual input pan ->
-// HP/LP -> four-band EQ -> gate -> compressor -> circuit colour (drive + fixed
+// HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
+// compressor -> circuit colour (drive + fixed
 // valve-inspired stage, parallel blend) -> output trim -> output balance -> fader.
 //
 // All clean stages use linear gain and stable cookbook biquads. Only the
@@ -20,7 +21,9 @@ enum P {
     kHmFreq, kHmGain, kHmQ, kHfFreq, kHfGain,
     kGateThresh, kGateRange, kGateAttack, kGateRelease,
     kCompThresh, kCompRatio, kCompAttack, kCompRelease, kCompMakeup,
-    kDrive, kCircuitMix, kOutPan, kFader, kCount
+    kDrive, kCircuitMix, kOutPan, kFader,
+    kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq,
+    kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kCount
 };
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
@@ -80,9 +83,12 @@ struct Biquad {
     void reset(){z1=z2=0;}
 };
 struct Channel {
-    Biquad hp,lp,lf,lm,hm,hf;
+    Biquad hp,lp,lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
+    float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float valveDc=0.0f, valvePrev=0.0f;
     void reset(){hp.reset();lp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
+        ptHighBoost.reset();ptLfInteraction.reset();
+        ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         valveDc=valvePrev=0;}
 };
 inline float coeff(float ms,float sr) {
@@ -91,6 +97,10 @@ inline float coeff(float ms,float sr) {
 }
 inline float panL(float p) { return std::cos((p+1.0f)*kHalfPi*0.5f); }
 inline float panR(float p) { return std::sin((p+1.0f)*kHalfPi*0.5f); }
+inline float smoothLog(float x,float t,float a){x=finiteClamp(x,1,192000,1000);t=finiteClamp(t,1,192000,x);return std::exp(std::log(x)+a*(std::log(t)-std::log(x)));}
+inline float ptLowFrequency(int i){static const float f[]={20,30,60,100};return f[mpc::clamp(i,0,3)];}
+inline float ptHighFrequency(int i){static const float f[]={3000,4000,5000,8000,10000,12000,16000};return f[mpc::clamp(i,0,6)];}
+inline float ptHighAttenFrequency(int i){static const float f[]={5000,10000,20000};return f[mpc::clamp(i,0,2)];}
 // Bounded rational soft saturation; no per-sample tanh/exp. The fixed,
 // asymmetric valve term is intentionally inside this one colour block.
 inline float circuit(float x,float drive) {
@@ -136,8 +146,17 @@ public:
         addParam(mpc::floatParam("circuit_mix","Circuit Mix",0,100,0,"%",0));
         addParam(mpc::floatParam("out_pan","Out Pan",-100,100,0,"%",0));
         addParam(mpc::floatParam("fader","Fader",-60,12,0,"dB",1));
-        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0});
-        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0});
+        // Pulse Techniques EQP-1A controls appended after the original stable IDs.
+        addParam(mpc::choiceParam("pt_lf_freq","PT LF Freq",{"20","30","60","100"},2));
+        addParam(mpc::floatParam("pt_lf_boost","PT LF Boost",0,13.5f,0,"dB",1));
+        addParam(mpc::floatParam("pt_lf_atten","PT LF Atten",0,17.5f,0,"dB",1));
+        addParam(mpc::choiceParam("pt_hf_freq","PT HF Freq",{"3k","4k","5k","8k","10k","12k","16k"},2));
+        addParam(mpc::floatParam("pt_hf_boost","PT HF Boost",0,18,0,"dB",1));
+        addParam(mpc::floatParam("pt_bandwidth","PT Bandwidth",0,100,50,"%",0));
+        addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att Freq",{"5k","10k","20k"},1));
+        addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
+        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
+        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
     }
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
@@ -146,6 +165,11 @@ public:
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
+        panL_.snap(get(kPanL)*0.01f); panR_.snap(get(kPanR)*0.01f); outPan_.snap(get(kOutPan)*0.01f);
+        phaseL_.snap(getBool(kPhaseL)?-1.0f:1.0f); phaseR_.snap(getBool(kPhaseR)?-1.0f:1.0f);
+        ptLowFreq_.snap(ptLowFrequency(getInt(kPtLowFreq))); ptLowBoost_.snap(get(kPtLowBoost)); ptLowAtten_.snap(get(kPtLowAtten));
+        ptHighFreq_.snap(ptHighFrequency(getInt(kPtHighFreq))); ptHighBoost_.snap(get(kPtHighBoost)); ptBandwidth_.snap(get(kPtBandwidth));
+        ptHighAttenFreq_.snap(ptHighAttenFrequency(getInt(kPtHighAttenFreq))); ptHighAtten_.snap(get(kPtHighAtten));
         hpFreq_.snap(get(kHpFreq)); lpFreq_.snap(get(kLpFreq));
         lfFreq_.snap(get(kLfFreq)); lfGain_.snap(get(kLfGain));
         lmFreq_.snap(get(kLmFreq)); lmGain_.snap(get(kLmGain)); lmQ_.snap(get(kLmQ));
@@ -181,26 +205,39 @@ public:
         }
         const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
-        const float inL=finiteClamp(get(kPanL)*0.01f,-1,1,-1), inR=finiteClamp(get(kPanR)*0.01f,-1,1,1);
-        const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
-        const float op=finiteClamp(get(kOutPan)*0.01f,-1,1,0);
-        const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f;
-        const float oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
         const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
+        const float inL=panL_.next(finiteClamp(get(kPanL)*0.01f,-1,1,-1),controlSmooth), inR=panR_.next(finiteClamp(get(kPanR)*0.01f,-1,1,1),controlSmooth);
+        const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
+        const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),controlSmooth);
+        const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f, oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
+        const float phaseL=phaseL_.next(getBool(kPhaseL)?-1.0f:1.0f,controlSmooth), phaseR=phaseR_.next(getBool(kPhaseR)?-1.0f:1.0f,controlSmooth);
         const float hp=hpFreq_.next(finiteClamp(get(kHpFreq),20,0.45f*sr_,20),controlSmooth);
         const float lp=lpFreq_.next(finiteClamp(get(kLpFreq),1000,0.49f*sr_,0.49f*sr_),controlSmooth);
         const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),controlSmooth), lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),controlSmooth);
         const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),controlSmooth), lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),controlSmooth), lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),controlSmooth);
         const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),controlSmooth), hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),controlSmooth), hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),controlSmooth);
         const float hfF=hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),controlSmooth), hfG=hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),controlSmooth);
+        const float ptLfF=smoothLog(ptLowFreq_.v,ptLowFrequency(getInt(kPtLowFreq)),controlSmooth); ptLowFreq_.snap(ptLfF);
+        const float ptLfBoost=ptLowBoost_.next(finiteClamp(get(kPtLowBoost),0,13.5f,0),controlSmooth), ptLfAtten=ptLowAtten_.next(finiteClamp(get(kPtLowAtten),0,17.5f,0),controlSmooth);
+        const float ptHfF=smoothLog(ptHighFreq_.v,ptHighFrequency(getInt(kPtHighFreq)),controlSmooth); ptHighFreq_.snap(ptHfF);
+        const float ptHfBoost=ptHighBoost_.next(finiteClamp(get(kPtHighBoost),0,18,0),controlSmooth), ptBandwidth=ptBandwidth_.next(finiteClamp(get(kPtBandwidth),0,100,50),controlSmooth);
+        const float ptHfAttF=smoothLog(ptHighAttenFreq_.v,ptHighAttenFrequency(getInt(kPtHighAttenFreq)),controlSmooth); ptHighAttenFreq_.snap(ptHfAttF);
+        const float ptHfAtten=ptHighAtten_.next(finiteClamp(get(kPtHighAtten),0,16,0),controlSmooth);
+        const float ptLowBoostAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF/sr_);
+        const float ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_);
+        const float ptHighAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptHfAttF/sr_);
+        const float ptLowBoostGain=db(ptLfBoost), ptLowAttenGain=db(-ptLfAtten), ptHighAttenGain=db(-ptHfAtten);
+        const float ptInteractionDb=(ptLfBoost>0 && ptLfAtten>0)?5.0f*(1.0f-std::exp(-std::fmin(ptLfBoost,ptLfAtten)/5.0f)):0.0f;
+        const float ptHfQ=1.60f-1.15f*(ptBandwidth*0.01f);
         for(int c=0;c<2;++c) {
             ch_[c].hp.pass(sr_,hp,true); ch_[c].lp.pass(sr_,lp,false);
+            ch_[c].ptHighBoost.bell(sr_,ptHfF,ptHfQ,ptHfBoost);
+            ch_[c].ptLfInteraction.bell(sr_,finiteClamp(ptLfF*8.0f,100.0f,sr_*0.45f,800.0f),0.70f,-ptInteractionDb);
             ch_[c].lf.shelf(sr_,lfF,lfG,false);
             ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
             ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
             ch_[c].hf.shelf(sr_,hfF,hfG,true);
         }
-        const float phaseL=getBool(kPhaseL)?-1.0f:1.0f, phaseR=getBool(kPhaseR)?-1.0f:1.0f;
         for(int i=0;i<n;++i) {
             const float ig=input_.next(inGain), og=output_.next(outGain);
             const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
@@ -215,6 +252,10 @@ public:
             for(int ch=0;ch<2;++ch) {
                 Channel &s=ch_[ch]; float x=*samples[ch];
                 x=s.hp.run(x); x=s.lp.run(x);
+                s.ptLowBoostState+=ptLowBoostAlpha*(x-s.ptLowBoostState); x+=(ptLowBoostGain-1.0f)*s.ptLowBoostState;
+                s.ptLowAttenState+=ptLowAttenAlpha*(x-s.ptLowAttenState); x+=(ptLowAttenGain-1.0f)*s.ptLowAttenState;
+                x=s.ptLfInteraction.run(x); x=s.ptHighBoost.run(x);
+                s.ptHighAttenState+=ptHighAttenAlpha*(x-s.ptHighAttenState); x=s.ptHighAttenState+ptHighAttenGain*(x-s.ptHighAttenState);
                 x=s.lf.run(x); x=s.lm.run(x); x=s.hm.run(x); x=s.hf.run(x);
                 *samples[ch]=x;
             }
@@ -267,12 +308,14 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1000;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1100;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_;
+    Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
+    Smooth ptLowFreq_,ptLowBoost_,ptLowAtten_,ptHighFreq_,ptHighBoost_,ptBandwidth_,ptHighAttenFreq_,ptHighAtten_;
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
