@@ -11,6 +11,23 @@ static int fail(const char* message)
     return 1;
 }
 
+static double meanSineDensity(double frequency, double sampleRate, double amplitude)
+{
+    GrainDensityDetector detector;
+    detector.prepare(sampleRate);
+    const int frames = static_cast<int>(sampleRate * 0.25);
+    double total = 0.0;
+    float previous = 0.0f;
+    for (int i = 0; i < frames; ++i)
+    {
+        const float current = amplitude * static_cast<float>(
+            std::sin(6.2831853071795864769 * frequency * i / sampleRate));
+        total += detector.process(previous, current);
+        previous = current;
+    }
+    return total / frames;
+}
+
 int main()
 {
     GrainDensityDetector positive;
@@ -78,6 +95,11 @@ int main()
             return fail("detector output must remain finite and bounded");
     }
 
-    std::puts("Grain density continuity, level invariance, transient attack, release and bounds passed");
+    const double lowFrequencyDensity = meanSineDensity(100.0, 48000.0, 0.5);
+    const double highFrequencyDensity = meanSineDensity(4000.0, 48000.0, 0.5);
+    if (!(lowFrequencyDensity > highFrequencyDensity + 0.5))
+        return fail("higher-frequency waveform must receive less saturation density");
+
+    std::puts("Grain continuity, level invariance, transient attack, release, frequency response and bounds passed");
     return 0;
 }
