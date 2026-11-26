@@ -1,4 +1,4 @@
-# StrattTrack 1.1.5
+# StrattTrack 1.1.6
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -33,3 +33,8 @@ The input Console stage is an attributed MIT-licensed adaptation of Airwindows C
 ## Stereo field controls (1.1.5)
 
 Width uses M=(L+R)/2, S=(L−R)/2 and reconstructs L=M+wS, R=M−wS: 100% is transparent, 0% is mono, and 200% doubles existing Side energy without manufacturing stereo from mono. Correlation is an adaptive safeguard, not a correlation meter or automatic phase-alignment claim: it estimates normalized L/R correlation over a 50 ms one-pole window and attenuates Side only in proportion to negative correlation. At 0% it is transparent. Bass Mono removes the low-passed Side component using a smoothed one-pole cutoff (20–400 Hz), retaining the Mid/mono bass. Invert L-R smoothly exchanges channel positions; Phase L/R remain independent polarity switches. These tools reduce common compatibility risks but cannot guarantee mono compatibility for every source; audition the mono sum.
+
+
+## Click-safe polarity switching (1.1.6)
+
+Phase L/R are discrete polarity inversions, not continuous phase rotation. A switch commits at the next channel-specific zero crossing; DC or near-DC content uses a bounded 20 ms wait followed by a 1 ms one-pole transition. This avoids the long amplitude dip caused by linearly smoothing a polarity multiplier from +1 to -1.
