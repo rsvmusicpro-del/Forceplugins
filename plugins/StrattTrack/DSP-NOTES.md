@@ -130,3 +130,35 @@ The four-band channel EQ is implemented as four peaking (bell) biquads. Older wo
 ## StrattTrack 1.2.6 — parametric EQ automation refinement
 
 The four channel-EQ bands now advance their 10 ms parameter smoothers and recalculate RBJ coefficients every 64 frames, matching the existing HP/LP refresh cadence. Previously, LF/LM/HM/HF coefficients were updated only once per host callback; with a 512-frame callback this produced comparatively coarse control steps during fast automation. The revised cadence reduces zipper-like modulation while preserving the static response, neutral gain, parameter IDs/order, factory programs, signal-path position and MPC Sample mapping. The one-pole coefficient for each update uses the actual chunk length N: `α = 1 − exp(−N/(τ·fs))`, with τ = 10 ms, so partial final chunks and variable host block sizes retain the intended time constant.
+
+
+## StrattTrack 1.2.7 — hybrid triode voicing
+
+The fixed valve stage stays permanently active in its original position after Drive/Circuit blend and before output balance/master trim; no parameter or UI mapping is added. The original single asymmetric waveshaper is refined into a normalized two-branch model: 72% ECC83/12AX7-like high-mu response and 28% 6SN7-like medium-mu response. Separate asymmetry constants (0.032, 0.060) and a 1.18 knee scale provide a gently earlier second branch; the combined small-signal slope remains unity. These are curve-informed electrical-family references, not measured Mullard/Telefunken/RCA unit captures or a full voltage-domain netlist.
+
+For the base soft knee F(x)=sgn(x)[1+t−t³+0.5t⁴], t=|x|−1, with linear and bounded outer branches, T(x)=F(x)+ηF(x)². The hybrid transfer is H(x)=(1−w)T₁(x)+wT₂(kx)/k (w=0.28, k=1.18). Its exact antiderivative is A(x)=(1−w)[G(x)+η₁J(x)]+w[G(kx)/k²+η₂J(kx)/k³], where G'=F and J'=F². First-order ADAA evaluates [A(xₙ)−A(xₙ₋₁)]/(xₙ−xₙ₋₁); very short intervals use five-point Gauss–Legendre quadrature split at both branches' knees and zero, avoiding cancellation while remaining exact for each degree-eight polynomial segment.
+
+Only the nonlinear residual is softened: an 18 kHz one-pole memory filters 72% of the residual and 28% remains direct. The linear small-signal path remains unity and the per-channel DC blocker remains at 3 Hz. The filter coefficient is prepared outside the sample loop; all state is per channel. No allocation, lock, I/O or per-sample transcendental operation is introduced. This is an original voicing approximation; subjective claims require listening tests on representative material and physical MPC hardware.
+
+### Valve references and electrical anchors
+
+Sound descriptions are circuit/application tendencies, not guarantees: bias, load line, feedback, transformer, supply and operating class dominate the measured result.
+
+- **Mullard ECC83 / 12AX7, high-mu small-signal dual triode:** μ≈100, rₚ≈62.5 kΩ, gₘ≈1.6 mA/V; representative point Vₐ=250 V, Vg=−2 V, Iₐ≈1.2 mA; heater 6.3 V/300 mA or 12.6 V/150 mA; maximum plate voltage 300 V, plate dissipation ≈1 W/section. Classic high-gain preamp type; selected for articulate gain-stage asymmetry.
+- **Telefunken ECC83 / 12AX7:** same nominal type parameters (μ≈100, gₘ≈1.6 mA/V, rₚ≈62.5 kΩ); cited example: 250 V plate, −2 V grid, 1.2 mA plate current, 300 V maximum plate voltage and 1 W plate dissipation. Brand reputation for consistency/low noise does not imply a different nominal transfer law.
+- **RCA 6SN7GT, medium-mu twin triode:** μ≈20 (gₘ≈2.6 mA/V × rₚ≈7.7 kΩ), gₘ≈2.6 mA/V, rₚ≈7.7 kΩ; typical point about 250 V plate, −8 V grid and 9 mA; heater 6.3 V/0.6 A. Lower amplification factor and plate resistance suit moderate voltage-gain/driver duties.
+- **Mullard ECC82 / 12AU7, medium-mu dual triode:** μ≈13, gₘ≈1.7–3.0 mA/V; at 250 V plate and −8.5 V grid, Iₐ≈8.5–11.5 mA; heater 6.3 V/300–350 mA or 12.6 V/150–175 mA; maximum plate voltage 300 V, dissipation 2.75 W/section. Useful lower-gain, higher-current buffer/driver reference.
+- **Mullard EL34, audio output pentode:** heater 6.3 V/1.5 A, 25 W anode dissipation; at 250 V plate/screen and −12.2 V grid, Iₐ≈100 mA, gₘ≈11 mA/V, rₚ≈15 kΩ. Mullard push-pull distributed-load data gives 20 W at 0.35% THD or 34 W at 2.5% at its stated 430 V conditions; a power-stage rather than preamp reference.
+- **RCA 6L6GC, beam-power output valve:** heater 6.3 V/0.9 A; typical Class-A₁ point 250 V plate/screen, −14 V grid, Iₐ≈72 mA, gₘ≈6 mA/V, rₚ≈22.5 kΩ; maximum plate dissipation 30 W. Contrasting output-stage power/overdrive envelope.
+
+ECC83 and 6SN7 families are the two selected small-signal curve anchors; ECC82, EL34 and 6L6GC are documented alternatives, not claimed as simulated by this stage.
+
+References:
+- Dempwolf & Zölzer, “A Physically-Motivated Triode Model for Circuit Simulations,” DAFx-11: https://dafx.de/paper-archive/2011/Papers/76_e.pdf
+- N. Koren, “Improved vacuum-tube models for SPICE simulations,” Glass Audio 8(5), 1996.
+- Mullard ECC83 / 12AX7 characteristics: https://www.worldradiohistory.com/Archive-Electronics/60s/60/Electronics-1960-10-21.pdf
+- Telefunken ECC83-TK specifications: https://www.bhphotovideo.com/c/product/1502640-REG/telefunken_matched_quad_of_ecc83_tk.html/specs
+- RCA Receiving Tube Manual RC-22, 6SN7GT: https://w5jgv.com/downloads/RC-22.pdf
+- Mullard ECC82 / 12AU7: https://shop.ehx.com/catalog/tubes-specs/12AU7Mullard.pdf
+- Mullard EL34: https://tubedata.tubes.se/sheets/129/e/EL34_Mullard.pdf
+- RCA 6L6GC: https://www.robkalmeijer.nl/techniek/electronica/datasheets/6/6l6gc.pdf
