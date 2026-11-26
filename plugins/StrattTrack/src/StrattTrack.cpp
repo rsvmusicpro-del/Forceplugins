@@ -28,8 +28,12 @@ enum P {
     kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq,
     kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kConsoleFader, kInvertLR, kWidth, kCorrelation, kBassMono,
     kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,
-    kMonoCompatibility, kMonoThreshold, kCount
+    kMonoCompatibility, kMonoThreshold,
+    kGraphicEq01, kGraphicEq02, kGraphicEq03, kGraphicEq04, kGraphicEq05, kGraphicEq06, kGraphicEq07, kGraphicEq08,
+    kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCount
 };
+static const float kGraphicEqFrequencies[16] = {20.0f,31.7f,50.2f,79.6f,126.0f,200.0f,317.0f,502.0f,796.0f,1260.0f,2000.0f,3170.0f,5020.0f,7960.0f,12600.0f,20000.0f};
+constexpr float kGraphicEqQ=2.146f;
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
 inline float db(float x) { return std::pow(10.0f, x*0.05f); }
@@ -230,7 +234,7 @@ static inline float adaaTube(float x,float previousX)
 struct Channel {
     mpc::dsp::TwoPoleButterworth hp{mpc::dsp::TwoPoleButterworth::Mode::Highpass};
     mpc::dsp::TwoPoleButterworth lp{mpc::dsp::TwoPoleButterworth::Mode::Lowpass};
-    Biquad lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
+    Biquad graphic[16],ptHighBoost,ptLfInteraction;
     stratt::dsp::Console7Channel console;
     stratt::dsp::CleansweepButterworth csHp{stratt::dsp::CleansweepButterworth::Mode::Highpass};
     stratt::dsp::CleansweepButterworth csHpOld{stratt::dsp::CleansweepButterworth::Mode::Highpass};
@@ -241,7 +245,7 @@ struct Channel {
     bool hasPreviousTubeInput=false;
     float previousTubeColor=0.0f;
     float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
-    void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();lf.reset();lm.reset();hm.reset();hf.reset();
+    void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();for(int i=0;i<16;++i) graphic[i].reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         previousTubeInput=previousTubeColor=previousTubeDcInput=previousTubeDcOutput=0.0f;
@@ -354,8 +358,25 @@ public:
         // Appended mono-protection controls preserve all existing parameter indices.
         addParam(mpc::choiceParam("mono_compatibility","Mono Compatibility",{"Off","Auto","Full"},0));
         addParam(mpc::floatParam("mono_threshold","Mono Threshold",0,100,50,"%",0));
-        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50});
-        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50});
+        // New fixed-frequency graphic EQ controls are appended after the 52 legacy slots.
+        addParam(mpc::floatParam("eq_20","20 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_31_7","31.7 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_50_2","50.2 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_79_6","79.6 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_126","126 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_200","200 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_317","317 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_502","502 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_796","796 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_1260","1.26 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_2000","2 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_3170","3.17 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_5020","5.02 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_7960","7.96 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_12600","12.6 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_20000","20 kHz",-12,12,0,"dB",1));
+        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
+        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50}, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
@@ -411,16 +432,7 @@ public:
         corrPowerL_=corrPowerR_=corrCross_=0.0f;
         hpFreq_.snap(finiteClamp(get(kHpFreq),20,1000,20));
         lpFreq_.snap(finiteClamp(get(kLpFreq),1000,22000,22000));
-        lfFreq_.snap(finiteClamp(get(kLfFreq),30,450,100));
-        lfGain_.snap(finiteClamp(get(kLfGain),-15,15,0));
-        lmFreq_.snap(finiteClamp(get(kLmFreq),100,2000,400));
-        lmGain_.snap(finiteClamp(get(kLmGain),-15,15,0));
-        lmQ_.snap(finiteClamp(get(kLmQ),0.4f,4.0f,1.0f));
-        hmFreq_.snap(finiteClamp(get(kHmFreq),500,8000,2500));
-        hmGain_.snap(finiteClamp(get(kHmGain),-15,15,0));
-        hmQ_.snap(finiteClamp(get(kHmQ),0.4f,4.0f,1.0f));
-        hfFreq_.snap(finiteClamp(get(kHfFreq),2000,20000,12000));
-        hfGain_.snap(finiteClamp(get(kHfGain),-15,15,0));
+        for(int i=0;i<16;++i) graphicEqGain_[i].snap(finiteClamp(get(kGraphicEq01+i),-12.0f,12.0f,0.0f));
         csHpEnable_.snap(getBool(kCsHpEnable)?1.0f:0.0f);
         csHpFreq_.snap(finiteClamp(get(kCsHpFreq),20,11000,20));
         csLpEnable_.snap(getBool(kCsLpEnable)?1.0f:0.0f);
@@ -519,19 +531,9 @@ public:
             const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),filterSmooth);
             bassMonoFreq_.snap(bassFreq);
             bassMonoSideHp_.pass(sr_,bassFreq,true);
-            // Refresh the four-band EQ at the same bounded 64-frame cadence as
-            // HP/LP. Host-block-only coefficient updates caused audible stepping
-            // on large (e.g. 512-frame) callbacks during rapid EQ automation.
-            const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),filterSmooth);
-            const float lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),filterSmooth);
-            const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),filterSmooth);
-            const float lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),filterSmooth);
-            const float lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),filterSmooth);
-            const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),filterSmooth);
-            const float hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),filterSmooth);
-            const float hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),filterSmooth);
-            const float hfF=hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),filterSmooth);
-            const float hfG=hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),filterSmooth);
+            float graphicEqGains[16];
+            for(int band=0;band<16;++band)
+                graphicEqGains[band]=graphicEqGain_[band].next(finiteClamp(get(kGraphicEq01+band),-12.0f,12.0f,0.0f),filterSmooth);
             const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth); hpFreq_.snap(hp);
             const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth); lpFreq_.snap(lp);
             const float csHp=smoothLog(csHpFreq_.v,csHpTarget,filterSmooth); csHpFreq_.snap(csHp);
@@ -540,10 +542,7 @@ public:
             const bool csLpOrderChanged=ch_[0].csLp.order()!=csLpOrder;
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
-                ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);
-                ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
-                ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
-                ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);
+                for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);
                 if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
                 if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
@@ -614,7 +613,7 @@ public:
                 s.ptLowAttenState+=ptLowAttenAlpha*(x-s.ptLowAttenState); x+=(ptLowAttenGain-1.0f)*s.ptLowAttenState;
                 x=s.ptLfInteraction.run(x); x=s.ptHighBoost.run(x);
                 s.ptHighAttenState+=ptHighAttenAlpha*(x-s.ptHighAttenState); x=s.ptHighAttenState+ptHighAttenGain*(x-s.ptHighAttenState);
-                x=s.lf.run(x); x=s.lm.run(x); x=s.hm.run(x); x=s.hf.run(x);
+                for(int band=0;band<16;++band) x=s.graphic[band].run(x);
                 *samples[ch]=x;
             }
             // One linked-stereo dynamics detector/gain computer: both channels
@@ -687,7 +686,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1301;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1400;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -737,7 +736,8 @@ private:
     float monoCorrPowerL_=0.0f, monoCorrPowerR_=0.0f, monoCorrCross_=0.0f;
     Biquad bassMonoSideHp_;
     float corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
-    Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
+    Smooth hpFreq_,lpFreq_;
+    Smooth graphicEqGain_[16];
     Smooth ptLowFreq_,ptLowBoost_,ptLowAtten_,ptHighFreq_,ptHighBoost_,ptBandwidth_,ptHighAttenFreq_,ptHighAtten_;
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
