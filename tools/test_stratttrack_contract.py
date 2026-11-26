@@ -15,6 +15,11 @@ assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["version"]=="1.2.3"
+notes=(root/"DSP-NOTES.md").read_text()
+readme=(root/"README.md").read_text()
+assert "the fixed, low-level ADAA valve stage remains active independently" in readme
+assert "the separate fixed ADAA valve-inspired stage and 3 Hz DC blocker remain active independently" in notes
+assert "complete nonlinear path is parallel-blended, so 0% is true clean bypass" not in notes
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
