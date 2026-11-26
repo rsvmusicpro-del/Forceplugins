@@ -62,6 +62,15 @@ struct Biquad {
         const float alpha=s/(2.0f*q);
         set(1+alpha*A,-2*c,1-alpha*A,1+alpha/A,-2*c,1-alpha/A);
     }
+    // Parallel-RLC resonant boost: direct path plus a unity-peak band-pass.
+    void resonantBoost(float sr,float f,float q,float gainDb) {
+        f=finiteClamp(f,10.0f,sr*0.45f,1000.0f);
+        q=finiteClamp(q,0.25f,8.0f,0.7071f);
+        const float w=2.0f*kPi*f/sr, c=std::cos(w), s=std::sin(w);
+        const float alpha=s/(2.0f*q), a0=1.0f+alpha, a1=-2.0f*c, a2=1.0f-alpha;
+        const float branch=std::pow(10.0f,gainDb/20.0f)-1.0f;
+        set(a0+branch*alpha,a1,a2-branch*alpha,a0,a1,a2);
+    }
     void shelf(float sr,float f,float gainDb,bool high) {
         f=finiteClamp(f,10.0f,sr*0.45f,1000.0f);
         const float A=std::pow(10.0f,gainDb/40.0f);
@@ -459,7 +468,7 @@ public:
         const float ptInteractionDb=(ptLfBoost>0 && ptLfAtten>0)?5.0f*(1.0f-std::exp(-std::fmin(ptLfBoost,ptLfAtten)/5.0f)):0.0f;
         const float ptHfQ=1.60f-1.15f*(ptBandwidth*0.01f);
         for(int c=0;c<2;++c) {
-            ch_[c].ptHighBoost.bell(sr_,ptHfF,ptHfQ,ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f)));
+            ch_[c].ptHighBoost.resonantBoost(sr_,ptHfF,ptHfQ,ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f)));
             ch_[c].ptLfInteraction.bell(sr_,finiteClamp(ptLfF*8.0f,100.0f,sr_*0.45f,800.0f),0.70f,-ptInteractionDb);
             ch_[c].lf.shelf(sr_,lfF,lfG,false);
             ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
