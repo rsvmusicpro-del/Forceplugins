@@ -28,6 +28,7 @@ on:
       - "tools/test_strattpultek_filters.cpp"
       - "tools/test_strattpultek_valve.py"
       - "tools/test_stratttrack_valve.py"
+      - "tools/test_stratttrack_console7_stability.cpp"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
