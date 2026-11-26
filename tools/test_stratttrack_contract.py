@@ -76,7 +76,7 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # original Butterworth fi
 assert "const float csHpWet=s.csHp.process(x);" in src and "const float csLpWet=s.csLp.process(x);" in src
 assert "ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);" in src
 assert "ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);" in src
-assert "xL*=oL*og;" in src and "xR*=oR*og;" in src
+assert "ctx.outputs[0][i]=xL*oL*og;" in src and "ctx.outputs[1][i]=xR*oR*og;" in src
 assert "fader_" not in src and "kFader" not in src
 # Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
@@ -187,7 +187,7 @@ assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
 assert "adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive" in src
 assert "constexpr float tubeDrive=1.15f;" in src and "constexpr float tubeAsymmetry=0.045f;" in src
 assert "previousTubeDcInput=shaped;" in src and "previousTubeDcOutput=y;" in src
-assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("xL*=oL*og;")
+assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
 for _ in range(100000):

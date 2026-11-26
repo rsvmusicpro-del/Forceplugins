@@ -3,7 +3,7 @@
 // Signal flow: Airwindows Console7 input stage -> input trim -> preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
 // compressor -> user-controlled drive colour (parallel blend) -> permanent
-// invisible ADAA valve stage -> output trim -> output balance -> fader.
+// invisible ADAA valve stage -> output balance -> tone-neutral master Output gain.
 //
 // All clean stages use linear gain and stable cookbook biquads. The Drive/Circuit
 // control affects only its own parallel colour path; the fixed valve stage is

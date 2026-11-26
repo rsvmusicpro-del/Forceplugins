@@ -21,6 +21,7 @@ on:
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
+      - "tools/test_stratttrack_cleansweep.cpp"
       - "tools/test_airwindows_console7.py"
       - "tools/test_strattpultek_filters.cpp"
       - "tools/test_strattpultek_valve.py"
