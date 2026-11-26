@@ -1,4 +1,4 @@
-## StrattTrack 1.2.9
+## StrattTrack 1.3.1\n\n- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.\n- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.\n- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.\n\n## StrattTrack 1.2.9
 
 - Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.
 - Refresh input/output Pan, Width, Invert L-R and Bass Mono controls every 64 frames using elapsed-frame 10 ms smoothing, preventing host-block-sized stereo-image automation steps.
