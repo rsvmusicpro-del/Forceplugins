@@ -34,9 +34,9 @@ jobs:
         run: |
           c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iplugins/StrattPultek/src tools/test_strattpultek_grain.cpp -o /tmp/test_strattpultek_grain
           /tmp/test_strattpultek_grain
-      - name: Verify Cleansweep filter responses and cutoff safety
+      - name: Verify shared second-order Butterworth HP/LP response and stability
         run: |
-          c++ -std=c++11 -O2 -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_strattpultek_filters
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_shared_filters
           /tmp/test_strattpultek_filters
       - name: Exercise host simulator across sample rates and block sizes
         shell: bash
