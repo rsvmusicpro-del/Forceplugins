@@ -1,4 +1,4 @@
-# StrattPultek 1.9.6
+# StrattPultek 1.9.7
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -11,7 +11,7 @@
 - First-order high-frequency shelf attenuation (5, 10, 20 kHz); the selector is calibrated near the documented mid-attenuation point rather than the -3 dB pole, using a sample-rate-aware digital response solve.
 - Low-cost asymmetric polynomial saturation with first-order antiderivative antialiasing (ADAA), adding controllable even-order harmonic content; independent Drive intensity, Grain blend and **Drive Mix** controls, with a 3 Hz DC blocker. Drive Mix is a dedicated post-EQ saturation dry/wet control and is smoothed over 15 ms.
 - Airwindows PurestDrive-inspired sample-density weighting: the previous/current driven-sample sum dynamically reduces saturation blend around rapid zero-crossings/transients and favours sustained waveform body. This is a fresh implementation using the plugin's existing ADAA polynomial shaper, not copied Airwindows source.
-- Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`), so Drive changes harmonic density rather than acting as a simple output-volume control. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
+- Drive gain compensation: the signal is boosted before the nonlinear stage and divided by the same gain afterward (`sat = ADAA(g·x) / g`). A precomputed 101-point makeup curve then matches the fundamental of a 0.5-peak sine (-6.02 dBFS) across the Drive range; its maximum correction is capped at +0.98 dB. The curve is numerically integrated once in `prepare()` and interpolated in the audio callback, avoiding runtime trigonometric work. Drive Mix is a unity-sum parallel blend, avoiding the level bump that an equal-power crossfade can create with highly correlated dry/wet signals.
 - Host-automation boundary handling: every DSP parameter read is checked for NaN/Inf and clamped to its declared range before reaching smoothers, frequency selectors or coefficient design; malformed automation falls back to the documented default without poisoning DSP state.
 - Defensive audio-boundary handling: finite host samples are limited to ±16.0 (24 dBFS) before recursive DSP, and a non-finite final sample clears that channel's DSP history and emits silence for that sample. Ordinary programme levels are unaffected.
 - ADAA startup-state seeding: after prepare/reset or channel recovery, each nonlinear path uses its first live sample as both endpoints of the initial ADAA interval. This prevents a false zero-to-signal averaging interval on the first sample and avoids a startup-dependent transient; stereo channels maintain independent validity flags.
