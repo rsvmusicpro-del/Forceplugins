@@ -1,4 +1,4 @@
-# StrattPultek 1.9.7
+# StrattPultek 1.9.8
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
@@ -97,3 +97,8 @@ Parameter 0 (Output) is the host-nudged master gain required by the MPC SDK. It 
 ## Filter-control interpolation refinement in 1.9.6
 
 EQ parameters retain their 15 ms perceptual smoothing, but the filter coefficients are now recalculated at most every 64 samples rather than only once at the host's full process-block boundary. This limits coefficient-step spacing to about 1.45 ms at 44.1 kHz even when the MPC is set to 512-frame blocks, reducing zipper-like modulation during cutoff, frequency, gain and bandwidth automation. Parameter targets are still read once per host block; the audio callback remains allocation-, lock- and I/O-free. The additional coefficient-design work is bounded to at most eight updates per 512-frame block and is included in the cross-target build and host-simulator CI checks. No parameter IDs, ordering, presets, Q-Link assignments or MPC Sample mappings change.
+
+## Grain density refinement in 1.9.8
+
+The Grain engine now derives its sample-density weight from the previous driven sample and the current waveshaper output, then applies a cubic smoothstep. This preserves the transient-aware saturation concept while removing the hard-clamp slope discontinuity and making the density blend transition smoother. The update is allocation-free, adds no latency or detector state, and keeps the existing Grain, Drive and Drive Mix controls and all saved parameter identities unchanged.
+
