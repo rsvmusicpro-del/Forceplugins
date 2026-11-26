@@ -36,6 +36,8 @@ struct Smooth {
 struct Biquad {
     float b0=1,b1=0,b2=0,a1=0,a2=0,z1=0,z2=0;
     void set(float nb0,float nb1,float nb2,float na0,float na1,float na2) {
+        if(!std::isfinite(nb0)||!std::isfinite(nb1)||!std::isfinite(nb2)||
+           !std::isfinite(na0)||!std::isfinite(na1)||!std::isfinite(na2)||std::fabs(na0)<1.0e-12f) return;
         const float inv=1.0f/na0;
         b0=nb0*inv; b1=nb1*inv; b2=nb2*inv;
         a1=na1*inv; a2=na2*inv;
@@ -163,7 +165,7 @@ public:
         const float ratio=finiteClamp(get(kCompRatio),1,20,1);
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
-        const float makeup=db(get(kCompMakeup));
+        const float makeup=db(finiteClamp(get(kCompMakeup),0,24,0));
         // Rebuild the static compressor curve only when its ratio changes. The
         // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
         if(ratio!=compRatioCached_) {
@@ -182,12 +184,12 @@ public:
         const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f;
         const float oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
         const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
-        const float hp=finiteClamp(hpFreq_.next(get(kHpFreq),controlSmooth),20,0.45f*sr_,20);
-        const float lp=finiteClamp(lpFreq_.next(get(kLpFreq),controlSmooth),1000,0.49f*sr_,0.49f*sr_);
-        const float lfF=lfFreq_.next(get(kLfFreq),controlSmooth), lfG=lfGain_.next(get(kLfGain),controlSmooth);
-        const float lmF=lmFreq_.next(get(kLmFreq),controlSmooth), lmG=lmGain_.next(get(kLmGain),controlSmooth), lmQv=lmQ_.next(get(kLmQ),controlSmooth);
-        const float hmF=hmFreq_.next(get(kHmFreq),controlSmooth), hmG=hmGain_.next(get(kHmGain),controlSmooth), hmQv=hmQ_.next(get(kHmQ),controlSmooth);
-        const float hfF=hfFreq_.next(get(kHfFreq),controlSmooth), hfG=hfGain_.next(get(kHfGain),controlSmooth);
+        const float hp=hpFreq_.next(finiteClamp(get(kHpFreq),20,0.45f*sr_,20),controlSmooth);
+        const float lp=lpFreq_.next(finiteClamp(get(kLpFreq),1000,0.49f*sr_,0.49f*sr_),controlSmooth);
+        const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),controlSmooth), lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),controlSmooth);
+        const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),controlSmooth), lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),controlSmooth), lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),controlSmooth);
+        const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),controlSmooth), hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),controlSmooth), hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),controlSmooth);
+        const float hfF=hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),controlSmooth), hfG=hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),controlSmooth);
         for(int c=0;c<2;++c) {
             ch_[c].hp.pass(sr_,hp,true); ch_[c].lp.pass(sr_,lp,false);
             ch_[c].lf.shelf(sr_,lfF,lfG,false);
