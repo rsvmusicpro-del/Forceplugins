@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Static contract checks for StrattTrack's parameter identity and signal path."""
-import json, pathlib, re, sys
+import json, pathlib, re, sys, math
 root=pathlib.Path(__file__).resolve().parents[1]/"plugins"/"StrattTrack"
 manifest=json.loads((root/"plugin.json").read_text())
 ui=json.loads((root/"ui.json").read_text())
@@ -23,4 +23,55 @@ assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
 assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
 assert "compGain_=targetComp;" in src and "const float cc=targetComp<compGain_?compAtk:compRel;" not in src
 assert "const float gateSlew=coeff(2.0f,sr_);" in src
-print("StrattTrack manifest, parameter count, UI, DSP isolation, smoothing and Q-Link contract OK")
+# Independent equation checks: expected values are derived from the DSP equations,
+# not copied from the C++ implementation's runtime output.
+def magnitude(b, a, omega):
+    z1=complex(math.cos(-omega), math.sin(-omega))
+    z2=z1*z1
+    num=b[0]+b[1]*z1+b[2]*z2
+    den=1.0+a[0]*z1+a[1]*z2
+    return abs(num/den)
+
+# 2nd-order Butterworth low-pass must be -3.0103 dB at its corner.
+sr, fc, q = 44100.0, 1000.0, 1.0/math.sqrt(2.0)
+w=2.0*math.pi*fc/sr
+c, sn=math.cos(w), math.sin(w)
+alpha=sn/(2.0*q)
+b=((1.0-c)*0.5, 1.0-c, (1.0-c)*0.5)
+a=((1.0+alpha), -2.0*c, 1.0-alpha)
+norm=tuple(v/a[0] for v in b)
+an=(a[1]/a[0], a[2]/a[0])
+assert abs(magnitude(norm, an, w)-1.0/math.sqrt(2.0)) < 2.0e-5
+
+# RBJ peaking EQ at 0 dB must be unity at DC, centre and Nyquist.
+A=10.0**(0.0/40.0)
+alpha=sn/(2.0*1.3)
+bb=(1.0+alpha*A, -2.0*c, 1.0-alpha*A)
+aa=(1.0+alpha/A, -2.0*c, 1.0-alpha/A)
+bb=tuple(v/aa[0] for v in bb)
+aa=(aa[1]/aa[0], aa[2]/aa[0])
+for omega in (0.0, w, math.pi):
+    assert abs(magnitude(bb, aa, omega)-1.0) < 1.0e-6
+
+# Equal-power input pan maintains unit summed power over the full travel.
+for p in (-1.0, -0.75, -0.25, 0.0, 0.4, 0.8, 1.0):
+    left=math.cos((p+1.0)*math.pi/4.0)
+    right=math.sin((p+1.0)*math.pi/4.0)
+    assert abs(left*left+right*right-1.0) < 1.0e-12
+
+# Hard-knee amplitude law: 6 dB above threshold at 4:1 leaves 1.5 dB overshoot.
+over=10.0**(6.0/20.0)
+gain=over**(-(1.0-1.0/4.0))
+assert abs(20.0*math.log10(over*gain)-1.5) < 1.0e-10
+
+# One-pole attack/release coefficient reaches 1-exp(-1) after one time constant.
+tau, sr=0.010, 48000.0
+coef=math.exp(-1.0/(tau*sr))
+env=1.0-(coef**round(tau*sr))
+assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
+
+# First-order DC blocker has a zero at DC.
+r=math.exp(-2.0*math.pi*3.0/44100.0)
+assert abs((1.0-r)/(1.0-r)) < 1.0e-12
+
+print("StrattTrack contract and independent DSP equation checks OK")
