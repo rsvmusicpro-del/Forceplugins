@@ -190,6 +190,7 @@ struct Param
     bool  logarithmic = false;
     int   decimals = 2;
     bool  automatable = true;
+    bool  transient = false;   // Live telemetry: excluded from saved state and reset to its default on load.
     std::vector<std::string> choices;   // for Kind::Choice
 
     // --- mapping between the 0..1 host range and real ("plain") values -------
@@ -500,8 +501,11 @@ public:
             const std::string& id = params_[(size_t)i].id;
             out.push_back((uint8_t)clamp<size_t>(id.size(), 0, 255));
             for (size_t k = 0; k < id.size() && k < 255; ++k) out.push_back((uint8_t)id[k]);
-            putF32(get(i));
-            putF32(getNormalised(i));
+            const Param& pr = params_[(size_t)i];
+            const float savedPlain = pr.transient ? pr.def : get(i);
+            const float savedNormalised = pr.transient ? pr.toNormalised(pr.def) : getNormalised(i);
+            putF32(savedPlain);
+            putF32(savedNormalised);
         }
         std::vector<uint8_t> extra;
         saveExtraState(extra);
@@ -530,7 +534,9 @@ public:
             {
                 if (params_[(size_t)i].id != id) continue;
                 const Param& pr = params_[(size_t)i];
-                if (norm >= 0.0f && norm <= 1.0f && std::fabs(pr.toPlain(norm) - plain) <= 1e-4f * (1.0f + std::fabs(plain)))
+                if (pr.transient)
+                    set(i, pr.def);
+                else if (norm >= 0.0f && norm <= 1.0f && std::fabs(pr.toPlain(norm) - plain) <= 1e-4f * (1.0f + std::fabs(plain)))
                     setNormalised(i, norm);
                 else
                     set(i, plain);
