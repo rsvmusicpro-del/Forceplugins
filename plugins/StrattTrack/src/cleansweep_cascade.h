@@ -17,6 +17,14 @@ public:
   if(fc>0.45*sr) fc=0.45*sr;
   if(order<1) order=1;
   if(order>6) order=6;
+  if(order_!=order){
+   if(order>order_){
+    const int oldSections=order_/2,newSections=order/2;
+    for(int i=oldSections;i<newSections;++i)sections_[i].reset();
+    if((order&1)!=0&&(order_&1)==0)firstX1_=firstY1_=0.0f;
+   }
+   order_=order;
+  }
   firstOrder_=(order&1)!=0; sectionCount_=order/2;
   if(firstOrder_){const double k=std::tan(3.14159265358979323846*fc/sr),inv=1.0/(1.0+k);
    firstB0_=static_cast<float>(mode_==Mode::Lowpass?k*inv:inv);
@@ -26,6 +34,7 @@ public:
   for(int i=0;i<sectionCount_;++i){const double angle=(2.0*i+1.0)*3.14159265358979323846/(2.0*order);
    sections_[i].set(c,s,1.0/(2.0*std::sin(angle)),mode_);}
  }
+ int order() const { return order_; }
  void reset(){firstX1_=firstY1_=0.0f;for(int i=0;i<3;++i)sections_[i].reset();}
  float process(float x){
   if(!std::isfinite(x)){reset();return 0.0f;}
@@ -49,7 +58,7 @@ private:
    z1=n1;z2=n2;return y;}
   void reset(){z1=z2=0.0f;}
  };
- Mode mode_;bool firstOrder_=false;int sectionCount_=0;
+ Mode mode_;bool firstOrder_=false;int sectionCount_=0,order_=0;
  float firstB0_=1,firstB1_=0,firstA1_=0,firstX1_=0,firstY1_=0;Section sections_[3];
 };
 }} // namespace stratt::dsp

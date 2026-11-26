@@ -19,7 +19,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
 - Four-band EQ: RBJ LF/HF shelves and LM/HM peaking sections, neutral at 0 dB.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
 - Circuit: bounded rational drive, asymmetric valve-inspired transfer and 3 Hz DC blocker; complete nonlinear path is parallel-blended, so 0% is true clean bypass.
-- Output: smoothed trim/fader and smoothed stereo balance.
+- Output: tone-neutral master trim and smoothed stereo balance.
 
 ## Verification equations
 CI independently checks Butterworth corner magnitude, neutral RBJ peak response, equal-power pan identity, hard-knee compressor ratio, one-pole time constant, DC-blocker zero at DC, Pultec shelf endpoints, neutral Pultec transparency, bounded LF interaction, parameter identity and stage order.
@@ -40,7 +40,7 @@ a C2-continuous soft knee, an asymmetric even-harmonic term, first-order ADAA us
 closed-form antiderivatives, a stable short-interval expansion/quadrature fallback,
 and a 3 Hz DC blocker. It is permanently active, has no parameter or UI mapping,
 and is independent of the user-controlled Drive/Circuit Mix. It follows the
-channel-strip tone and dynamics stages and precedes the final output gain/fader.
+channel-strip tone and dynamics stages and precedes the final tone-neutral Output master gain.
 
 The intended result is subtle harmonic density, gentle peak rounding and a
 slightly richer midrange without an audible level jump or uncontrolled DC offset.
@@ -89,7 +89,7 @@ Phase L/R are polarity inversions (0°/180°), not continuous phase rotation con
 
 ## Sample-rate-invariant gain smoothing (1.2.0)
 
-Input/output trim, preamp, final fader and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
+Input/output trim, preamp and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
 
 The StrattTrack contract test verifies the sample-rate-derived one-sample coefficient against the 10 ms response at 44.1, 48 and 96 kHz and enforces explicit coefficients at all gain-control smoother call sites.
 
@@ -104,3 +104,8 @@ The compressor's static gain-computer lookup now uses a 256-interval fourth-powe
 The existing HP/LP Butterworth filters are unchanged. A second, independently enabled HP/LP bank is inserted immediately after them and before Pultec/channel EQ. Each side has its own 20–11 kHz / 20–22 kHz cutoff, 1–6 order selector and 10 ms smoothed enable transition. Order N uses the standard Butterworth pole decomposition: Qk = 1 / (2 sin((2k+1) pi/(2N))). RBJ bilinear-transform sections are designed in double precision at 64-frame control intervals, with the real-pole section prewarped so the analog corner maps to the digital -3 dB point. This produces 6, 12, 18, 24, 30 or 36 dB/octave Butterworth slopes. The stage is off by default and its state continues tracking the signal while bypassed, avoiding stale-state transients on activation.
 
 The implementation provides the bx_cleansweep Pro Butterworth order family as a compact MPC-ARM-friendly clean-room design; it does not claim the proprietary Anti-Crush algorithm or reproduce the Pro-only Bessel, Chebyshev I/II, elliptic or resonant-Butterworth modes. The original HP/LP pair, EQ/dynamics stages, Console7 and MPC Sample Q-Link assignments remain otherwise unchanged. LF and HF parametric EQ bands are now bell sections (fixed Q=0.7071), matching the LM/HM bell topology. Output master gain is the only final level control; Out Pan is placed before it and redundant Fader is removed.
+
+
+## Cleansweep order-transition refinement (1.2.3)
+
+When an HP or LP order changes, the old per-channel filter instance is retained as a shadow state and crossfaded against the new cascade over the existing 10 ms sample-rate-aware smoother. Newly activated pole sections are reset before use; cutoff-only changes do not reset state. The shadow filter is evaluated only during the transition, keeping steady-state CPU cost unchanged.

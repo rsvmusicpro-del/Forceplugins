@@ -1,7 +1,7 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
 // Signal flow: Airwindows Console7 input stage -> input trim -> preamp -> L/R polarity -> dual input pan ->
-// HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
+// HP/LP -> serial Cleansweep HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
 // compressor -> user-controlled drive colour (parallel blend) -> permanent
 // invisible ADAA valve stage -> output balance -> tone-neutral master Output gain.
 //
@@ -273,12 +273,14 @@ struct Channel {
     Biquad lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
     stratt::dsp::Console7Channel console;
     stratt::dsp::CleansweepButterworth csHp{stratt::dsp::CleansweepButterworth::Mode::Highpass};
+    stratt::dsp::CleansweepButterworth csHpOld{stratt::dsp::CleansweepButterworth::Mode::Highpass};
     stratt::dsp::CleansweepButterworth csLp{stratt::dsp::CleansweepButterworth::Mode::Lowpass};
+    stratt::dsp::CleansweepButterworth csLpOld{stratt::dsp::CleansweepButterworth::Mode::Lowpass};
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float previousTubeInput=0.0f;
     bool hasPreviousTubeInput=false;
     float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
-    void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csLp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
+    void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();lf.reset();lm.reset();hm.reset();hf.reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         previousTubeInput=previousTubeDcInput=previousTubeDcOutput=0.0f;
@@ -436,6 +438,7 @@ public:
         csHpFreq_.snap(finiteClamp(get(kCsHpFreq),20,11000,20));
         csLpEnable_.snap(getBool(kCsLpEnable)?1.0f:0.0f);
         csLpFreq_.snap(finiteClamp(get(kCsLpFreq),20,22000,22000));
+        csHpOrderFade_.snap(1.0f); csLpOrderFade_.snap(1.0f);
     }
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
@@ -533,16 +536,24 @@ public:
             const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth); lpFreq_.snap(lp);
             const float csHp=smoothLog(csHpFreq_.v,csHpTarget,filterSmooth); csHpFreq_.snap(csHp);
             const float csLp=smoothLog(csLpFreq_.v,csLpTarget,filterSmooth); csLpFreq_.snap(csLp);
+            const bool csHpOrderChanged=ch_[0].csHp.order()!=csHpOrder;
+            const bool csLpOrderChanged=ch_[0].csLp.order()!=csLpOrder;
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
+                if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
+                if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
             }
+            if(csHpOrderChanged) csHpOrderFade_.snap(0.0f);
+            if(csLpOrderChanged) csLpOrderFade_.snap(0.0f);
             const int blockEnd=blockStart+blockFrames;
             for(int i=blockStart;i<blockEnd;++i) {
             const float ig=input_.next(inGain,sampleSmooth), og=output_.next(outGain,sampleSmooth);
             const float pg=preamp_.next(preampGain,sampleSmooth);
             const float csHpMix=csHpEnable_.next(getBool(kCsHpEnable)?1.0f:0.0f,sampleSmooth);
             const float csLpMix=csLpEnable_.next(getBool(kCsLpEnable)?1.0f:0.0f,sampleSmooth);
+            const float csHpOrderMix=csHpOrderFade_.next(1.0f,sampleSmooth);
+            const float csLpOrderMix=csLpOrderFade_.next(1.0f,sampleSmooth);
             const float mix=circuitMix_.next(cmix,sampleSmooth);
             const float consoleFader=consoleFader_.next(consoleTarget,consoleSmoothing);
             const float l=(ctx.inputs&&ctx.numInputs>0&&ctx.inputs[0])?ctx.inputs[0][i]:0.0f;
@@ -580,9 +591,17 @@ public:
             for(int ch=0;ch<2;++ch) {
                 Channel &s=ch_[ch]; float x=*samples[ch];
                 x=s.hp.process(x); x=s.lp.process(x);
-                const float csHpWet=s.csHp.process(x);
+                float csHpWet=s.csHp.process(x);
+                if(csHpOrderMix<0.9999f) {
+                    const float old=s.csHpOld.process(x);
+                    csHpWet=old+(csHpWet-old)*csHpOrderMix;
+                }
                 x += (csHpWet-x)*csHpMix;
-                const float csLpWet=s.csLp.process(x);
+                float csLpWet=s.csLp.process(x);
+                if(csLpOrderMix<0.9999f) {
+                    const float old=s.csLpOld.process(x);
+                    csLpWet=old+(csLpWet-old)*csLpOrderMix;
+                }
                 x += (csLpWet-x)*csLpMix;
                 s.ptLowBoostState+=ptLowBoostAlpha*(x-s.ptLowBoostState); x+=(ptLowBoostGain-1.0f)*s.ptLowBoostState;
                 s.ptLowAttenState+=ptLowAttenAlpha*(x-s.ptLowAttenState); x+=(ptLowAttenGain-1.0f)*s.ptLowAttenState;
@@ -642,7 +661,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1202;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1203;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -681,7 +700,7 @@ private:
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,circuitMix_,consoleFader_;
-    Smooth csHpEnable_,csHpFreq_,csLpEnable_,csLpFreq_;
+    Smooth csHpEnable_,csHpFreq_,csLpEnable_,csLpFreq_,csHpOrderFade_,csLpOrderFade_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_;
     float phaseGain_[2]={1.0f,1.0f}, phaseTarget_[2]={1.0f,1.0f}, phasePrevious_[2]={0.0f,0.0f};

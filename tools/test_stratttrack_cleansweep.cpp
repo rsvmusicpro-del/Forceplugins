@@ -23,5 +23,9 @@ int main(){const double rates[]={44100,48000,96000};
  }
  stratt::dsp::CleansweepButterworth bad(stratt::dsp::CleansweepButterworth::Mode::Lowpass);bad.set(48000,1000,99);
  if(!std::isfinite(bad.process(std::numeric_limits<float>::quiet_NaN())))return 3;
- std::puts("StrattTrack Cleansweep Butterworth orders 1-6 OK");return 0;
+ stratt::dsp::CleansweepButterworth transition(stratt::dsp::CleansweepButterworth::Mode::Highpass);
+ transition.set(48000,120.0f,1); if(transition.order()!=1)return 4;
+ transition.set(48000,120.0f,6); if(transition.order()!=6)return 5;
+ transition.set(48000,120.0f,6); if(transition.order()!=6)return 6;
+ std::puts("StrattTrack Cleansweep Butterworth orders 1-6 and order switching OK");return 0;
 }
