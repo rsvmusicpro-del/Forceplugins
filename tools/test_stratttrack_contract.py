@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.5.1"
+assert manifest["version"]=="1.6.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -44,7 +44,7 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1501;" in src
+assert "x.version=1600;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
@@ -78,6 +78,8 @@ assert src.index("addParam(legacyInput)") < src.index('addParam(mpc::floatParam(
 assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(2,"Preamp"),(28,"Drive"),(29,"Circuit")]
 
 assert "console.process(" in src and "kConsoleFader" in src
+assert '#include "circuit_adaa.h"' in src and "CircuitAdaa circuit;" in src
+assert "ch_[ch].circuit.process(clean,drive)" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*pg,0,phaseTargetL)")
 assert "input_" not in src and "inGain" not in src and "kInput" not in src
@@ -85,9 +87,9 @@ assert "kOutput=0, kLegacyInputSlot, kPreamp" in src
 assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
 assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
 assert "get(kLegacyInputSlot)" not in src
-for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
+for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit.process(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("const float driveWet=ch_[ch].circuit.process(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
 assert "constexpr int kCompCurveIntervals=1024;" in src
@@ -249,7 +251,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1501;" in src
+assert "x.version=1600;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -448,7 +450,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1501;" in src
+assert "x.version=1600;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src

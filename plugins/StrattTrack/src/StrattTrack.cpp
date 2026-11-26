@@ -13,6 +13,7 @@
 #include "mpc_plugin.h"
 #include "dsp/two_pole_filter.h"
 #include "cleansweep_cascade.h"
+#include "circuit_adaa.h"
 #include "dsp/airwindows_console7.h"
 #include <cmath>
 
@@ -266,6 +267,7 @@ struct Channel {
     mpc::dsp::TwoPoleButterworth lp{mpc::dsp::TwoPoleButterworth::Mode::Lowpass};
     Biquad graphic[16],ptHighBoost,ptLfInteraction;
     stratt::dsp::Console7Channel console;
+    stratt::dsp::CircuitAdaa circuit;
     stratt::dsp::CleansweepButterworth csHp{stratt::dsp::CleansweepButterworth::Mode::Highpass};
     stratt::dsp::CleansweepButterworth csHpOld{stratt::dsp::CleansweepButterworth::Mode::Highpass};
     stratt::dsp::CleansweepButterworth csLp{stratt::dsp::CleansweepButterworth::Mode::Lowpass};
@@ -275,7 +277,7 @@ struct Channel {
     bool hasPreviousTubeInput=false;
     float previousTubeColor=0.0f;
     float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
-    void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();for(int i=0;i<16;++i) graphic[i].reset();
+    void reset(){console.reset();circuit.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();for(int i=0;i<16;++i) graphic[i].reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         previousTubeInput=previousTubeColor=previousTubeDcInput=previousTubeDcOutput=0.0f;
@@ -316,14 +318,6 @@ inline float smoothLog(float x,float t,float a){x=finiteClamp(x,1,192000,1000);t
 inline float ptLowFrequency(int i){static const float f[]={20,30,60,100};return f[mpc::clamp(i,0,3)];}
 inline float ptHighFrequency(int i){static const float f[]={3000,4000,5000,8000,10000,12000,16000};return f[mpc::clamp(i,0,6)];}
 inline float ptHighAttenFrequency(int i){static const float f[]={5000,10000,20000};return f[mpc::clamp(i,0,2)];}
-// Bounded rational saturation for the user-controlled Drive/Circuit path.
-// The permanent asymmetric ADAA valve stage is applied separately afterwards.
-inline float circuit(float x,float drive) {
-    const float d=1.0f+drive*5.0f;
-    const float u=x*d;
-    const float shaped=u/(1.0f+0.22f*drive*std::fabs(u));
-    return shaped/d; // unity small-signal gain while Drive changes only the nonlinear knee.
-}
 }
 
 class StrattTrack : public mpc::Plugin {
@@ -681,7 +675,7 @@ public:
                 const float clean=*samples[ch];
                 // User-controlled drive colour remains a separate parallel stage.
                 // Its Mix=0 setting is exactly the clean dynamics signal.
-                const float driveWet=circuit(clean,drive);
+                const float driveWet=ch_[ch].circuit.process(clean,drive);
                 *samples[ch]=clean+(driveWet-clean)*mix;
             }
             // Mono Compatibility is deliberately the final stereo-image stage before Valve.
@@ -721,7 +715,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1501;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1600;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
