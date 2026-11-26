@@ -66,7 +66,7 @@ assert "compGain_=targetComp;" in src and "const float cc=targetComp<compGain_?c
 assert "const float gateSlew=coeff(2.0f,sr_);" in src
 assert "kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq" in src
 assert "ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_)" in src
-assert "ptLfF*8.0f" in src and "ptHighBoost.bell" in src
+assert "ptLfF*8.0f" in src and "ptHighBoost.resonantBoost" in src
 assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
 assert "phaseL_.next" in src and "panL_.next" in src
 # Independent equation checks: expected values are derived from the DSP equations,
