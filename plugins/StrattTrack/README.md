@@ -1,4 +1,4 @@
-# StrattTrack 1.2.4
+# StrattTrack 1.2.5
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -66,3 +66,8 @@ Changing the Cleansweep order now retains the previous HP/LP filter state and cr
 ## Input gain consolidation (1.2.4)
 
 The separate −24 to +24 dB Input trim and its gain stage have been removed. Preamp is now the first INPUT-page control and the only active user input-gain stage after Console7. The former `input` parameter ID remains as a zero-range, non-automatable compatibility slot at index 1; it is not displayed, mapped to an MPC Sample knob, or read by the DSP. All 50 parameter positions, factory-program values and later parameter IDs remain unchanged.
+
+
+## Realtime polarity fallback (1.2.5)
+
+The 1 ms fallback coefficient and 20 ms zero-crossing timeout are now calculated once in `prepare()` from the validated sample rate, rather than recalculating an exponential and timeout conversion inside the per-sample polarity-switch path. The click-safe zero-crossing behavior, timeout duration, fallback trajectory, parameter identity and audio transfer remain unchanged; this removes avoidable transcendental work from the real-time callback.
