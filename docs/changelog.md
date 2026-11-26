@@ -1,3 +1,9 @@
+## StrattTrack 1.5.2
+
+- Harden biquad coefficient updates with double-precision normalization and second-order Jury stability checks on stored float coefficients; rejected designs preserve the last known-good filter state.
+- Evaluate adaptive graphic-EQ bandwidth-to-Q conversion and peaking-bell design in double precision, reducing rounding sensitivity near Nyquist.
+- Preserve all 16 fixed centres, gain ranges, parameter IDs/order, preset compatibility and 64-frame coefficient refresh cadence.
+
 ## StrattTrack 1.5.1
 
 - Replace linear interpolation in Q with a smoothstep gain-to-octave-bandwidth law, narrowing from 1.9 octaves toward each band's actual fractional-octave spacing as cut/boost increases.
