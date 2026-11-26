@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 // Signal flow: input trim -> preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
-// compressor -> circuit colour (drive + fixed
-// valve-inspired stage, parallel blend) -> output trim -> output balance -> fader.
+// compressor -> user-controlled drive colour (parallel blend) -> permanent
+// invisible ADAA valve stage -> output trim -> output balance -> fader.
 //
-// All clean stages use linear gain and stable cookbook biquads. Only the
-// explicitly blended circuit stage is nonlinear. The fixed valve-inspired
-// transfer is part of that same colour path and cannot be adjusted separately.
+// All clean stages use linear gain and stable cookbook biquads. The Drive/Circuit
+// control affects only its own parallel colour path; the fixed valve stage is
+// separate, permanently active, and has no parameter or UI mapping.
 // No allocation, locks, I/O or per-sample transcendental functions occur in process().
 
 #include "mpc_plugin.h"
@@ -282,8 +282,8 @@ inline float smoothLog(float x,float t,float a){x=finiteClamp(x,1,192000,1000);t
 inline float ptLowFrequency(int i){static const float f[]={20,30,60,100};return f[mpc::clamp(i,0,3)];}
 inline float ptHighFrequency(int i){static const float f[]={3000,4000,5000,8000,10000,12000,16000};return f[mpc::clamp(i,0,6)];}
 inline float ptHighAttenFrequency(int i){static const float f[]={5000,10000,20000};return f[mpc::clamp(i,0,2)];}
-// Bounded rational soft saturation; no per-sample tanh/exp. The fixed,
-// asymmetric valve term is intentionally inside this one colour block.
+// Bounded rational saturation for the user-controlled Drive/Circuit path.
+// The permanent asymmetric ADAA valve stage is applied separately afterwards.
 inline float circuit(float x,float drive) {
     const float d=1.0f+drive*5.0f;
     const float u=x*d;
