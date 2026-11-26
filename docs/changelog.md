@@ -1,3 +1,9 @@
+## StrattTrack 1.5.0
+
+- Upgrade the 16-band graphic EQ from fixed-Q to gain-dependent proportional-Q: subtle moves remain broad and larger cuts/boosts progressively focus, matching classic analogue graphic-EQ interaction while retaining symmetric boost/cut and exact unity at 0 dB.
+- Keep the Pioneer DEH-P8850MP documented 16-band frequency layout, ±12 dB range, stereo-linked RBJ cascade, 10 ms smoothing, 64-frame coefficient refresh, minimum-phase response and zero added latency.
+- Add independent proportional-Q curve, centre-gain and pole-stability checks across all sixteen bands and 44.1/48/96 kHz sample rates; bump StrattTrack to 1.5.0.
+
 ## StrattTrack 1.3.1\n\n- Harden the permanent hybrid triode ADAA stage: non-finite input clears its per-channel nonlinear/DC memory and emits silence for that sample; finite input is bounded to ±64 before antiderivative evaluation.\n- Add an independent numerical regression suite for the hybrid ECC83/6SN7 transfer, antiderivative derivative, ADAA divided differences, all branch knees, and short-interval quadrature stability.\n- Run the new regression suite in the StrattTrack GitHub Actions workflow; preserve all 52 parameter IDs/order, presets, UI and MPC Sample mappings.\n\n## StrattTrack 1.2.9
 
 - Replace first-order Bass Mono Side extraction with a dedicated second-order Butterworth Side high-pass (12 dB/octave), leaving Mid and mono fold-down untouched.

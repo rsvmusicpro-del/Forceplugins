@@ -9,7 +9,7 @@
 | Phonic GEQ1500 | Dual-channel 1U rack analogue graphic equalizer | 15 sliders/channel, nominal 25 Hz–16 kHz | Input gain, output LED metering and channel controls; comparison model, not a 16-band EQ |
 | JB Systems GEQ215 | Dual-channel 1U analogue graphic EQ | 25, 40, 63, 100, 160, 250, 400, 630, 1k, 1.6k, 2.5k, 4k, 6.3k, 10k, 16k Hz | ±12 dB, balanced XLR/jack I/O, >95 dB S/N, 20 Hz–20 kHz response, bypass and 50 Hz low cut; 15 bands |
 
-The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz spread. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies use the exact published Pioneer DEH-P8850MP 16-band set; they also closely match the standard rounded preferred-number progression used in fixed graphic equalizers. This is not a claim to reproduce its DSP hardware.
+The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz spread. The Pioneer manual documents the exact centres and ±12 dB range, but does not publish the internal filter topology or Q law; StrattTrack therefore borrows its frequency layout, not its proprietary implementation. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies use the exact published Pioneer DEH-P8850MP 16-band set; they also closely match the standard rounded preferred-number progression used in fixed graphic equalizers. This is not a claim to reproduce its DSP hardware.
 
 ## Software references and design lessons
 
@@ -25,9 +25,26 @@ The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz sprea
 
 Fixed centres (Hz): 20, 31.5, 50, 80, 125, 200, 315, 500, 800, 1250, 2000, 3150, 5000, 8000, 12500, 20000.
 
-Each slider controls one stereo-linked peaking/bell biquad, −12 to +12 dB, default 0 dB. All bands use constant Q=2.146 (approximately 2/3-octave relative bandwidth), minimum-phase IIR processing and serial cascade. Gain changes are smoothed over 10 ms; coefficients refresh at no more than 64-frame intervals. There is no added latency, FFT, allocation, lock or I/O in the audio callback. Adjacent bands interact naturally in the cascade and their combined response may exceed the gain shown by an individual slider.
+Each slider controls one stereo-linked peaking/bell biquad, −12 to +12 dB, default 0 dB. The filter uses a gain-dependent proportional-Q contour: Q rises linearly from 0.707 at infinitesimal moves to 2.146 at ±12 dB (about 2/3-octave at full travel), broadening subtle tone-shaping and focusing stronger corrective moves. This follows the classic analogue proportional-Q interaction principle (as used in Klark Teknik DN360-style graphic equalizers), rather than Rane's constant-Q topology. The response is symmetrical for boost/cut and exactly unity at 0 dB. Minimum-phase IIR processing and serial cascade preserve natural phase behaviour and zero added latency. Gain changes are smoothed over 10 ms; coefficients refresh at no more than 64-frame intervals. There is no added latency, FFT, allocation, lock or I/O in the audio callback. Adjacent bands interact naturally in the cascade and their combined response may exceed the gain shown by an individual slider.
 
 The existing biquad safety clamp limits each centre to 0.45×sample-rate, preventing unstable coefficients near Nyquist. The former four-band parameter IDs and indices remain inert compatibility slots; their filters and EQ-page controls are removed. Sixteen gain-only controls are appended after the original 52 parameters to preserve existing project/automation indices.
+
+## Engineer workflow and critical regions
+
+Engineers expect a graphic EQ to offer immediately legible fixed centres, predictable slider-to-response correspondence, smooth automation, stereo linking, no clicks, stable gain and a reliable bypass/flat reference. Typical work is subtractive first (rumble/subsonic, mud, boxiness, honk, harshness and sibilance), then restrained additive shaping for punch, presence and air; broad corrections suit tone balance while focused cuts address ringing or feedback. A spectrum analyser is a diagnostic aid, not a replacement for listening, level-matched A/B and checking mono compatibility.
+
+| Region | Typical range | Common use / caution | Closest StrattTrack centres |
+|---|---:|---|---|
+| Sub / rumble | 20–60 Hz | Remove inaudible rumble; preserve kick/808 fundamentals and headroom | 20, 31.5, 50 Hz |
+| Weight / punch | 60–200 Hz | Kick and bass body; avoid boom | 80, 125, 200 Hz |
+| Mud / warmth | 200–500 Hz | Reduce cloudiness; preserve useful body | 200, 315, 500 Hz |
+| Box / honk | 300 Hz–1.5 kHz | Tame cardboard, nasal or telephone tone | 315, 500, 800, 1.25 kHz |
+| Presence / intelligibility | 1–3.15 kHz | Improve articulation carefully; ear sensitivity makes excess tiring | 1.25, 2, 3.15 kHz |
+| Pain / harshness | 2–5 kHz | Find and reduce aggressive resonances; context dependent | 2, 3.15, 5 kHz |
+| Sibilance / edge | 5–10 kHz | Vocal esses and cymbal splash; de-essing may be more appropriate | 5, 8 kHz |
+| Air / sheen | 10–20 kHz | Gentle openness; excess emphasizes hiss/noise | 12.5, 20 kHz |
+
+These are listening zones, not universal correction targets: instrument, microphone, arrangement, playback level and room change the perceived problem frequency. References include iZotope's instrument EQ guide and Audient's frequency-management overview.
 
 ## Sources
 

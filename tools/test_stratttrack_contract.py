@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.4.0"
+assert manifest["version"]=="1.5.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -44,7 +44,7 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1400;" in src
+assert "x.version=1500;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
@@ -292,7 +292,10 @@ assert all(x["widget"]=="fader" and x["polarity"]=="bipolar" for x in graphic_pa
 graphic_freq=[20.,31.5,50.,80.,125.,200.,315.,500.,800.,1250.,2000.,3150.,5000.,8000.,12500.,20000.]
 freq_match=re.search(r"kGraphicEqFrequencies\[16\]\s*=\s*\{([^}]*)\}",src)
 assert freq_match and [float(x.strip().removesuffix("f")) for x in freq_match.group(1).split(",")]==graphic_freq
-assert "constexpr float kGraphicEqQ=2.146f;" in src
+assert "constexpr float kGraphicEqQMin=0.70710678f;" in src
+assert "constexpr float kGraphicEqQMax=2.146f;" in src
+assert "graphicEqQ(graphicEqGains[band])" in src
+assert "Proportional-Q" in readme
 assert "−12 to +12 dB" in readme and "GRAPHIC-EQ-RESEARCH.md" in readme
 assert "Voxengo Marvel GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "Voxengo Overtone GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
@@ -311,18 +314,28 @@ for sample_rate in (44100.0,48000.0,96000.0):
     for centre in graphic_freq:
         centre=min(centre,sample_rate*0.45)
         for gain_db in (-12.0,0.0,12.0):
-            b,a,w=graphic_peak(sample_rate,centre,2.146,gain_db)
+            q=graphic_eq_q(gain_db)
+            b,a,w=graphic_peak(sample_rate,centre,q,gain_db)
             assert abs(magnitude(b,a,w)-10.0**(gain_db/20.0))<1.0e-8
             if gain_db==0.0:
                 assert abs(magnitude(b,a,0.0)-1.0)<1.0e-8
                 assert abs(magnitude(b,a,math.pi)-1.0)<1.0e-8
-        b,a,_=graphic_peak(sample_rate,centre,2.146,12.0)
+        b,a,_=graphic_peak(sample_rate,centre,graphic_eq_q(12.0),12.0)
         a1,a2=a
         disc=complex(a1*a1-4.0*a2)**0.5
         assert max(abs((-a1+disc)/2.0),abs((-a1-disc)/2.0))<1.0
 ratios=[graphic_freq[i+1]/graphic_freq[i] for i in range(15)]
 assert max(ratios)-min(ratios)<0.04
 assert abs(math.sqrt(2.0**(2.0/3.0))/(2.0**(2.0/3.0)-1.0)-2.146)<0.01
+# Proportional-Q broadens at small moves and focuses progressively at large moves.
+def graphic_eq_q(gain_db):
+    amount=max(0.0,min(1.0,abs(gain_db)/12.0))
+    return 0.70710678+(2.146-0.70710678)*amount
+q_curve=[graphic_eq_q(g) for g in (0,1,3,6,9,12)]
+assert abs(q_curve[0]-0.70710678)<1.0e-8
+assert abs(q_curve[-1]-2.146)<1.0e-8
+assert all(a<b for a,b in zip(q_curve,q_curve[1:]))
+assert all(abs(graphic_eq_q(g)-graphic_eq_q(-g))<1.0e-12 for g in (1,3,6,9,12))
 assert not any(token in src for token in ("s.lf.run","s.lm.run","s.hm.run","s.hf.run","ch_[c].lf.bell","lfFreq_.snap"))
 
 

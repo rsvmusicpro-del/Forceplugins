@@ -33,7 +33,13 @@ enum P {
     kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCount
 };
 static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
-constexpr float kGraphicEqQ=2.146f;
+constexpr float kGraphicEqQMin=0.70710678f;
+constexpr float kGraphicEqQMax=2.146f;
+// Proportional-Q response: small moves stay broad; larger cuts/boosts focus progressively.
+inline float graphicEqQ(float gainDb) {
+    const float amount=finiteClamp(std::fabs(gainDb)/12.0f,0.0f,1.0f,0.0f);
+    return kGraphicEqQMin+(kGraphicEqQMax-kGraphicEqQMin)*amount;
+}
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
 inline float db(float x) { return std::pow(10.0f, x*0.05f); }
@@ -542,7 +548,7 @@ public:
             const bool csLpOrderChanged=ch_[0].csLp.order()!=csLpOrder;
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
-                for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);
+                for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQ(graphicEqGains[band]),graphicEqGains[band]);
                 if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
                 if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
@@ -686,7 +692,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1400;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1500;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
