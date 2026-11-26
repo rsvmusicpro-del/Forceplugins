@@ -18,6 +18,19 @@ assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIn
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(colour-clean)*mix" in src  # true circuit bypass at 0%
 assert "hpFreq_.next" in src and "hfGain_.next" in src  # smoothed filter controls
+# Dynamics thresholds/ratio/makeup and circuit drive glide over 10 ms in dB
+# or control space; this prevents abrupt gain-computer and nonlinear-knee jumps.
+for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_", "compMakeupDb_", "drive_"):
+    assert control in src
+assert "gateThreshDb_.next(finiteClamp(get(kGateThresh)" in src
+assert "gateRangeDb_.next(finiteClamp(get(kGateRange)" in src
+assert "compThreshDb_.next(finiteClamp(get(kCompThresh)" in src
+assert "compRatio_.next(finiteClamp(get(kCompRatio)" in src
+assert "compMakeupDb_.next(finiteClamp(get(kCompMakeup)" in src
+assert "drive_.next(finiteClamp(get(kDrive)" in src
+assert "gateThreshDb_.snap(finiteClamp(get(kGateThresh)" in src
+assert "compRatio_.snap(finiteClamp(get(kCompRatio)" in src
+assert "const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*" in src
 assert "float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;" in src  # independent linked envelopes
 assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
 assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
