@@ -554,7 +554,10 @@ public:
             corrPowerR_+=correlationAlpha*(xR*xR-corrPowerR_);
             corrCross_+=correlationAlpha*(xL*xR-corrCross_);
             const float corrDenom=std::sqrt(std::fmax(corrPowerL_*corrPowerR_,1.0e-20f));
-            const float rho=finiteClamp(corrCross_/corrDenom,-1.0f,1.0f,0.0f);
+            // Do not interpret near-silence / quantization residue as a meaningful stereo relationship.
+            // -90 dBFS RMS corresponds to a mean-square floor of 1e-9 for normalized float audio.
+            const bool correlationActive=corrPowerL_>1.0e-9f && corrPowerR_>1.0e-9f;
+            const float rho=correlationActive?finiteClamp(corrCross_/corrDenom,-1.0f,1.0f,0.0f):0.0f;
             const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);
             // M/S matrix: Mid is the mono fold-down; Width scales existing Side only.
             const float mid=0.5f*(xL+xR);
@@ -638,7 +641,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1207;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1208;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
