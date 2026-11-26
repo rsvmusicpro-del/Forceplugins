@@ -295,7 +295,7 @@ assert ui["qlinkGroups"]=="rows"
 assert [x["param"] for x in input_page["controls"][:11]]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
 assert input_page["controls"][11:]==["empty"]*5
 assert not any(isinstance(x,dict) and x.get("param")=="Input" for x in input_page["controls"])
-assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder, kCount" in src
+assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
 assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in src
