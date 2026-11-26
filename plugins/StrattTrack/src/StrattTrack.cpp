@@ -82,14 +82,195 @@ struct Biquad {
     }
     void reset(){z1=z2=0;}
 };
+// Even antiderivative of softClip(). The polynomial is integrated exactly,
+// so the ADAA divided difference remains the analytic interval average.
+static inline double softClipIntegral(double x)
+{
+    const double a = std::fabs(x);
+    if (a <= 1.0) return 0.5 * a * a;
+    if (a >= 2.0) return 1.85 + 1.5 * (a - 2.0);
+    const double t = a - 1.0;
+    const double t2 = t * t;
+    return 0.5 + t + 0.5 * t2 - 0.25 * t2 * t2 + 0.1 * t2 * t2 * t;
+}
+
+// Integral of softClip(x)^2, required for the asymmetric even-harmonic term.
+// The transition polynomial is integrated analytically (degree 9).
+static inline double softClipSquareIntegral(double x)
+{
+    const double a = std::fabs(x);
+    if (a <= 1.0)
+        return std::copysign(a * a * a / 3.0, x);
+    if (a >= 2.0)
+        return std::copysign((5491.0 / 2520.0) + 2.25 * (a - 2.0), x);
+
+    const double t = a - 1.0;
+    const double t2 = t * t;
+    const double t3 = t2 * t;
+    const double t4 = t2 * t2;
+    const double t5 = t4 * t;
+    const double t6 = t3 * t3;
+    const double t7 = t6 * t;
+    const double t8 = t4 * t4;
+    const double t9 = t8 * t;
+    const double integral = t + t2 + t3 / 3.0 - 0.5 * t4 - 0.2 * t5
+                          + t6 / 6.0 + t7 / 7.0 - t8 / 8.0 + t9 / 36.0;
+    return std::copysign(1.0 / 3.0 + integral, x);
+}
+
+// Point value of the asymmetric static transfer used by the ADAA integrator.
+static inline double softClipTransfer(double x, double asymmetry)
+{
+    const double a = std::fabs(x);
+    double shaped;
+    if (a <= 1.0) shaped = x;
+    else if (a >= 2.0) shaped = std::copysign(1.5, x);
+    else
+    {
+        const double t = a - 1.0;
+        shaped = std::copysign(1.0 + t - t * t * t + 0.5 * t * t * t * t, x);
+    }
+    return shaped + asymmetry * shaped * shaped;
+}
+
+// Five-point Gauss-Legendre integrates polynomials through degree 9 exactly.
+// F + eta*F^2 is degree 8 in each region. Split at every knee so each
+// quadrature interval contains one polynomial branch and avoid subtracting
+// nearly equal global primitives when a tiny interval straddles a knee.
+static inline double integrateShortCrossingInterval(double lo, double hi, double eta)
+{
+    constexpr double nodes[2] = {0.53846931010568309104, 0.90617984593866399280};
+    constexpr double weights[3] = {0.56888888888888888889,
+                                   0.47862867049936646804,
+                                   0.23692688505618908751};
+    constexpr double boundaries[4] = {-2.0, -1.0, 1.0, 2.0};
+    double integral = 0.0;
+    double start = lo;
+
+    for (double boundary : boundaries)
+    {
+        if (boundary <= start || boundary >= hi) continue;
+        const double midpoint = 0.5 * (start + boundary);
+        const double halfWidth = 0.5 * (boundary - start);
+        const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
+                           + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
+        const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
+                           + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
+        integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
+                               + weights[1] * pair0 + weights[2] * pair1);
+        start = boundary;
+    }
+
+    const double midpoint = 0.5 * (start + hi);
+    const double halfWidth = 0.5 * (hi - start);
+    const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
+                       + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
+    const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
+                       + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
+    integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
+                           + weights[1] * pair0 + weights[2] * pair1);
+    return integral;
+}
+
+// First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
+// Each ADAA path seeds its previous sample from the first live input after reset,
+// avoiding an artificial interval from digital silence to a non-zero first sample.
+// For very short intervals wholly inside one polynomial branch, evaluate the
+// interval average with its symmetric Taylor expansion. This avoids subtracting
+// nearly equal global primitives. The fourth-order term is exact through O(d^4);
+// the remaining O(d^6) error is negligible at the 1e-4 relative interval limit.
+// Intervals touching a knee still use the exact piecewise primitive difference.
+static inline float adaaSoftClip(float x, float previousX, float asymmetry)
+{
+    const double xd = static_cast<double>(x);
+    const double pd = static_cast<double>(previousX);
+    const double delta = xd - pd;
+    const double ad = std::fabs(delta);
+    const double scale = std::fmax(1.0, std::fmax(std::fabs(xd), std::fabs(pd)));
+    const double eta = static_cast<double>(asymmetry);
+    const double midpoint = 0.5 * (xd + pd);
+
+    if (ad <= 1.0e-4 * scale)
+    {
+        const double ax = std::fabs(xd);
+        const double ap = std::fabs(pd);
+        const double d2 = delta * delta;
+        const double d4 = d2 * d2;
+
+        // In the linear branch F_a(x)=x+eta*x^2, so its interval
+        // average is available exactly (the second derivative is 2*eta).
+        if (ax <= 1.0 && ap <= 1.0)
+            return static_cast<float>(midpoint + eta * (midpoint * midpoint + d2 / 12.0));
+
+        // The plateau is constant as long as the interval stays on one side.
+        if (ax >= 2.0 && ap >= 2.0 && std::signbit(xd) == std::signbit(pd))
+        {
+            const double y = 1.5 * (std::signbit(xd) ? -1.0 : 1.0);
+            return static_cast<float>(y + eta * y * y);
+        }
+
+        // In the knee, use f(mid) + f''(mid)d^2/24 + f''''(mid)d^4/1920.
+        // The polynomial is degree four; its asymmetric square is degree eight.
+        if (ax > 1.0 && ax < 2.0 && ap > 1.0 && ap < 2.0
+            && std::signbit(xd) == std::signbit(pd))
+        {
+            const double sign = std::signbit(midpoint) ? -1.0 : 1.0;
+            const double t = std::fabs(midpoint) - 1.0;
+            const double t2 = t * t;
+            const double p = 1.0 + t - t * t2 + 0.5 * t2 * t2;
+            const double p1 = 1.0 - 3.0 * t2 + 2.0 * t2 * t;
+            const double p2 = -6.0 * t + 6.0 * t2;
+            const double p3 = -6.0 + 12.0 * t;
+            constexpr double p4 = 12.0;
+            const double f = sign * p;
+            const double f2 = sign * p2;
+            const double f4 = sign * p4;
+            const double fa = f + eta * p * p;
+            const double fa2 = f2 + eta * (2.0 * p1 * p1 + 2.0 * p * p2);
+            const double fa4 = f4 + eta * (2.0 * p * p4 + 8.0 * p1 * p3 + 6.0 * p2 * p2);
+            return static_cast<float>(fa + fa2 * d2 / 24.0 + fa4 * d4 / 1920.0);
+        }
+    }
+
+    if (ad <= 1.0e-4 * scale)
+    {
+        const double lo = std::fmin(xd, pd);
+        const double hi = std::fmax(xd, pd);
+        return static_cast<float>(integrateShortCrossingInterval(lo, hi, eta) / (hi - lo));
+    }
+
+    const double currentIntegral = softClipIntegral(xd)
+                                 + eta * softClipSquareIntegral(xd);
+    const double previousIntegral = softClipIntegral(pd)
+                                  + eta * softClipSquareIntegral(pd);
+    return static_cast<float>((currentIntegral - previousIntegral) / delta);
+}
+
+
 struct Channel {
     Biquad hp,lp,lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
-    float valveDc=0.0f, valvePrev=0.0f;
+    float previousTubeInput=0.0f;
+    bool hasPreviousTubeInput=false;
+    float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
     void reset(){hp.reset();lp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
-        valveDc=valvePrev=0;}
+        previousTubeInput=previousTubeDcInput=previousTubeDcOutput=0.0f;
+        hasPreviousTubeInput=false;}
+    float tubeStage(float x,float pole) {
+        constexpr float tubeDrive=1.15f;
+        constexpr float tubeAsymmetry=0.045f;
+        const float driven=x*tubeDrive;
+        const float previous=hasPreviousTubeInput?previousTubeInput:driven;
+        const float shaped=adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive;
+        previousTubeInput=driven;
+        hasPreviousTubeInput=true;
+        const float y=shaped-previousTubeDcInput+pole*previousTubeDcOutput;
+        previousTubeDcInput=shaped;
+        previousTubeDcOutput=y;
+        return y;
+    }
 };
 inline float coeff(float ms,float sr) {
     ms=finiteClamp(ms,0.1f,2000.0f,10.0f);
@@ -293,17 +474,16 @@ public:
                 Channel &s=ch_[ch];
                 *samples[ch]=*samples[ch]*gateGain_*compGain_*makeup;
                 const float clean=*samples[ch];
-                // Circuit and valve transfer form one independently blended colour engine.
-                // At Mix=0 the output is mathematically the clean dynamics signal.
+                // User-controlled drive colour remains a separate parallel stage.
+                // Its Mix=0 setting is exactly the clean dynamics signal.
                 const float driveWet=circuit(clean,drive);
-                const float valveIn=driveWet*1.04f;
-                const float valveStatic=(valveIn/(1.0f+0.035f*std::fabs(valveIn))
-                                         +0.003f*valveIn*valveIn)/1.04f;
-                s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);
-                s.valvePrev=valveStatic;
-                const float colour=s.valveDc;
-                *samples[ch]=clean+(colour-clean)*mix;
+                *samples[ch]=clean+(driveWet-clean)*mix;
             }
+            // Permanent, invisible valve-amplifier coloration: independent of
+            // Circuit Mix, after all tone/dynamics stages and before output gain.
+            // The same ADAA triode-inspired stage is used by StrattPultek.
+            for(int ch=0;ch<2;++ch)
+                *samples[ch]=ch_[ch].tubeStage(*samples[ch],valveDcCoef_);
             xL*=og*fg; xR*=og*fg;
             if(ctx.numOutputs==1) ctx.outputs[0][i]=0.5f*(xL+xR);
             else {
