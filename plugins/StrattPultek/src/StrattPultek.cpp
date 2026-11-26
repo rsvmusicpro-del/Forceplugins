@@ -88,6 +88,33 @@ static inline double softClipTransfer(double x, double asymmetry)
     return shaped + asymmetry * shaped * shaped;
 }
 
+// Fundamental-preserving makeup for the Drive waveshaper.
+// Calibrate against a 0.5-peak sine (-6.02 dBFS): integrate the odd part
+// of the static transfer over one half-cycle, then restore its fundamental
+// amplitude after the existing 1/driveGain normalization. This is a numerical
+// level-matching reference, not a claim of matching a measured analogue unit.
+static float calculateDriveMakeupGain(float driveAmount)
+{
+    constexpr int intervals = 256;
+    constexpr double pi = 3.1415926535897932384626433832795;
+    constexpr double referencePeak = 0.5;
+    const double driveGain = 1.0 + 2.5 * static_cast<double>(mpc::clamp(driveAmount, 0.0f, 1.0f));
+    const double peak = referencePeak * driveGain;
+    double sum = 0.0;
+    for (int i = 0; i <= intervals; ++i)
+    {
+        const double phase = pi * static_cast<double>(i) / intervals;
+        const double sine = std::sin(phase);
+        const double value = softClipTransfer(peak * sine, 0.0) * sine;
+        const int weight = (i == 0 || i == intervals) ? 1 : ((i & 1) ? 4 : 2);
+        sum += static_cast<double>(weight) * value;
+    }
+    const double integral = sum * pi / (3.0 * intervals);
+    const double fundamental = (2.0 / pi) * integral;
+    const double compensation = referencePeak * driveGain / std::fmax(fundamental, 1.0e-12);
+    return static_cast<float>(mpc::clamp(static_cast<float>(compensation), 1.0f, 1.12f));
+}
+
 // Five-point Gauss-Legendre integrates polynomials through degree 9 exactly.
 // F + eta*F^2 is degree 8 in each region. Split at every knee so each
 // quadrature interval contains one polynomial branch and avoid subtracting
@@ -371,6 +398,10 @@ public:
         sampleRate_ = (std::isfinite(sampleRate) && sampleRate >= 8000.0 && sampleRate <= 384000.0)
                         ? sampleRate : 44100.0;
         dcPole_ = std::exp(-6.2831853071795864769f * 3.0f / static_cast<float>(sampleRate_));
+        // Precompute the Drive's -6 dBFS sine fundamental makeup curve outside
+        // the audio callback. Per-sample use is a bounded table interpolation.
+        for (int i = 0; i <= kDriveMakeupSteps; ++i)
+            driveMakeupTable_[i] = calculateDriveMakeupGain(static_cast<float>(i) / kDriveMakeupSteps);
         // The three selector poles are solved once per prepare, never in process().
         for (int i = 0; i < 3; ++i)
             highAttenPoleChoices_[i] = highAttenuationPole(attenuationFrequency(i), sampleRate_);
@@ -473,7 +504,7 @@ public:
                     ? channels_[ch].previousDriveInput : driveInput;
                 const float saturated = channels_[ch].removeDc(
                     adaaSoftClip(driveInput, previousDriveInput, 0.08f),
-                    dcPole_) / driveGain;
+                    dcPole_) / driveGain * driveMakeupGain(drive);
                 channels_[ch].previousDriveInput = driveInput;
                 channels_[ch].hasPreviousDriveInput = true;
 
@@ -519,7 +550,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1906;
+        i.version = 1907;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
@@ -540,6 +571,17 @@ private:
         const float value = readParam(index, static_cast<float>(fallback), 0.0f,
                                       static_cast<float>(maximum));
         return static_cast<int>(std::lround(value));
+    }
+
+    static constexpr int kDriveMakeupSteps = 100;
+
+    float driveMakeupGain(float amount) const
+    {
+        const float position = mpc::clamp(amount, 0.0f, 1.0f) * kDriveMakeupSteps;
+        const int index = mpc::clamp(static_cast<int>(position), 0, kDriveMakeupSteps - 1);
+        const float fraction = position - static_cast<float>(index);
+        return driveMakeupTable_[index]
+             + (driveMakeupTable_[index + 1] - driveMakeupTable_[index]) * fraction;
     }
 
     void smoothEq(int frames)
@@ -598,6 +640,7 @@ private:
     float eqHighAttenPole_ = 1911.0f, eqHighAtten_ = 0.0f;
     float hpFreq_ = 20.0f, lpFreq_ = 22000.0f;
     Channel channels_[2];
+    float driveMakeupTable_[kDriveMakeupSteps + 1] = {};
     Smoother output_, grain_, drive_, mix_, driveMix_, fader_;
 };
 
