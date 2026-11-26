@@ -1,6 +1,6 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
-// Signal flow: input trim -> preamp -> L/R polarity -> dual input pan ->
+// Signal flow: preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
 // compressor -> circuit colour (drive + fixed
 // valve-inspired stage, parallel blend) -> output trim -> output balance -> fader.
@@ -15,7 +15,7 @@
 
 namespace {
 enum P {
-    kOutput=0, kInput, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
+    kOutput=0, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
     kHpFreq, kLpFreq,
     kLfFreq, kLfGain, kLmFreq, kLmGain, kLmQ,
     kHmFreq, kHmGain, kHmQ, kHfFreq, kHfGain,
@@ -115,7 +115,6 @@ class StrattTrack : public mpc::Plugin {
 public:
     StrattTrack():mpc::Plugin(makeInfo()) {
         addParam(mpc::floatParam("output","Output",-24,24,0,"dB",1));
-        addParam(mpc::floatParam("input","Input",-24,24,0,"dB",1));
         addParam(mpc::floatParam("preamp","Preamp",-18,18,0,"dB",1));
         addParam(mpc::boolParam("phase_l","Phase L",false));
         addParam(mpc::boolParam("phase_r","Phase R",false));
@@ -155,14 +154,14 @@ public:
         addParam(mpc::floatParam("pt_bandwidth","PT Bandwidth",0,100,50,"%",0));
         addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att",{"5k","10k","20k"},1));
         addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
-        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
-        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
+        addProgram("Clean", {0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
+        addProgram("Vocal", {0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
     }
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
         detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
-        output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
+        output_.snap(db(get(kOutput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
         gateThreshDb_.snap(finiteClamp(get(kGateThresh),-80,0,-80));
@@ -186,7 +185,6 @@ public:
         const int n=mpc::clamp(ctx.numFrames,0,2048);
         if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
         const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
-        const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         const float faderGain=db(finiteClamp(get(kFader),-60,12,0));
@@ -247,13 +245,13 @@ public:
             ch_[c].hf.shelf(sr_,hfF,hfG,true);
         }
         for(int i=0;i<n;++i) {
-            const float ig=input_.next(inGain), og=output_.next(outGain);
+            const float og=output_.next(outGain);
             const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
             const float mix=circuitMix_.next(cmix);
             const float l=(ctx.inputs&&ctx.numInputs>0&&ctx.inputs[0])?ctx.inputs[0][i]:0.0f;
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
-            const float a=finiteClamp(l,-16,16,0)*ig*pg*phaseL;
-            const float b=finiteClamp(r,-16,16,0)*ig*pg*phaseR;
+            const float a=finiteClamp(l,-16,16,0)*pg*phaseL;
+            const float b=finiteClamp(r,-16,16,0)*pg*phaseR;
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
             float *samples[2]={&xL,&xR};
             // Clean filtering and EQ precede the linked dynamics detector.
@@ -320,7 +318,7 @@ private:
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
-    Smooth output_,input_,preamp_,fader_,circuitMix_;
+    Smooth output_,preamp_,fader_,circuitMix_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
