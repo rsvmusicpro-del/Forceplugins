@@ -1,4 +1,4 @@
-name: StrattTrack validation
+name: StrattTrack validation # PR20 final-head verification
 on:
   push:
     branches: ["main", "feature/stratttrack"]
