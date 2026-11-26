@@ -97,3 +97,8 @@ The StrattTrack contract test verifies the sample-rate-derived one-sample coeffi
 ## Compressor transfer accuracy and headroom (1.2.1)
 
 The compressor's static gain-computer lookup now uses a 256-interval fourth-power overdrive grid spanning 1× to 32768× threshold (approximately +90.3 dB). The denser grid near unity resolves the hard-knee transition accurately, while its extended upper range prevents the compressor ratio from flattening prematurely on hot signals. The sample loop maps the normalized detector overdrive with two square roots and table interpolation; it performs no per-sample logarithm or power operation. Independent numerical checks cover ratios from 1:1 through 20:1 across the full table range, with maximum relative interpolation error below 0.2%. The plugin binary and manifest version are incremented to 1.2.1; parameter identity, order, presets, state compatibility and signal-path order are unchanged.
+
+
+## Compressor gain-computer headroom (1.2.2)
+
+The compressor lookup spans 1×–8,388,608× detector overdrive using 1,024 fourth-power intervals. The previous 32,768× ceiling could saturate the lookup index when several input, preamp and EQ boosts accumulated ahead of the compressor, causing the effective ratio to collapse on extreme peaks. The expanded table preserves the analytic hard-knee amplitude law through approximately +138.5 dB above threshold. Its fourth-power coordinate is inverted with two square roots per sample; the table is rebuilt at control-block rate only while the smoothed ratio changes. Independent numerical checks cover ratios 1:1, 2:1, 4:1, 10:1 and 20:1 throughout the complete range, with relative interpolation error below 0.2%.
