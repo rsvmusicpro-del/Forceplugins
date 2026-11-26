@@ -1,19 +1,15 @@
 {
-  "kit": {
-    "theme": "amber",
-    "accent": "ffd89a48"
-  },
+  "kit": "mpc-red",
   "qlinkGroups": "rows",
   "style": {
-    "background": "ff17191c",
-    "accent": "ffd89a48",
-    "text": "fff2eee7",
-    "muted": "ff898b8e"
+    "background": "ff1e1d1e",
+    "accent": "ffd31145",
+    "text": "ffffffff",
+    "muted": "ff85878a"
   },
   "pages": [
     {
       "name": "FILTER",
-      "background": "strattpultek-bg.png",
       "controls": [
         { "param": "HP Freq", "widget": "knob" },
         { "param": "LP Freq", "widget": "knob" }
@@ -21,7 +17,6 @@
     },
     {
       "name": "EQ",
-      "background": "strattpultek-bg.png",
       "controls": [
         { "param": "Low Freq", "widget": "knob", "overlay": "menu" },
         { "param": "Low Boost", "widget": "knob" },
@@ -40,7 +35,6 @@
     },
     {
       "name": "CIRCUIT",
-      "background": "strattpultek-bg.png",
       "controls": [
         { "param": "Grain", "widget": "knob" },
         { "param": "Drive", "widget": "knob" },
