@@ -1,7 +1,7 @@
 name: StrattTrack validation
 on:
   push:
-    branches: ["feature/stratttrack"]
+    branches: ["main", "feature/stratttrack"]
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
