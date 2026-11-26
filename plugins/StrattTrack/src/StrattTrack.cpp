@@ -1,7 +1,7 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
 // Signal flow: Airwindows Console7 input stage -> preamp -> L/R polarity -> dual input pan ->
-// HP/LP -> serial Cleansweep HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
+// HP/LP -> serial Cleansweep HP/LP -> Pulse Techniques EQP-1A curve model -> fixed 16-band graphic EQ -> gate ->
 // compressor -> user-controlled drive colour -> Mono Compatibility -> permanent
 // invisible ADAA valve stage -> output balance -> tone-neutral master Output gain.
 //
