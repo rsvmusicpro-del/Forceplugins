@@ -332,5 +332,12 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1204;" in src
+assert "x.version=1205;" in src
+assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
+assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
+assert "phaseWait_[channel]>=phaseWaitLimit_" in src
+polarity_start=src.index("float applyPolarity(")
+polarity_end=src.index("\n    }",polarity_start)
+polarity_body=src[polarity_start:polarity_end]
+assert not any(token in polarity_body for token in ("std::exp(", "std::sin(", "std::cos(", "std::pow(", "std::log(")), "polarity fallback must not evaluate transcendental functions per sample"
 print("StrattTrack polarity transition checks OK")
