@@ -1,4 +1,4 @@
-## StrattTrack 1.5.1
+## StrattTrack 1.5.2\n\n- Flush Console7 recursive-filter and ADAA-history state below 1e-30 to prevent subnormal slowdowns on ARM during long decays and near-silence; preserve audible transfer and host-state identity.\n- Add compiled C++ stability/recovery coverage at 8.001–384 kHz, across five Console Fader positions, malformed inputs and post-fault recovery; run it in the StrattTrack CI pipeline.\n- Preserve UID S4X3, all parameter IDs/order, presets, UI and MPC Sample 3+3 mapping.\n\n## StrattTrack 1.5.1
 
 - Replace linear interpolation in Q with a smoothstep gain-to-octave-bandwidth law, narrowing from 1.9 octaves toward each band's actual fractional-octave spacing as cut/boost increases.
 - Convert bandwidth to Q with the RBJ bilinear-transform frequency-warp relation, and cap bandwidth against the available Nyquist margin so the top band remains finite and stable at 44.1/48 kHz.
