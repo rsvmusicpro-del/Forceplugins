@@ -1,7 +1,7 @@
 # StrattTrack DSP notes
 
 ## Signal path and algorithms
-- Preamp: the single input-stage gain, applied in linear dB gain with 10 ms smoothing and finite input guards. No redundant input-trim stage remains.
+- Preamp: the single active input-stage gain, applied in linear dB gain with 10 ms smoothing and finite input guards. The retired Input ID remains only as a non-automatable, zero-range compatibility slot; it is absent from the UI and audio path.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, block-rate smoothing.
 - Pulse Techniques EQP-1A stage (after filters, before four-band EQ):
