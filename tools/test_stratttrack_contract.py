@@ -13,5 +13,5 @@ assert [p["name"] for p in ui["pages"]]==["INPUT","EQ","DYNAMICS","CIRCUIT"]
 assert len(re.findall(r"addParam\(",src))==32
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain","compGain","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.run") < src.index("x=s.lf.run") < src.index("s.gateGain") < src.index("const coloured=circuit(")
+assert src.index("x=s.hp.run") < src.index("x=s.lf.run") < src.index("s.gateGain") < src.index("const float coloured=circuit(")
 print("StrattTrack manifest, parameter count, UI, DSP stages and Q-Link contract OK")
