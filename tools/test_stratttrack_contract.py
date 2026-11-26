@@ -168,7 +168,7 @@ assert "ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f))" in src
 assert "applyPolarity(consoleL*pg,0,phaseTargetL)" in src and "applyPolarity(consoleR*pg,1,phaseTargetR)" in src and "panL_.next" in src
 assert "phaseHasPrevious_[channel] && phasePrevious_[channel]*x<=0.0f" in src
 assert "phaseHasPrevious_[0]=phaseHasPrevious_[1]=false;" in src
-assert "phaseHasPrevious_[channel]=true;" in src and "phaseWait_[channel]>=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000)" in src
+assert "phaseHasPrevious_[channel]=true;" in src and "phaseWait_[channel]>=phaseWaitLimit_" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 # Independent equation checks: expected values are derived from the DSP equations,
 # not copied from the C++ implementation's runtime output.
