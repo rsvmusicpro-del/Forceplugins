@@ -1,0 +1,46 @@
+{
+  "name": "StrattTrack",
+  "manufacturer": "Stratt",
+  "version": "1.1.0",
+  "format": "vst2",
+  "kind": "effect",
+  "uid": "S4X3",
+  "numInputs": 2,
+  "numOutputs": 2,
+  "category": "Effect",
+  "shortName": "StrattTrack",
+  "knobs": [
+    {
+      "parameter": 0,
+      "label": "Output"
+    },
+    {
+      "parameter": 7,
+      "label": "HP Freq"
+    },
+    {
+      "parameter": 8,
+      "label": "LP Freq"
+    }
+  ],
+  "shiftKnobs": [
+    {
+      "parameter": 1,
+      "label": "Input"
+    },
+    {
+      "parameter": 28,
+      "label": "Drive"
+    },
+    {
+      "parameter": 29,
+      "label": "Circuit"
+    }
+  ],
+  "file32": "VST/stratttrack-arm32.so",
+  "file64": "VST/stratttrack-arm64.so",
+  "description": "StrattTrack: stereo channel strip with filters, Pulse Techniques EQP-1A curve model, four-band EQ, linked dynamics and circuit colour.",
+  "author": "Stratt",
+  "url": "",
+  "license": "MIT"
+}
