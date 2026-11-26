@@ -1,3 +1,9 @@
+## StrattTrack 1.6.1
+
+- Add a live, non-automatable compressor gain-reduction readout (`Comp GR`) on the DYNAMICS page, expressed as positive dB magnitude and refreshed once per 64-frame chunk.
+- Keep gate attenuation and makeup outside the displayed compressor-only value; preserve the audio transfer, all existing parameter IDs/indices and MPC Sample mappings.
+- Add a compiled runtime regression for idle, compression, release recovery and dB display formatting; build and package all MPC targets in CI.
+
 ## StrattTrack 1.5.3
 
 - Final PR-head validation rerun: no DSP or host-state changes beyond the release notes; see the PR checks for the full native/ARM and MPC simulator/package matrix.
