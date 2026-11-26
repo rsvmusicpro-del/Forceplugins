@@ -73,7 +73,9 @@ assert "const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth);" in src
 assert "const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth);" in src
 assert "ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);" in src
 assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # original Butterworth filters remain
-assert "const float csHpWet=s.csHp.process(x);" in src and "const float csLpWet=s.csLp.process(x);" in src
+assert "float csHpWet=s.csHp.process(x);" in src and "float csLpWet=s.csLp.process(x);" in src
+assert "csHpOld=ch_[c].csHp" in src and "csLpOld=ch_[c].csLp" in src
+assert "csHpOrderFade_.next(1.0f,sampleSmooth)" in src and "csLpOrderFade_.next(1.0f,sampleSmooth)" in src
 assert "ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);" in src
 assert "ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);" in src
 assert "ctx.outputs[0][i]=xL*oL*og;" in src and "ctx.outputs[1][i]=xR*oR*og;" in src
