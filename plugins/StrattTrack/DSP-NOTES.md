@@ -11,6 +11,7 @@
   - HF boost uses an RBJ peaking section at 3/4/5/8/10/12/16 kHz; Q maps from 1.60 (sharp) to 0.45 (broad); the maximum peak gain is reduced by 9 dB from sharp to broad, matching the published measurement comparison.
   - HF attenuation is a first-order high shelf at 5/10/20 kHz.
   - Controls are smoothed in log-frequency or linear gain space; coefficients are calculated once per block; filter memory is per channel.
+- Gate threshold/range, compressor threshold/ratio/makeup and circuit drive use a 10 ms control-rate smoother; dynamics thresholds and makeup glide in dB space before conversion to linear amplitude. The compressor curve LUT is rebuilt from the smoothed ratio, avoiding abrupt gain-computer changes without adding per-sample transcendental math.
 - Four-band EQ: RBJ LF/HF shelves and LM/HM peaking sections, neutral at 0 dB.
 - Dynamics: linked-stereo peak sensing, independent exponential gate/compressor detectors, 3 dB gate hysteresis, 2 ms gate gain slew, hard-knee compressor amplitude law and post-reduction makeup.
 - Circuit: bounded rational drive, asymmetric valve-inspired transfer and 3 Hz DC blocker; complete nonlinear path is parallel-blended, so 0% is true clean bypass.
