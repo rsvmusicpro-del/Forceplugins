@@ -116,3 +116,11 @@ Key 61, Key 37, Force (32-bit) and MPC Live III, MPC XL and later (64-bit).
   cookbook, UI guide and reference, presets, troubleshooting, FAQ and legal notes.
 - **Agent skills** (`.claude/skills/`, `.agents/skills/`): new, dsp, ui, build, test, package,
   presets, deploy and troubleshoot, plus `AGENTS.md` / `CLAUDE.md`.
+
+
+## StrattTrack 1.2.7 — hybrid valve voicing
+
+- Refined the permanent valve coloration stage with a normalized 72/28 ECC83/12AX7-like and 6SN7-like triode curve blend, retaining unity small-signal gain and the same stage position.
+- Added exact closed-form hybrid ADAA antiderivative plus five-point Gauss–Legendre handling for short intervals split at both nonlinear knees and zero.
+- Added subtle 18 kHz filtering of the nonlinear residual only; retained the 3 Hz DC blocker, parameter IDs/order, state contract and MPC Sample Q-Link mapping.
+- No new user parameter or UI control; DSP notes document equations, valve electrical references, assumptions and limitations.
