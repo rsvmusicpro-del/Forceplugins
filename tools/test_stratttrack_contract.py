@@ -8,17 +8,23 @@ src=(root/"src"/"StrattTrack.cpp").read_text()
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
-assert all(0<=x["parameter"]<39 for x in manifest["knobs"]+manifest["shiftKnobs"])
-assert manifest["shiftKnobs"][0]=={"parameter":1,"label":"Preamp"}
+assert all(0<=x["parameter"]<40 for x in manifest["knobs"]+manifest["shiftKnobs"])
+assert manifest["knobs"]==[{"parameter":0,"label":"Output"},{"parameter":7,"label":"HP Freq"},{"parameter":8,"label":"LP Freq"}]
+assert manifest["shiftKnobs"]==[{"parameter":2,"label":"Preamp"},{"parameter":28,"label":"Drive"},{"parameter":29,"label":"Circuit"}]
 assert [x["param"] for x in ui["pages"][0]["controls"] if isinstance(x,dict)]==["Preamp","Phase L","Phase R","Pan L","Pan R"]
-assert not re.search(r'addParam\(mpc::(?:float|log|bool|choice)Param\("input"',src)
-assert not re.search(r"\bkInput\b|\binput_\b|get\(kInput\)",src)
+assert re.search(r"kOutput=0,\s*kLegacyInputSlot,\s*kPreamp",src)
+assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
+assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
+assert src.index("addParam(legacyInput)") < src.index('addParam(mpc::floatParam("preamp"')
+assert "get(kLegacyInputSlot)" not in src and "input_.next" not in src and "*ig" not in src
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Drive","Circuit Mix","Output","Out Pan","Fader"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Fader"))
-assert len(re.findall(r"addParam\(",src))==39
+assert len(re.findall(r"addParam\(",src))==40
+programs=re.findall(r'addProgram\("[^"]+",\s*\{([^}]*)\}\)',src)
+assert len(programs)==2 and all(len(values.split(","))==40 for values in programs)
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
