@@ -169,7 +169,7 @@ static inline double tubeIntegral(double x)
     const double k=kMediumMuScale;
     const double hi=softClipIntegral(x)+kHighMuAsymmetry*softClipSquareIntegral(x);
     const double med=softClipIntegral(k*x)/(k*k)
-                    +kMediumMuAsymmetry*softClipSquareIntegral(k*x)/(k*k*k);
+                    +kMediumMuAsymmetry*softClipSquareIntegral(k*x)/(k*k);
     return (1.0-kTriodeBlend)*hi+kTriodeBlend*med;
 }
 
