@@ -21,15 +21,26 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.10":
+if manifest["version"] != "1.9.11":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 if not readme.startswith(f"# StrattPultek {manifest['version']}\n"):
     raise SystemExit("README version heading does not match plugin.json")
 if not dsp_notes.startswith(f"# StrattPultek {manifest['version']} DSP notes"):
     raise SystemExit("DSP-NOTES version heading does not match plugin.json")
 pages = [page["name"] for page in ui["pages"]]
-if pages != ["CONSOLE", "EQ", "CIRCUIT"]:
+if pages != ["CONSOLE", "FILTERS", "EQ", "CIRCUIT"]:
     raise SystemExit(f"Unexpected page layout: {pages!r}")
+filter_page = next(page for page in ui["pages"] if page["name"] == "FILTERS")
+if filter_page["controls"] != [
+    {"param": "HP Freq", "widget": "knob"},
+    {"param": "LP Freq", "widget": "knob"},
+    "empty", "empty",
+]:
+    raise SystemExit("FILTERS page does not match the shared StrattTrack layout")
+console_page = next(page for page in ui["pages"] if page["name"] == "CONSOLE")
+if any(isinstance(control, dict) and control.get("param") in ("HP Freq", "LP Freq")
+       for control in console_page["controls"]):
+    raise SystemExit("HP/LP controls must live only on the FILTERS page")
 
 display_names = set(re.findall(r'addParam\(\w+Param\("[^"]+",\s*"([^"]+)"', source))
 referenced = {
@@ -38,8 +49,8 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
-if "i.version = 1910;" not in source:
-    raise SystemExit("PluginInfo version does not match the 1.9.10 manifest")
+if "i.version = 1911;" not in source:
+    raise SystemExit("PluginInfo version does not match the 1.9.11 manifest")
 if '#include "grain_engine.h"' not in source or "channels_[ch].grainDensity.process(" not in source:
     raise SystemExit("Level-independent Grain continuity detector is missing from the audio path")
 if "grainDensity(previousDriveInput, densitySample)" in source:
@@ -89,4 +100,16 @@ for mapping, expected_indices in expected_knobs.items():
         raise SystemExit(f"MPC Sample {mapping} mapping changed: {actual_indices!r}")
 if "console.process(" not in source or "kConsoleFader" not in source:
     raise SystemExit("Airwindows Console7 input stage is missing")
-print("StrattPultek parameter identity, presets, MPC Sample mapping and 3-page UI contract passed")
+if '#include "dsp/two_pole_filter.h"' not in source:
+    raise SystemExit("Shared second-order Butterworth filter header is missing")
+if "TwoPoleButterworth highpass" not in source or "TwoPoleButterworth lowpass" not in source:
+    raise SystemExit("Shared second-order Butterworth HP/LP sections are missing")
+if "CleansweepOnePole" in source or "dsp/cleansweep_filter.h" in source:
+    raise SystemExit("Retired Cleansweep one-pole filters remain in the audio path")
+if 'logParam("hp_freq", "HP Freq", 20.0f, 1000.0f, 20.0f' not in source:
+    raise SystemExit("HP range does not match StrattTrack")
+if 'logParam("lp_freq", "LP Freq", 1000.0f, 22000.0f, 22000.0f' not in source:
+    raise SystemExit("LP range does not match StrattTrack")
+if "smoothFilterFrequency" not in source or "0.010f * static_cast<float>(sampleRate)" not in source:
+    raise SystemExit("Shared 10 ms logarithmic filter glide is missing")
+print("StrattPultek parameter identity, presets, MPC Sample mapping and shared 4-page FILTERS contract passed")
