@@ -8,7 +8,7 @@ on:
       - "tools/test_stratttrack_cleansweep.cpp"
       - "tools/test_airwindows_console7.py"
       - "tools/test_strattpultek_filters.cpp"
-      - "tools/test_strattpultek_valve.py"
+      - "tools/test_strattpultek_valve.py"\n      - "tools/test_stratttrack_valve.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
