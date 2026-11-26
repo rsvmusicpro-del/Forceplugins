@@ -6,6 +6,8 @@ on:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
       - "tools/test_airwindows_console7.py"
+      - "tools/test_strattpultek_filters.cpp"
+      - "tools/test_strattpultek_valve.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
