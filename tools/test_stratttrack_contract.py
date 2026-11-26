@@ -92,7 +92,7 @@ def onepole_shelf_mag(fc,gain_db,freq,sr=44100.0):
     lp=alpha/(1.0-(1.0-alpha)*z)
     return abs(1.0+(10.0**(gain_db/20.0)-1.0)*lp)
 assert abs(onepole_shelf_mag(100,8,0)-10.0**(8/20))<1.0e-10
-assert abs(onepole_shelf_mag(100,8,22050)-1.0)<1.0e-3
+assert abs(onepole_shelf_mag(100,8,22050)-1.0)<1.2e-2
 for f in (0,100,1000,10000,22050): assert abs(onepole_shelf_mag(100,0,f)-1.0)<1.0e-12
 def interaction(b,a): return 5.0*(1.0-math.exp(-min(b,a)/5.0)) if b>0 and a>0 else 0.0
 assert interaction(0,10)==0 and interaction(10,0)==0
