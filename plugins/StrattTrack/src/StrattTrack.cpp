@@ -499,10 +499,6 @@ public:
         const float csLpTarget=finiteClamp(get(kCsLpFreq),20,22000,22000);
         const int csHpOrder=mpc::clamp(getInt(kCsHpOrder)+1,1,6);
         const int csLpOrder=mpc::clamp(getInt(kCsLpOrder)+1,1,6);
-        const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),controlBlockSmooth), lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),controlBlockSmooth);
-        const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),controlBlockSmooth), lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),controlBlockSmooth), lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),controlBlockSmooth);
-        const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),controlBlockSmooth), hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),controlBlockSmooth), hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),controlBlockSmooth);
-        const float hfF=hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),controlBlockSmooth), hfG=hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),controlBlockSmooth);
         const float ptLfF=smoothLog(ptLowFreq_.v,ptLowFrequency(getInt(kPtLowFreq)),controlBlockSmooth); ptLowFreq_.snap(ptLfF);
         const float ptLfBoost=ptLowBoost_.next(finiteClamp(get(kPtLowBoost),0,13.5f,0),controlBlockSmooth), ptLfAtten=ptLowAtten_.next(finiteClamp(get(kPtLowAtten),0,17.5f,0),controlBlockSmooth);
         const float ptHfF=smoothLog(ptHighFreq_.v,ptHighFrequency(getInt(kPtHighFreq)),controlBlockSmooth); ptHighFreq_.snap(ptHfF);
@@ -526,16 +522,25 @@ public:
         for(int c=0;c<2;++c) {
             ch_[c].ptHighBoost.resonantBoost(sr_,ptHfF,ptHfQ,ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f)));
             ch_[c].ptLfInteraction.bell(sr_,finiteClamp(ptLfF*8.0f,100.0f,sr_*0.45f,800.0f),0.70f,-ptInteractionDb);
-            ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);
-            ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
-            ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
-            ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);
         }
         // The shared HP/LP section uses the same 10 ms logarithmic glide and
         // 64-frame coefficient cadence in both Stratt plugins.
         for(int blockStart=0;blockStart<n;blockStart+=64) {
             const int blockFrames=mpc::clamp(n-blockStart,1,64);
             const float filterSmooth=1.0f-std::exp(-static_cast<float>(blockFrames)/(0.010f*std::fmax(sr_,1.0f)));
+            // Refresh the four-band EQ at the same bounded 64-frame cadence as
+            // HP/LP. Host-block-only coefficient updates caused audible stepping
+            // on large (e.g. 512-frame) callbacks during rapid EQ automation.
+            const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),filterSmooth);
+            const float lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),filterSmooth);
+            const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),filterSmooth);
+            const float lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),filterSmooth);
+            const float lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),filterSmooth);
+            const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),filterSmooth);
+            const float hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),filterSmooth);
+            const float hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),filterSmooth);
+            const float hfF=hfFreq_.next(finiteClamp(get(kHfFreq),2000,20000,12000),filterSmooth);
+            const float hfG=hfGain_.next(finiteClamp(get(kHfGain),-15,15,0),filterSmooth);
             const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth); hpFreq_.snap(hp);
             const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth); lpFreq_.snap(lp);
             const float csHp=smoothLog(csHpFreq_.v,csHpTarget,filterSmooth); csHpFreq_.snap(csHp);
@@ -544,6 +549,10 @@ public:
             const bool csLpOrderChanged=ch_[0].csLp.order()!=csLpOrder;
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
+                ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);
+                ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
+                ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
+                ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);
                 if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
                 if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
@@ -665,7 +674,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1205;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1206;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
