@@ -20,7 +20,7 @@ for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_",
 assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
-assert "*samples[ch]=clean+(colour-clean)*mix" in src  # true circuit bypass at 0%
+assert "*samples[ch]=clean+(driveWet-clean)*mix" in src  # drive colour remains independently blendable
 assert "hpFreq_.next" in src and "hfGain_.next" in src  # smoothed filter controls
 # Dynamics thresholds/ratio/makeup and circuit drive glide over 10 ms in dB
 # or control space; this prevents abrupt gain-computer and nonlinear-knee jumps.
@@ -94,7 +94,10 @@ assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
 
 # First-order DC blocker has H(z=1)=0; a DC step decays to zero.
 assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
-assert "s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);" in src
+assert "adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive" in src
+assert "constexpr float tubeDrive=1.15f;" in src and "constexpr float tubeAsymmetry=0.045f;" in src
+assert "previousTubeDcInput=shaped;" in src and "previousTubeDcOutput=y;" in src
+assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("xL*=og*fg; xR*=og*fg;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
 for _ in range(100000):
@@ -102,6 +105,8 @@ for _ in range(100000):
     y = r*(y+x-x_prev)
     x_prev = x
 assert abs(y) < 1.0e-12
+# A constant tube-stage input settles to zero after DC blocking.
+assert "const float y=shaped-previousTubeDcInput+pole*previousTubeDcOutput;" in src
 
 def onepole_shelf_mag(fc,gain_db,freq,sr=44100.0):
     alpha=1.0-math.exp(-2.0*math.pi*fc/sr)
