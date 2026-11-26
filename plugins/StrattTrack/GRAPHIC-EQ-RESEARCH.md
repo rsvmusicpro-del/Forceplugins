@@ -16,6 +16,9 @@ The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz sprea
 - **Voxengo Marvel GEQ (freeware, proprietary binary):** 16 bands, ±12 dB, 20 Hz–20 kHz, logarithmic centres, continuous interpolated response, linear-phase FIR, freehand curve drawing, stereo/multichannel and M/S grouping, 9 ms compensated latency. Its guide notes reduced low-frequency precision due to finite FIR kernel length. This is the closest 16-band behaviour reference; its linear-phase FIR/latency architecture is not copied.
 - **Voxengo Overtone GEQ (freeware, proprietary binary):** seven bell bands, ±12 dB, channel groups, M/S/multichannel routing and optional harmonic enhancement/oversampling; adjacent bell gains can produce a combined response greater than a single slider's setting. Harmonic modules are not copied because StrattTrack has a separate valve stage.
 - **CamillaDSP GraphicEqualizer (open source, GPL-3.0):** arbitrary band count, logarithmically spaced centres, same relative bandwidth and one peaking biquad per band. Architectural reference only; no source code imported.
+- **ANWIDA GEQ31V (commercial, $49 at the cited product listing):** 31 fixed ISO 1/3-octave constant-Q bands from 20 Hz to 20 kHz, up to ±12 dB, high-precision transparent DSP. Paid reference for classic constant-Q response and slider behaviour; band count differs.
+- **Waves GEQ (commercial):** 30 ISO-centred bands, selectable classic proportional-Q or modern interaction-reduced topology, ±18 dB, analyzer and zero-latency operation. Paid reference for the design trade-off between classic band interaction and modern smoother graphic response; band count differs.
+- **Volko Audio QG (commercial):** 10-band API-560-inspired fixed-frequency graphic EQ, one-octave spacing, ±12 dB, proportional-Q and optional upsampling/clickless parameter updates. Paid reference for proportional-Q behaviour, not a 16-band target.
 - **RBJ Audio EQ Cookbook:** peaking filter coefficient equations; StrattTrack uses its existing clean-room biquad implementation.
 
 ## StrattTrack transfer design
@@ -40,3 +43,7 @@ The existing biquad safety clamp limits each centre to 0.45×sample-rate, preven
 - Robert Bristow-Johnson, Audio EQ Cookbook: https://www.w3.org/TR/audio-eq-cookbook/
 
 No third-party DSP code is copied. Voxengo binaries are used only as behavioural references; CamillaDSP is GPL-3.0 and is neither linked nor copied into this MIT-licensed plugin.
+
+- ANWIDA GEQ31V product specifications and pricing: https://www.anwida.com/as_plugins/geq31v/
+- Waves GEQ product overview: https://www.waves.com/plugins/geq-graphic-equalizer
+- Volko Audio QG product listing and technical overview: https://soundsspace.com/index.php/product-details/qg
