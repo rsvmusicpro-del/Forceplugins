@@ -77,7 +77,7 @@ assert "compMakeupDb_.next(finiteClamp(get(kCompMakeup)" in src
 assert "drive_.next(finiteClamp(get(kDrive)" in src
 assert "gateThreshDb_.snap(finiteClamp(get(kGateThresh)" in src
 assert "compRatio_.snap(finiteClamp(get(kCompRatio)" in src
-assert "const float controlSmooth=1.0f-std::exp(-1.0f/(0.010f*" in src
+assert "const float controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*" in src
 assert "float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;" in src  # independent linked envelopes
 assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
 assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
