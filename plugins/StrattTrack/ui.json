@@ -84,6 +84,34 @@
           "widget": "knob"
         },
         "empty",
+        "empty",
+        {
+          "param": "CS HP On",
+          "widget": "switch"
+        },
+        {
+          "param": "CS HP Freq",
+          "widget": "knob"
+        },
+        {
+          "param": "CS HP Ord",
+          "widget": "knob",
+          "overlay": "menu"
+        },
+        "empty",
+        {
+          "param": "CS LP On",
+          "widget": "switch"
+        },
+        {
+          "param": "CS LP Freq",
+          "widget": "knob"
+        },
+        {
+          "param": "CS LP Ord",
+          "widget": "knob",
+          "overlay": "menu"
+        },
         "empty"
       ]
     },
@@ -225,19 +253,15 @@
           "widget": "knob"
         },
         {
-          "param": "Output",
-          "widget": "knob"
-        },
-        {
           "param": "Out Pan",
           "widget": "knob",
           "polarity": "bipolar"
         },
         {
-          "param": "Fader",
-          "widget": "fader",
-          "polarity": "bipolar"
-        }
+          "param": "Output",
+          "widget": "knob"
+        },
+        "empty"
       ]
     }
   ]

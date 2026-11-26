@@ -1,7 +1,7 @@
 {
   "name": "StrattTrack",
   "manufacturer": "Stratt",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "format": "vst2",
   "kind": "effect",
   "uid": "S4X3",
@@ -39,7 +39,7 @@
   ],
   "file32": "VST/stratttrack-arm32.so",
   "file64": "VST/stratttrack-arm64.so",
-  "description": "StrattTrack stereo channel strip with Console7 input emulation, mono-invariant M/S channel exchange and zero-crossing-seeded polarity switching, polarity and pan, width, correlation safeguard, bass mono, EQ, linked dynamics and circuit colour.",
+  "description": "StrattTrack stereo channel strip with a serial second-stage Cleansweep Butterworth HP/LP filter bank, Console7 input emulation, M/S stereo tools, EQ, linked dynamics and circuit colour.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"

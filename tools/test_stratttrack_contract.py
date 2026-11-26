@@ -14,29 +14,32 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.1"
+assert manifest["version"]=="1.2.2"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 filter_page=next(p for p in ui["pages"] if p["name"]=="FILTERS")
-assert filter_page["controls"]==[{"param":"HP Freq","widget":"knob"},{"param":"LP Freq","widget":"knob"},"empty","empty"]
+assert [x["param"] for x in filter_page["controls"] if isinstance(x,dict)]==["HP Freq","LP Freq","CS HP On","CS HP Freq","CS HP Ord","CS LP On","CS LP Freq","CS LP Ord"]
+assert len(filter_page["controls"])<=16
+assert "CleansweepButterworth" in src and "csHp.set(sr_,csHp,csHpOrder)" in src and "csLp.set(sr_,csLp,csLpOrder)" in src
 assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1201;" in src
+assert "x.version=1202;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Output","Out Pan","Fader"]
-assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Fader"))
-assert len(re.findall(r"addParam\(",src))==45
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
+assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan"))
+assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
+assert len(re.findall(r"addParam\(",src))==50
 assert "console.process(" in src and "kConsoleFader" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*ig*pg,0,phaseTargetL)")
 for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "constexpr float kCompCurveMaxOver=32768.0f;" in src
 assert "std::sqrt(std::sqrt(normalizedOver))*256.0f" in src
@@ -69,11 +72,16 @@ assert "const float lpTarget=finiteClamp(get(kLpFreq),1000,22000,22000);" in src
 assert "const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth);" in src
 assert "const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth);" in src
 assert "ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);" in src
-assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filters
+assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # original Butterworth filters remain
+assert "const float csHpWet=s.csHp.process(x);" in src and "const float csLpWet=s.csLp.process(x);" in src
+assert "ch_[c].lf.bell(sr_,lfF,0.70710678f,lfG);" in src
+assert "ch_[c].hf.bell(sr_,hfF,0.70710678f,hfG);" in src
+assert "xL*=oL*og;" in src and "xR*=oR*og;" in src
+assert "fader_" not in src and "kFader" not in src
 # Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
 assert "sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)))" in src
-for control in ("input_", "output_", "preamp_", "fader_", "circuitMix_"):
+for control in ("input_", "output_", "preamp_", "circuitMix_"):
     line = next(line for line in src.splitlines() if control + ".next(" in line)
     assert ",sampleSmooth)" in line, (control, line)
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
@@ -179,7 +187,7 @@ assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
 assert "adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive" in src
 assert "constexpr float tubeDrive=1.15f;" in src and "constexpr float tubeAsymmetry=0.045f;" in src
 assert "previousTubeDcInput=shaped;" in src and "previousTubeDcOutput=y;" in src
-assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("xL*=og*fg; xR*=og*fg;")
+assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("xL*=oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
 for _ in range(100000):
@@ -227,7 +235,7 @@ assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR)
 assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
 assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
-assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"]]==["Circuit Mix","Output","Out Pan","Fader"]
+assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
 
 # Independent mid/side invariants: decode round-trip and mono fold-down.
 for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
@@ -284,5 +292,5 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1201;" in src
+assert "x.version=1202;" in src
 print("StrattTrack polarity transition checks OK")
