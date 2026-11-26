@@ -249,6 +249,8 @@ assert "constexpr double kHighMuAsymmetry=0.032;" in src
 assert "constexpr double kMediumMuAsymmetry=0.060;" in src
 assert "tubeIntegral(xd)-tubeIntegral(pd)" in src
 assert "integrateShortTubeInterval(lo,hi)/(hi-lo)" in src
+assert "if(ax<=1.0/kMediumMuScale && ap<=1.0/kMediumMuScale)" in src
+assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
