@@ -1,7 +1,7 @@
 name: StrattPultek build and test
 on:
   push:
-    branches: ["feature/strattpultek"]
+    branches: ["main", "feature/strattpultek"]
     paths:
       - "plugins/StrattPultek/**"
       - ".github/workflows/strattpultek.yml"
