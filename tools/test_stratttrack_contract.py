@@ -17,6 +17,16 @@ assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
 assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
 assert src.index("addParam(legacyInput)") < src.index('addParam(mpc::floatParam("preamp"')
 assert "get(kLegacyInputSlot)" not in src and "input_.next" not in src and "*ig" not in src
+parameter_ids=[]
+for line in src.splitlines():
+    if "addParam(legacyInput)" in line:
+        parameter_ids.append("input")
+    else:
+        match=re.search(r'addParam\\(mpc::(?:float|log|bool|choice)Param\\("([^"]+)"',line)
+        if match: parameter_ids.append(match.group(1))
+assert parameter_ids==["output","input","preamp","phase_l","phase_r","pan_l","pan_r","hp_freq","lp_freq","lf_freq","lf_gain","lm_freq","lm_gain","lm_q","hm_freq","hm_gain","hm_q","hf_freq","hf_gain","gate_thresh","gate_range","gate_attack","gate_release","comp_thresh","comp_ratio","comp_attack","comp_release","comp_makeup","drive","circuit_mix","out_pan","fader","pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth","pt_hf_atten_freq","pt_hf_atten"]
+assert "const float a=finiteClamp(l,-16,16,0)*pg*phaseL;" in src
+assert "const float b=finiteClamp(r,-16,16,0)*pg*phaseR;" in src
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
