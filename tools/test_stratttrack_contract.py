@@ -38,6 +38,30 @@ for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gat
     assert stage in src, stage
 assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
+assert "constexpr float kCompCurveMaxOver=32768.0f;" in src
+assert "std::sqrt(std::sqrt(normalizedOver))*256.0f" in src
+
+# Independent compressor-LUT accuracy check. The quartic grid must retain
+# the analytic hard-knee ratio near threshold and across the full input range.
+curve_size=256
+curve_max_over=32768.0
+for ratio in (1.0, 2.0, 4.0, 10.0, 20.0):
+    exponent=-(1.0-1.0/ratio)
+    table=[]
+    for index in range(curve_size+1):
+        position=index/curve_size
+        table_over=1.0+(curve_max_over-1.0)*position**4
+        table.append(table_over**exponent)
+    for sample_index in range(1, 4001):
+        overdrive=curve_max_over**(sample_index/4000.0)
+        normalized=(overdrive-1.0)/(curve_max_over-1.0)
+        position=math.sqrt(math.sqrt(normalized))*curve_size
+        index=min(int(position), curve_size-1)
+        fraction=position-index
+        actual=overdrive**exponent
+        interpolated=table[index]+(table[index+1]-table[index])*fraction
+        assert abs(interpolated-actual)/actual < 0.002, (ratio, overdrive, interpolated, actual)
+    assert abs(table[-1]-(curve_max_over**exponent)) < 1.0e-12
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(driveWet-clean)*mix" in src  # drive colour remains independently blendable
 assert "const float hpTarget=finiteClamp(get(kHpFreq),20,1000,20);" in src
