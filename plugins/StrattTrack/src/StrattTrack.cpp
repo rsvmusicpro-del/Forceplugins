@@ -11,6 +11,7 @@
 // No allocation, locks, I/O or per-sample transcendental functions occur in process().
 
 #include "mpc_plugin.h"
+#include "dsp/two_pole_filter.h"
 #include "dsp/airwindows_console7.h"
 #include <cmath>
 
@@ -256,7 +257,9 @@ static inline float adaaSoftClip(float x, float previousX, float asymmetry)
 
 
 struct Channel {
-    Biquad hp,lp,lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
+    mpc::dsp::TwoPoleButterworth hp{mpc::dsp::TwoPoleButterworth::Mode::Highpass};
+    mpc::dsp::TwoPoleButterworth lp{mpc::dsp::TwoPoleButterworth::Mode::Lowpass};
+    Biquad lf,lm,hm,hf,ptHighBoost,ptLfInteraction;
     stratt::dsp::Console7Channel console;
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float previousTubeInput=0.0f;
@@ -437,8 +440,8 @@ public:
         const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),controlSmooth);
         const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f, oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
         const float phaseL=phaseL_.next(getBool(kPhaseL)?-1.0f:1.0f,controlSmooth), phaseR=phaseR_.next(getBool(kPhaseR)?-1.0f:1.0f,controlSmooth);
-        const float hp=hpFreq_.next(finiteClamp(get(kHpFreq),20,0.45f*sr_,20),controlSmooth);
-        const float lp=lpFreq_.next(finiteClamp(get(kLpFreq),1000,0.49f*sr_,0.49f*sr_),controlSmooth);
+        const float hpTarget=finiteClamp(get(kHpFreq),20,1000,20);
+        const float lpTarget=finiteClamp(get(kLpFreq),1000,22000,22000);
         const float lfF=lfFreq_.next(finiteClamp(get(kLfFreq),30,450,100),controlSmooth), lfG=lfGain_.next(finiteClamp(get(kLfGain),-15,15,0),controlSmooth);
         const float lmF=lmFreq_.next(finiteClamp(get(kLmFreq),100,2000,400),controlSmooth), lmG=lmGain_.next(finiteClamp(get(kLmGain),-15,15,0),controlSmooth), lmQv=lmQ_.next(finiteClamp(get(kLmQ),0.4f,4,1),controlSmooth);
         const float hmF=hmFreq_.next(finiteClamp(get(kHmFreq),500,8000,2500),controlSmooth), hmG=hmGain_.next(finiteClamp(get(kHmGain),-15,15,0),controlSmooth), hmQv=hmQ_.next(finiteClamp(get(kHmQ),0.4f,4,1),controlSmooth);
@@ -456,7 +459,6 @@ public:
         const float ptInteractionDb=(ptLfBoost>0 && ptLfAtten>0)?5.0f*(1.0f-std::exp(-std::fmin(ptLfBoost,ptLfAtten)/5.0f)):0.0f;
         const float ptHfQ=1.60f-1.15f*(ptBandwidth*0.01f);
         for(int c=0;c<2;++c) {
-            ch_[c].hp.pass(sr_,hp,true); ch_[c].lp.pass(sr_,lp,false);
             ch_[c].ptHighBoost.bell(sr_,ptHfF,ptHfQ,ptHfBoost*(0.5f+0.5f*(1.0f-ptBandwidth*0.01f)));
             ch_[c].ptLfInteraction.bell(sr_,finiteClamp(ptLfF*8.0f,100.0f,sr_*0.45f,800.0f),0.70f,-ptInteractionDb);
             ch_[c].lf.shelf(sr_,lfF,lfG,false);
@@ -464,7 +466,16 @@ public:
             ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
             ch_[c].hf.shelf(sr_,hfF,hfG,true);
         }
-        for(int i=0;i<n;++i) {
+        // The shared HP/LP section uses the same 10 ms logarithmic glide and
+        // 64-frame coefficient cadence in both Stratt plugins.
+        for(int blockStart=0;blockStart<n;blockStart+=64) {
+            const int blockFrames=mpc::clamp(n-blockStart,1,64);
+            const float filterSmooth=1.0f-std::exp(-static_cast<float>(blockFrames)/(0.010f*std::fmax(sr_,1.0f)));
+            const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth); hpFreq_.snap(hp);
+            const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth); lpFreq_.snap(lp);
+            for(int c=0;c<2;++c) { ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp); }
+            const int blockEnd=blockStart+blockFrames;
+            for(int i=blockStart;i<blockEnd;++i) {
             const float ig=input_.next(inGain), og=output_.next(outGain);
             const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
             const float mix=circuitMix_.next(cmix);
@@ -480,7 +491,7 @@ public:
             // Clean filtering and EQ precede the linked dynamics detector.
             for(int ch=0;ch<2;++ch) {
                 Channel &s=ch_[ch]; float x=*samples[ch];
-                x=s.hp.run(x); x=s.lp.run(x);
+                x=s.hp.process(x); x=s.lp.process(x);
                 s.ptLowBoostState+=ptLowBoostAlpha*(x-s.ptLowBoostState); x+=(ptLowBoostGain-1.0f)*s.ptLowBoostState;
                 s.ptLowAttenState+=ptLowAttenAlpha*(x-s.ptLowAttenState); x+=(ptLowAttenGain-1.0f)*s.ptLowAttenState;
                 x=s.ptLfInteraction.run(x); x=s.ptHighBoost.run(x);
@@ -531,12 +542,13 @@ public:
                 if(ctx.outputs[1]) ctx.outputs[1][i]=xR*oR;
                 for(int c=2;c<ctx.numOutputs;++c) if(ctx.outputs[c]) ctx.outputs[c][i]=0.0f;
             }
+            }
         }
     }
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1110;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1120;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
