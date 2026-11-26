@@ -7,6 +7,7 @@ ui=json.loads((root/"ui.json").read_text())
 src=(root/"src"/"StrattTrack.cpp").read_text()
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
+assert manifest["version"]=="1.1.1" and "x.version=1101;" in src
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<40 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert manifest["knobs"]==[{"parameter":0,"label":"Output"},{"parameter":7,"label":"HP Freq"},{"parameter":8,"label":"LP Freq"}]
