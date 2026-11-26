@@ -27,6 +27,22 @@ if not readme.startswith(f"# StrattPultek {manifest['version']}\n"):
     raise SystemExit("README version heading does not match plugin.json")
 if not dsp_notes.startswith(f"# StrattPultek {manifest['version']} DSP notes"):
     raise SystemExit("DSP-NOTES version heading does not match plugin.json")
+if ui.get("kit", {}).get("theme") != "amber":
+    raise SystemExit("UI theme must remain amber")
+if ui.get("kit", {}).get("accent") != "ffd89a48":
+    raise SystemExit("UI amber accent changed")
+if ui.get("qlinkGroups") != "rows":
+    raise SystemExit("Q-Link orientation must remain rows")
+if ui.get("style", {}).get("background") != "ff17191c":
+    raise SystemExit("UI base background changed")
+all_controls = [control for page in ui["pages"] for control in page["controls"] if isinstance(control, dict)]
+if any(control.get("widget") not in ("knob", "fader", "switch") for control in all_controls):
+    raise SystemExit("UI contains an unsupported or generic control widget")
+control_names = [control.get("param") for control in all_controls]
+if len(control_names) != len(set(control_names)):
+    raise SystemExit("A parameter is displayed more than once in the touch UI")
+if len(ui["pages"]) > 6:
+    raise SystemExit("Touch UI exceeds the six-page MPC navigation limit")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["CONSOLE", "FILTERS", "EQ", "CIRCUIT"]:
     raise SystemExit(f"Unexpected page layout: {pages!r}")
