@@ -1,3 +1,9 @@
+## StrattTrack 1.2.8
+
+- Gate the negative-correlation Side safeguard below −90 dBFS RMS on either channel, preventing near-silence/quantization residue from being treated as a reliable stereo relationship.
+- Preserve the 50 ms normalized correlation estimator, Mid/Side reconstruction, mono fold-down, Width range, pan law, polarity transition, all 50 parameter IDs/order, presets and MPC Sample mappings.
+- Document hardware references, mathematical invariants, mono-compatibility acceptance criteria and the distinction between polarity inversion and continuous phase rotation.
+
 ## StrattTrack 1.2.6
 
 - Refresh LF/LM/HM/HF RBJ biquad coefficients every 64 frames instead of once per host callback; advance their 10 ms smoothers using the actual chunk length to reduce zipper-like automation steps at large host block sizes.
