@@ -81,6 +81,7 @@ assert "console.process(" in src and "kConsoleFader" in src
 assert '#include "circuit_adaa.h"' in src and "CircuitAdaa circuit;" in src
 assert "ch_[ch].circuit.process(clean,drive)" in src
 assert "if(mix>0.0f && drive>0.0f)" in src and "else ch_[ch].circuit.reset();" in src
+assert src.index("float driveWet=clean;") < src.index("if(mix>0.0f && drive>0.0f)") < src.index("ch_[ch].circuit.process(clean,drive)") < src.index("*samples[ch]=clean+(driveWet-clean)*mix")
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*pg,0,phaseTargetL)")
 assert "input_" not in src and "inGain" not in src and "kInput" not in src
@@ -90,7 +91,7 @@ assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
 assert "get(kLegacyInputSlot)" not in src
 for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit.process(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("const float driveWet=ch_[ch].circuit.process(")
+assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("float driveWet=clean;")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
 assert "constexpr int kCompCurveIntervals=1024;" in src
