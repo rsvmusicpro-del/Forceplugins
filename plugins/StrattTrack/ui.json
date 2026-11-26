@@ -23,6 +23,7 @@
           "param": "Phase R",
           "widget": "switch"
         },
+        "empty",
         {
           "param": "Invert L-R",
           "widget": "switch"
@@ -37,6 +38,7 @@
           "widget": "knob",
           "polarity": "bipolar"
         },
+        "empty",
         {
           "param": "Width",
           "widget": "knob"
@@ -49,6 +51,8 @@
           "param": "Bass Mono",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "Drive",
           "widget": "knob"
@@ -57,16 +61,13 @@
           "param": "Console Fader",
           "widget": "knob"
         },
-        "empty",
-        "empty",
-        "empty",
-        "empty",
         "empty"
       ]
     },
     {
       "name": "FILTERS",
       "controls": [
+        "empty",
         {
           "param": "HP Freq",
           "widget": "knob"
@@ -85,16 +86,19 @@
           "param": "CS HP Freq",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "CS HP Ord",
           "widget": "knob",
           "overlay": "menu"
         },
-        "empty",
         {
           "param": "CS LP On",
           "widget": "switch"
         },
+        "empty",
+        "empty",
         {
           "param": "CS LP Freq",
           "widget": "knob"
@@ -110,6 +114,7 @@
     {
       "name": "PULTEC",
       "controls": [
+        "empty",
         {
           "param": "PT LF Freq",
           "widget": "knob",
@@ -119,6 +124,8 @@
           "param": "PT LF Boost",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "PT LF Atten",
           "widget": "knob"
@@ -128,6 +135,8 @@
           "widget": "knob",
           "overlay": "menu"
         },
+        "empty",
+        "empty",
         {
           "param": "PT HF Boost",
           "widget": "knob"
@@ -136,6 +145,8 @@
           "param": "PT Bandwidth",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "PT HF Att",
           "widget": "knob",
@@ -144,7 +155,8 @@
         {
           "param": "PT HF Atten",
           "widget": "knob"
-        }
+        },
+        "empty"
       ]
     },
     {
@@ -247,6 +259,8 @@
           "param": "Gate Attack",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "Gate Release",
           "widget": "knob"
@@ -255,6 +269,8 @@
           "param": "Comp Thresh",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "Comp Ratio",
           "widget": "knob"
@@ -263,6 +279,8 @@
           "param": "Comp Attack",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "Comp Release",
           "widget": "knob"
@@ -270,12 +288,14 @@
         {
           "param": "Comp Makeup",
           "widget": "knob"
-        }
+        },
+        "empty"
       ]
     },
     {
       "name": "OUTPUT",
       "controls": [
+        "empty",
         {
           "param": "Mono Compatibility",
           "widget": "knob",
@@ -285,19 +305,28 @@
           "param": "Mono Threshold",
           "widget": "knob"
         },
+        "empty",
+        "empty",
         {
           "param": "Circuit Mix",
           "widget": "knob"
         },
+        "empty",
+        "empty",
+        "empty",
         {
           "param": "Out Pan",
           "widget": "knob",
           "polarity": "bipolar"
         },
+        "empty",
+        "empty",
+        "empty",
         {
           "param": "Output",
           "widget": "knob"
         },
+        "empty",
         "empty"
       ]
     }
