@@ -9,7 +9,7 @@
 | Phonic GEQ1500 | Dual-channel 1U rack analogue graphic equalizer | 15 sliders/channel, nominal 25 Hz–16 kHz | Input gain, output LED metering and channel controls; comparison model, not a 16-band EQ |
 | JB Systems GEQ215 | Dual-channel 1U analogue graphic EQ | 25, 40, 63, 100, 160, 250, 400, 630, 1k, 1.6k, 2.5k, 4k, 6.3k, 10k, 16k Hz | ±12 dB, balanced XLR/jack I/O, >95 dB S/N, 20 Hz–20 kHz response, bypass and 50 Hz low cut; 15 bands |
 
-The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz spread. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies below follow the published Pioneer 16-band set and logarithmic centre placement; this is not a claim to reproduce its DSP hardware.
+The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz spread. Rane and other classic analogue rack units use a closely related 15-band family from 25 Hz to 16 kHz. The selected frequencies use the exact published Pioneer DEH-P8850MP 16-band set; they also closely match the standard rounded preferred-number progression used in fixed graphic equalizers. This is not a claim to reproduce its DSP hardware.
 
 ## Software references and design lessons
 
@@ -23,7 +23,7 @@ The documented fixed 16-band example provides a logarithmic 20 Hz–20 kHz sprea
 
 ## StrattTrack transfer design
 
-Fixed centres (Hz): 20, 31.7, 50.2, 79.6, 126, 200, 317, 502, 796, 1260, 2000, 3170, 5020, 7960, 12600, 20000.
+Fixed centres (Hz): 20, 31.5, 50, 80, 125, 200, 315, 500, 800, 1250, 2000, 3150, 5000, 8000, 12500, 20000.
 
 Each slider controls one stereo-linked peaking/bell biquad, −12 to +12 dB, default 0 dB. All bands use constant Q=2.146 (approximately 2/3-octave relative bandwidth), minimum-phase IIR processing and serial cascade. Gain changes are smoothed over 10 ms; coefficients refresh at no more than 64-frame intervals. There is no added latency, FFT, allocation, lock or I/O in the audio callback. Adjacent bands interact naturally in the cascade and their combined response may exceed the gain shown by an individual slider.
 
