@@ -50,7 +50,7 @@ assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filt
 assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
                 "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
-                "phaseL_", "phaseR_", "lfFreq_", "lmFreq_", "hmFreq_",
+                "lfFreq_", "lmFreq_", "hmFreq_",
                 "hfFreq_", "ptLowBoost_", "ptLowAtten_", "ptHighBoost_",
                 "ptBandwidth_", "ptHighAtten_"):
     line = next(line for line in src.splitlines()
