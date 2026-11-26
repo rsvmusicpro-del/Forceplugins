@@ -221,7 +221,8 @@ struct Channel {
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float previousTubeInput=0.0f;
     bool hasPreviousTubeInput=false;
-    float previousTubeColor=0.0f;\n    float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
+    float previousTubeColor=0.0f;
+    float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
     void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();lf.reset();lm.reset();hm.reset();hf.reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
@@ -328,7 +329,8 @@ public:
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
-        valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);\n        tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);
+        valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);
+        tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);
         phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));
         phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);
         for(auto &c:ch_) c.console.prepare(sr_);
@@ -673,7 +675,8 @@ private:
     bool gateOpen_=true;
     float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
-    float valveDcCoef_=0.999572f;\n    float tubeHfAlpha_=0.923f;
+    float valveDcCoef_=0.999572f;
+    float tubeHfAlpha_=0.923f;
     float phaseFallbackAlpha_=0.022420575f;
     int phaseWaitLimit_=882;
 };
