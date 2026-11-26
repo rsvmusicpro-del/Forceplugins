@@ -241,10 +241,10 @@ assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
 
 # First-order DC blocker has H(z=1)=0; a DC step decays to zero.
 assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
-assert "adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive" in src
-assert "constexpr float tubeDrive=1.15f;" in src and "constexpr float tubeAsymmetry=0.045f;" in src
+assert "adaaTube(driven,previous)/tubeDrive" in src
+assert "constexpr float tubeDrive=1.15f;" in src\nassert "constexpr double kTriodeBlend=0.28;" in src\nassert "constexpr double kMediumMuScale=1.18;" in src\nassert "constexpr double kHighMuAsymmetry=0.032;" in src\nassert "constexpr double kMediumMuAsymmetry=0.060;" in src\nassert "tubeIntegral(xd)-tubeIntegral(pd)" in src\nassert "integrateShortTubeInterval(lo,hi)/(hi-lo)" in src\nassert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src\nassert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src\nassert "float tubeStage(float x,float pole,float hfAlpha)" in src\nassert "x.version=1207;" in src
 assert "previousTubeDcInput=shaped;" in src and "previousTubeDcOutput=y;" in src
-assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
+assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
 y, x_prev = 0.0, 0.0
 for _ in range(100000):
@@ -357,3 +357,37 @@ polarity_end=src.index("\n    }",polarity_start)
 polarity_body=src[polarity_start:polarity_end]
 assert not any(token in polarity_body for token in ("std::exp(", "std::sin(", "std::cos(", "std::pow(", "std::log(")), "polarity fallback must not evaluate transcendental functions per sample"
 print("StrattTrack polarity transition checks OK")
+
+
+# Hybrid ECC83/6SN7-inspired curve and exact antiderivative checks.
+W,K,ETA1,ETA2=0.28,1.18,0.032,0.060
+def fbase(x,eta):
+    a=abs(x)
+    if a<=1: y=x
+    elif a>=2: y=math.copysign(1.5,x)
+    else:
+        t=a-1
+        y=math.copysign(1+t-t**3+0.5*t**4,x)
+    return y+eta*y*y
+def gbase(x):
+    a=abs(x)
+    if a<=1: return 0.5*a*a
+    if a>=2: return 1.85+1.5*(a-2)
+    t=a-1
+    return 0.5+t+0.5*t*t-0.25*t**4+0.1*t**5
+def jbase(x):
+    a=abs(x)
+    if a<=1: return math.copysign(a**3/3,x)
+    if a>=2: return math.copysign(5491/2520+2.25*(a-2),x)
+    t=a-1
+    q=t+t*t+t**3/3-0.5*t**4-0.2*t**5+t**6/6+t**7/7-t**8/8+t**9/36
+    return math.copysign(1/3+q,x)
+def ftube(x): return (1-W)*fbase(x,ETA1)+W*fbase(K*x,ETA2)/K
+def atube(x): return (1-W)*(gbase(x)+ETA1*jbase(x))+W*(gbase(K*x)/K**2+ETA2*jbase(K*x)/K**3)
+for x in (-3,-1.7,-0.6,0,0.6,1.7,3):
+    h=1e-6
+    assert abs((atube(x+h)-atube(x-h))/(2*h)-ftube(x))<3e-6
+h=1e-5
+assert abs((ftube(h)-ftube(-h))/(2*h)-1)<2e-5
+assert abs(ftube(1.4)+ftube(-1.4))>1e-3
+print("StrattTrack hybrid valve transfer and antiderivative checks OK")
