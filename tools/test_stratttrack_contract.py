@@ -443,7 +443,11 @@ assert "correlationActive=corrPowerL_>1.0e-9f && corrPowerR_>1.0e-9f" in src
 assert "correlationActive?finiteClamp(corrCross_/corrDenom,-1.0f,1.0f,0.0f):0.0f" in src
 floor=1.0e-9
 assert abs(10.0*math.log10(floor)-(-90.0))<1.0e-12
-for power_l,power_r in ((0.0,1.0),(floor*0.99,1.0),(floor, floor),(floor*1.01, floor*1.01)):
+def side_safety(power_l,power_r,rho,amount):
     active=power_l>floor and power_r>floor
-    expected=active
-    assert active==expected
+    return 1.0-amount*max(0.0,-rho) if active else 1.0
+assert side_safety(0.0,1.0,-1.0,1.0)==1.0
+assert side_safety(floor*0.99,1.0,-1.0,1.0)==1.0
+assert side_safety(floor,floor,-1.0,1.0)==1.0
+assert side_safety(floor*1.01,floor*1.01,-1.0,1.0)==0.0
+assert side_safety(floor*1.01,floor*1.01,1.0,1.0)==1.0
