@@ -175,7 +175,7 @@ public:
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         const float makeup=db(finiteClamp(get(kCompMakeup),0,24,0));
-remove runtime LUT rebuild        const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
+        const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
         const float inL=finiteClamp(get(kPanL)*0.01f,-1,1,-1), inR=finiteClamp(get(kPanR)*0.01f,-1,1,1);
         const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
