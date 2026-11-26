@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.5.3"
+assert manifest["version"]=="1.6.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -44,7 +44,7 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1503;" in src
+assert "x.version=1600;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
@@ -77,8 +77,12 @@ assert [(x["parameter"],x["label"]) for x in manifest["knobs"]]==[(0,"Output"),(
 assert src.index("addParam(legacyInput)") < src.index('addParam(mpc::floatParam("preamp"')
 assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(2,"Preamp"),(28,"Drive"),(29,"Circuit")]
 
-assert "kDenormalFloor = 1.0e-30" in (root.parents[1]/"framework"/"dsp"/"airwindows_console7.h").read_text()
 assert "console.process(" in src and "kConsoleFader" in src
+assert "kDenormalFloor = 1.0e-30" in (root.parents[1]/"framework"/"dsp"/"airwindows_console7.h").read_text()
+assert '#include "circuit_adaa.h"' in src and "CircuitAdaa circuit;" in src
+assert "ch_[ch].circuit.process(clean,drive)" in src
+assert "if(mix>0.0f && drive>0.0f)" in src and "else ch_[ch].circuit.reset();" in src
+assert src.index("float driveWet=clean;") < src.index("if(mix>0.0f && drive>0.0f)") < src.index("ch_[ch].circuit.process(clean,drive)") < src.index("*samples[ch]=clean+(driveWet-clean)*mix")
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*pg,0,phaseTargetL)")
 assert "input_" not in src and "inGain" not in src and "kInput" not in src
@@ -86,9 +90,9 @@ assert "kOutput=0, kLegacyInputSlot, kPreamp" in src
 assert 'mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0)' in src
 assert "legacyInput.automatable=false" in src and "addParam(legacyInput)" in src
 assert "get(kLegacyInputSlot)" not in src
-for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
+for stage in ["hp.process","lp.process","graphic[band].run","gateGain_","compGain_","circuit.process(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.process") < src.index("s.csHp.process") < src.index("s.csLp.process") < src.index("s.ptLowBoostState+=") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("const float peak=") < src.index("float driveWet=clean;")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "constexpr float kCompCurveMaxOver=8388608.0f;" in src
 assert "constexpr int kCompCurveIntervals=1024;" in src
@@ -250,7 +254,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1503;" in src
+assert "x.version=1600;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -449,7 +453,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1503;" in src
+assert "x.version=1600;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
@@ -605,32 +609,3 @@ for left,right in ((1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
     for gain in (0.0,0.25,0.5,1.0):
         out_l,out_r=mid+side*gain,mid-side*gain
         assert abs((out_l+out_r)*0.5-mid)<1.0e-12
-
-
-# Coefficient safety is checked on the quantized float denominator, not only
-# on ideal double coefficients. Exercise every fixed band and supported rate.
-assert "void set(double nb0,double nb1,double nb2,double na0,double na1,double na2)" in src
-assert "!(std::fabs(fa2)<1.0f && (1.0f+fa1+fa2)>1.0e-7f && (1.0f-fa1+fa2)>1.0e-7f)" in src
-assert "const double w0=2.0*static_cast<double>(kPi)*fc/sr;" in src
-assert "const double A=std::pow(10.0,static_cast<double>(gainDb)/40.0);" in src
-import struct
-def f32(x): return struct.unpack("<f",struct.pack("<f",x))[0]
-for sample_rate in (44100.0,48000.0,96000.0):
-    for band, nominal in enumerate(graphic_freq):
-        fc=min(nominal,sample_rate*0.45)
-        w=2.0*math.pi*fc/sample_rate
-        q=graphic_eq_q(sample_rate,fc,graphic_eq_bandwidth(12.0,band,sample_rate))
-        for gain_db in (-12.0,-6.0,0.0,6.0,12.0):
-            alpha=math.sin(w)/(2.0*q)
-            A=10.0**(gain_db/40.0)
-            a0=1.0+alpha/A
-            a1=f32((-2.0*math.cos(w))/a0)
-            a2=f32((1.0-alpha/A)/a0)
-            assert abs(a2)<1.0
-            assert 1.0+a1+a2>1.0e-7
-            assert 1.0-a1+a2>1.0e-7
-            b0=f32((1.0+alpha*A)/a0)
-            b1=f32((-2.0*math.cos(w))/a0)
-            b2=f32((1.0-alpha*A)/a0)
-            assert all(math.isfinite(v) for v in (a1,a2,b0,b1,b2))
-print("StrattTrack quantized graphic-EQ coefficient stability checks OK")

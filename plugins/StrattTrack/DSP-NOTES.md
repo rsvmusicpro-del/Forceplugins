@@ -1,8 +1,9 @@
-# StrattTrack DSP notes
-
 ## Console7 denormal-state hardening (1.5.3)
 
 The shared Airwindows Console7 input stage flushes recursive biquad and ADAA-history values below 1e-30 to exact zero. This avoids subnormal slowdowns on ARM during long decays and near-silence; the threshold is far below the representable audio floor and does not alter audible programme material. Existing non-finite recovery, bounded input, Airwindows MIT attribution and the EQ coefficient-stability guard remain intact. A dedicated compiled C++ regression exercises Console7 across 8.001–384 kHz, five fader positions, sustained tones, malformed host samples and recovery.
+
+
+# StrattTrack DSP notes
 
 ## Shared HP/LP filter standard (1.1.2)
 
@@ -262,6 +263,13 @@ The graphic EQ uses a serial minimum-phase IIR cascade of sixteen gain-dependent
 ## Adaptive graphic-EQ bandwidth and Q (1.5.1)
 
 For band centre `f0`, sample rate `Fs`, digital radian frequency `ω0 = 2πf0/Fs`, and bandwidth `BW` in octaves, the RBJ bilinear-transform mapping is `Q = 1 / (2 sinh((ln 2 / 2) BW ω0 / sin ω0))`. This is the frequency-warp-correct conversion from octave bandwidth to the peaking-biquad Q parameter; using the analog approximation without `ω0/sin(ω0)` would make high bands progressively wider as they approach Nyquist. The adaptive target bandwidth is `BW(g) = BWbroad + (BWnarrow − BWbroad) s(t)`, with `t = clamp(|g|/12,0,1)` and `s(t)=t²(3−2t)`. `BWbroad=1.9` octaves gives Q≈0.707 at low frequencies in the low-frequency limit; `BWnarrow` is calculated from geometric midpoints between adjacent fixed centres. Both bandwidth endpoints are capped by `2 log2(Fs/(2f0))`, so a band close to Nyquist cannot request an impossible symmetric upper/lower span. The gain sign is excluded from the law, ensuring identical bandwidth for equal-magnitude cuts and boosts. Q and coefficients are calculated at the existing bounded 64-frame refresh, not per sample; the 10 ms gain smoother and independent left/right filter states remain intact.
+
+
+## Drive/Circuit antiderivative antialiasing (1.6.0)
+
+The Drive/Circuit path preserves its bounded rational transfer f(x)=x/(1+k|x|), where k=0.22d(1+5d), and now evaluates the first-order ADAA interval average. Its even primitive is F(x)=(k|x|−ln(1+k|x|))/k², with the continuous k→0 limit x²/2. The log is evaluated by frexp range reduction and a short atanh polynomial, not a per-sample logarithm; a cancellation-safe series handles small arguments and near-identical samples use the midpoint limit. Stereo channels own independent history, non-finite samples clear that history, and inputs are bounded to ±64. Existing Drive smoothing and the exact 0% Circuit Mix bypass are preserved. This reduces nonlinear foldback without oversampling latency, but does not claim zero aliasing or analogue hardware identity.
+
+CI independently differentiates the primitive, compares interval averages with high-resolution Simpson integration, and checks short-interval and non-finite recovery behaviour.
 
 
 ## Graphic-EQ numerical hardening (1.5.2)
