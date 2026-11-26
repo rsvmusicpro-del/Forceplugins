@@ -22,7 +22,7 @@ for line in src.splitlines():
     if "addParam(legacyInput)" in line:
         parameter_ids.append("input")
     else:
-        match=re.search(r'addParam\\(mpc::(?:float|log|bool|choice)Param\\("([^"]+)"',line)
+        match=re.search(r'addParam\(mpc::(?:float|log|bool|choice)Param\("([^"]+)"',line)
         if match: parameter_ids.append(match.group(1))
 assert parameter_ids==["output","input","preamp","phase_l","phase_r","pan_l","pan_r","hp_freq","lp_freq","lf_freq","lf_gain","lm_freq","lm_gain","lm_q","hm_freq","hm_gain","hm_q","hf_freq","hf_gain","gate_thresh","gate_range","gate_attack","gate_release","comp_thresh","comp_ratio","comp_attack","comp_release","comp_makeup","drive","circuit_mix","out_pan","fader","pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth","pt_hf_atten_freq","pt_hf_atten"]
 assert "const float a=finiteClamp(l,-16,16,0)*pg*phaseL;" in src
