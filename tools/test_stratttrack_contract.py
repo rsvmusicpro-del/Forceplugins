@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.2.2"
+assert manifest["version"]=="1.2.3"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
