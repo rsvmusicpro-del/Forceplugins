@@ -1,8 +1,8 @@
-# StrattTrack 1.3.0
+# StrattTrack 1.3.1
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
-## Signal path
+## 1.3.1 stability update\nThe permanent hybrid triode stage now fails closed on non-finite upstream samples, clears its per-channel ADAA/DC memory after a corrupted sample, and bounds its input to ±64 before evaluating the antiderivative; this prevents a single invalid or extreme sample from contaminating subsequent audio. The new independent numerical regression suite differentiates the hybrid antiderivative, compares ADAA divided differences against split Gauss–Legendre integration across both valve knees, and checks short-interval stability.\n\n## Signal path
 Stereo input → Console7 input stage → preamp → smoothed L/R polarity and channel exchange → equal-power dual input pan → M/S width and negative-correlation side safeguard → 2nd-order Butterworth low-frequency Side high-pass (Bass Mono) → original 12 dB/oct Butterworth HP/LP → optional serial Cleansweep HP/LP (independent HP/LP enable, 20 Hz–11 kHz / 20 Hz–22 kHz, 1st–6th-order Butterworth) → Pulse Techniques EQP-1A response-curve model → four-band parametric EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive → Mono Compatibility → fixed valve-inspired transfer → smoothed stereo balance → tone-neutral Output master trim.
 
 The dedicated PULTEC page exposes the EQP-1A controls: 20/30/60/100 Hz low boost and attenuation, 3/4/5/8/10/12/16 kHz high peak boost with sharp-to-broad bandwidth, and 5/10/20 kHz high shelving attenuation. The stage sits after HP/LP and before the four-band channel EQ. Control ranges follow Pulse Techniques' published specifications.
