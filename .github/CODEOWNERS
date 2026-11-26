@@ -1,0 +1,8 @@
+# SDK, ABI, build/release and agent-policy changes require repository-owner review.
+ /framework/ @rsvmusicpro-del
+/tools/build.py @rsvmusicpro-del
+/tools/validate.py @rsvmusicpro-del
+/AGENTS.md @rsvmusicpro-del
+/.github/ @rsvmusicpro-del
+/docs/STRATTTRACK-AI-WORKFLOW.md @rsvmusicpro-del
+/plugins/StrattTrack/ @rsvmusicpro-del
