@@ -149,11 +149,13 @@ public:
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
         if(ctx.outputs==nullptr||ctx.numOutputs<1) return;
-        const float inGain=db(finiteClamp(get(kInput),-24,24,0)+finiteClamp(get(kPreamp),-18,18,0));
+        const float inGain=db(finiteClamp(get(kInput),-24,24,0));
+        const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         const float faderGain=db(finiteClamp(get(kFader),-60,12,0));
-        const float gateT=db(get(kGateThresh)), gateR=db(-finiteClamp(get(kGateRange),0,80,60));
-        const float compT=db(get(kCompThresh)), ratio=finiteClamp(get(kCompRatio),1,20,1);
+        const float gateThreshold=db(get(kGateThresh));
+        const float gateFloor=db(-finiteClamp(get(kGateRange),0,80,60));
+        const float compThreshold=db(get(kCompThresh)), ratio=finiteClamp(get(kCompRatio),1,20,1);
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         const float makeup=db(get(kCompMakeup));
@@ -176,7 +178,7 @@ public:
         const float phaseL=getBool(kPhaseL)?-1.0f:1.0f, phaseR=getBool(kPhaseR)?-1.0f:1.0f;
         for(int i=0;i<n;++i) {
             const float ig=input_.next(inGain), og=output_.next(outGain);
-            const float pg=preamp_.next(1.0f), fg=fader_.next(faderGain);
+            const float pg=preamp_.next(preampGain), fg=fader_.next(faderGain);
             const float mix=circuitMix_.next(cmix);
             const float l=(ctx.inputs&&ctx.numInputs>0&&ctx.inputs[0])?ctx.inputs[0][i]:0.0f;
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
@@ -188,13 +190,12 @@ public:
                 Channel &s=ch_[c];
                 const float envCoef=detector>s.detector?compAtk:compRel;
                 s.detector=envCoef*s.detector+(1-envCoef)*detector;
-                const float level=20.0f*std::log10(std::fmax(s.detector,1.0e-8f));
-                const float over=level-get(kCompThresh);
-                const float grDb=over>0?over*(1.0f-1.0f/ratio):0.0f;
-                const float targetComp=db(-grDb);
+                const float above=std::fmax(0.0f,s.detector/compThreshold-1.0f);
+                // Rational approximation of the dB-domain compressor knee; avoids per-sample pow/log.
+                const float targetComp=1.0f/(1.0f+(1.0f-1.0f/ratio)*above);
                 const float cc=targetComp<s.compGain?compAtk:compRel;
                 s.compGain=cc*s.compGain+(1-cc)*targetComp;
-                const float gateTarget=level>get(kGateThresh)?1.0f:db(-get(kGateRange));
+                const float gateTarget=s.detector>gateThreshold?1.0f:gateFloor;
                 const float gc=gateTarget<s.gateGain?gateAtk:gateRel;
                 s.gateGain=gc*s.gateGain+(1-gc)*gateTarget;
             }
@@ -206,9 +207,9 @@ public:
                 x*=s.gateGain*s.compGain*makeup;
                 const float coloured=circuit(x,drive);
                 // 3 Hz DC blocker for the fixed asymmetric valve component.
-                s.valveDc=0.999572f*s.valveDc+0.000428f*(coloured-s.valvePrev);
+                s.valveDc=0.999572f*(s.valveDc+coloured-s.valvePrev);
                 s.valvePrev=coloured;
-                const float valve=coloured-s.valveDc;
+                const float valve=s.valveDc;
                 *samples[c]=x+(valve-x)*mix;
             }
             xL*=og*fg; xR*=og*fg;
