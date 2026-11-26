@@ -33,18 +33,42 @@ enum P {
     kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCount
 };
 static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
-constexpr float kGraphicEqQMin=0.70710678f;
-constexpr float kGraphicEqQMax=2.146f;
+// Local fractional-octave widths derived from geometric midpoints between adjacent centres.
+static const float kGraphicEqBandwidthOctaves[16] = {
+    0.65535183f,0.66096405f,0.67232409f,0.66096405f,
+    0.66096405f,0.66671187f,0.66096405f,0.67232409f,
+    0.66096405f,0.66096405f,0.66671187f,0.66096405f,
+    0.67232409f,0.66096405f,0.66096405f,0.67807191f
+};
+constexpr float kGraphicEqBroadBandwidthOctaves=1.9f;
+constexpr float kGraphicEqLn2Half=0.34657359028f;
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
 inline float db(float x) { return std::pow(10.0f, x*0.05f); }
 inline float finiteClamp(float x,float lo,float hi,float fallback) {
     return std::isfinite(x) ? mpc::clamp(x,lo,hi) : fallback;
 }
-// Proportional-Q response: small moves stay broad; larger cuts/boosts focus progressively.
-inline float graphicEqQ(float gainDb) {
+// Smooth proportional-Q law expressed as bandwidth in octaves. Small moves stay broad;
+// full-scale moves converge on each band's actual fractional-octave spacing.
+inline float graphicEqBandwidth(float gainDb,int band,float sr,float frequency) {
     const float amount=finiteClamp(std::fabs(gainDb)/12.0f,0.0f,1.0f,0.0f);
-    return kGraphicEqQMin+(kGraphicEqQMax-kGraphicEqQMin)*amount;
+    const float focus=amount*amount*(3.0f-2.0f*amount);
+    const float fc=finiteClamp(frequency,10.0f,sr*0.45f,1000.0f);
+    const float available=2.0f*std::log2((0.5f*sr)/fc);
+    const float limit=finiteClamp(available,0.05f,2.0f,0.667f);
+    const float broad=std::fmin(kGraphicEqBroadBandwidthOctaves,limit);
+    const float narrow=std::fmin(kGraphicEqBandwidthOctaves[mpc::clamp(band,0,15)],limit);
+    return broad+(narrow-broad)*focus;
+}
+// RBJ's exact bilinear-transform bandwidth relation: 1/Q = 2*sinh((ln2/2)*BW*w0/sin(w0)).
+inline float graphicEqQ(float sr,float frequency,float bandwidthOctaves) {
+    const float fc=finiteClamp(frequency,10.0f,sr*0.45f,1000.0f);
+    const float w0=2.0f*kPi*fc/sr;
+    const float sinW0=std::sin(w0);
+    const float frequencyWarp=w0/std::fmax(sinW0,1.0e-6f);
+    const float argument=kGraphicEqLn2Half*finiteClamp(bandwidthOctaves,0.05f,2.0f,0.667f)*frequencyWarp;
+    const float q=1.0f/(2.0f*std::sinh(argument));
+    return finiteClamp(q,0.25f,8.0f,0.70710678f);
 }
 struct Smooth {
     float v=0.0f;
@@ -538,8 +562,13 @@ public:
             bassMonoFreq_.snap(bassFreq);
             bassMonoSideHp_.pass(sr_,bassFreq,true);
             float graphicEqGains[16];
-            for(int band=0;band<16;++band)
+            float graphicEqQValues[16];
+            for(int band=0;band<16;++band) {
+                const float bandFrequency=finiteClamp(kGraphicEqFrequencies[band],10.0f,sr_*0.45f,1000.0f);
                 graphicEqGains[band]=graphicEqGain_[band].next(finiteClamp(get(kGraphicEq01+band),-12.0f,12.0f,0.0f),filterSmooth);
+                const float bandwidth=graphicEqBandwidth(graphicEqGains[band],band,sr_,bandFrequency);
+                graphicEqQValues[band]=graphicEqQ(sr_,bandFrequency,bandwidth);
+            }
             const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth); hpFreq_.snap(hp);
             const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth); lpFreq_.snap(lp);
             const float csHp=smoothLog(csHpFreq_.v,csHpTarget,filterSmooth); csHpFreq_.snap(csHp);
@@ -548,7 +577,7 @@ public:
             const bool csLpOrderChanged=ch_[0].csLp.order()!=csLpOrder;
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
-                for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQ(graphicEqGains[band]),graphicEqGains[band]);
+                for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQValues[band],graphicEqGains[band]);
                 if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
                 if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
@@ -692,7 +721,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1500;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1501;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
