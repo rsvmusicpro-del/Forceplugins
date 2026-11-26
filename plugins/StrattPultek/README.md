@@ -1,10 +1,10 @@
-# StrattPultek 1.9.10
+# StrattPultek 1.9.11
 
 **StrattPultek** is a stereo MPC insert effect inspired by the Pultec EQP-1A control topology.
 
 ## Included processing
 
-- bx_cleansweep V2-style first-order high-pass and low-pass filters on the Filter page. HP spans 20 Hz–11 kHz and LP 20 Hz–22 kHz; both are continuously variable, logarithmically smoothed and use a prewarped bilinear first-order analog-prototype response (6 dB/octave), with double-precision coefficient design and non-finite-state recovery. The filters run before the Pultec EQ.
+- Shared second-order Butterworth high-pass and low-pass filters on the FILTERS page, identical to StrattTrack. HP spans 20 Hz–1 kHz and LP 1 kHz–22 kHz; both use Q=0.7071, bilinear-transform coefficients, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. The filters run after Console7 and before the Pultec EQ; malformed samples reset only the affected filter state.
 
 - Selectable first-order low-frequency boost and attenuation shelves (20, 30, 60, 100 Hz); the attenuation shelf uses a higher corner frequency to create the characteristic low-end lift/dip interaction.
 - Selectable high-frequency bell boost (3, 4, 5, 8, 10, 12, 16 kHz), with bandwidth-dependent maximum gain (approximately +20 dB narrow to +13.5 dB broad).
@@ -25,11 +25,11 @@ A published open-source EQP-1A study using Wave Digital Filters demonstrates tha
 
 ## Filter emulation scope
 
-The digital HP/LP pair is derived from the normalized analog first-order prototypes HLP(s)=wc/(s+wc) and HHP(s)=s/(s+wc). The prewarped bilinear substitution K=tan(pi*fc/fs) maps the analog -3 dB corner to the requested digital cutoff; its pole remains strictly inside the unit circle for the supported cutoff interval. Coefficients are calculated in double precision and stored as float for the ARM audio loop. Non-finite host samples are rejected before they can contaminate recursive filter state, and the filter itself resets safely on a non-finite input/output. Butterworth and Bessel first-order prototypes have the same single-pole response; there is no legitimate first-order magnitude-curve blend to add without changing the documented 6 dB/octave topology. The implementation therefore preserves the Cleansweep response rather than inventing a hybrid curve. This remains a linear filter stage: no saturation, harmonic generation or gain coloration is introduced by HP/LP filtering.
+The shared HP/LP pair uses normalized second-order Butterworth low-pass and high-pass sections (Q=1/sqrt(2)) designed with the bilinear transform. Both plugins use the same coefficient equations, 20 Hz–1 kHz HP range, 1–22 kHz LP range, 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. Coefficients are calculated in double precision and stored as float for the ARM audio loop; the cutoff is bounded to 0.45×sample rate so poles remain stable below Nyquist. Non-finite host samples are rejected before recursive state can be contaminated, and each filter resets safely on invalid input or output. This is a linear 12 dB/octave filter stage: no saturation, harmonic generation or gain coloration is introduced by HP/LP filtering.
 
 
 
-The public bx_cleansweep V2 documentation specifies the HP/LP ranges and first-order 6 dB/octave slopes. This clean-room implementation uses a bilinear-transform one-pole pair with those documented frequency ranges. Brainworx's proprietary Anti-Crush curve implementation is not public, so bit-identical or circuit-identical behaviour cannot be claimed. This is a topology-level functional emulation, not a reverse-engineered copy.
+The earlier one-pole Cleansweep-style section has been retired in favour of the shared second-order Butterworth implementation used by StrattTrack. This is a common Stratt filter design, not a claim of bit-identical behaviour to bx_cleansweep or any proprietary analogue circuit.
 
 ## Permanent valve output stage
 
@@ -43,7 +43,7 @@ Airwindows informed the design in two specific ways: the density-dependent wet w
 
 ## UI organization
 
-The MPC touch UI is divided into three pages: CONSOLE (Console Fader plus HP/LP cutoffs), EQ (all Pultec frequency, gain, bandwidth and Output master controls), and CIRCUIT (Grain, Drive, Drive Mix, global Mix and final Fader). The original 14 parameter IDs and indices remain unchanged; HP Freq and LP Freq are parameters 14 and 15, and Console Fader is appended as parameter 16. The MPC Sample's existing 3+3 Knob FX mapping is intentionally preserved, so the three appended controls remain at their defaults on that device; they are fully adjustable on MPC models with the touch plugin UI.
+The MPC touch UI is divided into four pages: CONSOLE (Console Fader), FILTERS (the same HP/LP controls and ordering as StrattTrack), EQ (all Pultec frequency, gain, bandwidth and Output master controls), and CIRCUIT (Grain, Drive, Drive Mix, global Mix and final Fader). The original 14 parameter IDs and indices remain unchanged; HP Freq and LP Freq are parameters 14 and 15, and Console Fader is appended as parameter 16. The MPC Sample's existing 3+3 Knob FX mapping is intentionally preserved, so the three appended controls remain at their defaults on that device; they are fully adjustable on MPC models with the touch plugin UI.
 
 ## CPU and realtime
 
