@@ -156,22 +156,22 @@
           "polarity": "bipolar"
         },
         {
-          "param": "31.7 Hz",
+          "param": "31.5 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "50.2 Hz",
+          "param": "50 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "79.6 Hz",
+          "param": "80 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "126 Hz",
+          "param": "125 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
@@ -181,22 +181,22 @@
           "polarity": "bipolar"
         },
         {
-          "param": "317 Hz",
+          "param": "315 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "502 Hz",
+          "param": "500 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "796 Hz",
+          "param": "800 Hz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "1.26 kHz",
+          "param": "1.25 kHz",
           "widget": "fader",
           "polarity": "bipolar"
         },
@@ -206,22 +206,22 @@
           "polarity": "bipolar"
         },
         {
-          "param": "3.17 kHz",
+          "param": "3.15 kHz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "5.02 kHz",
+          "param": "5 kHz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "7.96 kHz",
+          "param": "8 kHz",
           "widget": "fader",
           "polarity": "bipolar"
         },
         {
-          "param": "12.6 kHz",
+          "param": "12.5 kHz",
           "widget": "fader",
           "polarity": "bipolar"
         },
