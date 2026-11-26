@@ -11,22 +11,35 @@ on:
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
+      - "AGENTS.md"
+      - ".github/**"
+      - "docs/STRATTTRACK-AI-WORKFLOW.md"
       - ".github/workflows/stratttrack.yml"
   pull_request:
-    branches: ["main"]
+    branches: ["feature/stratttrack"]
     paths:
       - "plugins/StrattTrack/**"
       - "tools/test_stratttrack_contract.py"
+      - "tools/test_airwindows_console7.py"
+      - "tools/test_strattpultek_filters.cpp"
+      - "tools/test_strattpultek_valve.py"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
+      - "AGENTS.md"
+      - ".github/**"
+      - "docs/STRATTTRACK-AI-WORKFLOW.md"
       - ".github/workflows/stratttrack.yml"
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: stratttrack-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   build-test-package:
     runs-on: ubuntu-22.04
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
