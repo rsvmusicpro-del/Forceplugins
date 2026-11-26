@@ -1,4 +1,4 @@
-# StrattTrack 1.2.9
+# StrattTrack 1.3.0
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
