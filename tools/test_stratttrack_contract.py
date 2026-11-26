@@ -18,5 +18,9 @@ assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIn
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(colour-clean)*mix" in src  # true circuit bypass at 0%
 assert "hpFreq_.next" in src and "hfGain_.next" in src  # smoothed filter controls
-assert "float detector_=0.0f, gateGain_=1.0f, compGain_=1.0f;" in src  # linked state owned outside channels
+assert "float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;" in src  # independent linked envelopes
+assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
+assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
+assert "compGain_=targetComp;" in src and "const float cc=targetComp<compGain_?compAtk:compRel;" not in src
+assert "const float gateSlew=coeff(2.0f,sr_);" in src
 print("StrattTrack manifest, parameter count, UI, DSP isolation, smoothing and Q-Link contract OK")
