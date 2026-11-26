@@ -637,3 +637,6 @@ assert src.index("set(kCompGR,compReductionDb);") > src.index("if(ctx.numOutputs
 for gain,expected in ((1.0,0.0),(0.5,20.0*math.log10(2.0)),(0.25,20.0*math.log10(4.0)),(0.001,60.0)):
     displayed=min(60.0,max(0.0,-20.0*math.log10(gain)))
     assert abs(displayed-expected)<1.0e-10
+
+assert "bool formatValue(int index,float plainValue,std::string& out) override" in src
+assert 'std::snprintf(buffer,sizeof(buffer),"%.1f dB",finiteClamp(plainValue,0.0f,60.0f,0.0f));' in src
