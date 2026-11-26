@@ -70,8 +70,15 @@ coef=math.exp(-1.0/(tau*sr))
 env=1.0-(coef**round(tau*sr))
 assert abs(env-(1.0-math.exp(-1.0))) < 1.0e-12
 
-# First-order DC blocker has a zero at DC.
+# First-order DC blocker has H(z=1)=0; a DC step decays to zero.
+assert "valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_)" in src
+assert "s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);" in src
 r=math.exp(-2.0*math.pi*3.0/44100.0)
-assert abs((1.0-1.0)/(1.0-r)) < 1.0e-12  # H(z=1) = 0
+y, x_prev = 0.0, 0.0
+for _ in range(1000):
+    x = 1.0
+    y = r*(y+x-x_prev)
+    x_prev = x
+assert abs(y) < 1.0e-12
 
 print("StrattTrack contract and independent DSP equation checks OK")
