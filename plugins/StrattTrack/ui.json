@@ -13,6 +13,7 @@
   "pages": [
     {
       "name": "INPUT",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Input",
@@ -39,24 +40,12 @@
           "param": "Pan R",
           "widget": "knob",
           "polarity": "bipolar"
-        },
-        {
-          "param": "Output",
-          "widget": "knob"
-        },
-        {
-          "param": "Out Pan",
-          "widget": "knob"
-        },
-        {
-          "param": "Fader",
-          "widget": "fader",
-          "polarity": "bipolar"
         }
       ]
     },
     {
       "name": "FILTERS",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "HP Freq",
@@ -72,6 +61,7 @@
     },
     {
       "name": "PULTEC",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "PT LF Freq",
@@ -112,6 +102,7 @@
     },
     {
       "name": "EQ",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "LF Freq",
@@ -157,6 +148,7 @@
     },
     {
       "name": "DYNAMICS",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Gate Thresh",
@@ -197,7 +189,8 @@
       ]
     },
     {
-      "name": "CIRCUIT",
+      "name": "OUTPUT",
+      "background": "stratt-bg.png",
       "controls": [
         {
           "param": "Drive",
@@ -206,6 +199,19 @@
         {
           "param": "Circuit Mix",
           "widget": "knob"
+        },
+        {
+          "param": "Output",
+          "widget": "knob"
+        },
+        {
+          "param": "Out Pan",
+          "widget": "knob"
+        },
+        {
+          "param": "Fader",
+          "widget": "fader",
+          "polarity": "bipolar"
         }
       ]
     }
