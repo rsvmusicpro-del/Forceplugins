@@ -73,6 +73,19 @@ static inline double softClipSquareIntegral(double x)
     return std::copysign(1.0 / 3.0 + integral, x);
 }
 
+// Psychoacoustic density weighting for the Grain blend. Pair the previous
+// driven dry sample with the current shaped sample, as in the published
+// sample-density principle: sustained waveform body receives more colour,
+// while sharp high-frequency transitions pass more cleanly. Smoothstep gives
+// zero slope at both blend limits, reducing control-law modulation without
+// adding detector state, latency, allocation or transcendental work.
+static inline float grainDensity(float previousSample, float shapedSample)
+{
+    const float raw = mpc::clamp(0.5f * std::fabs(previousSample + shapedSample),
+                                 0.0f, 1.0f);
+    return raw * raw * (3.0f - 2.0f * raw);
+}
+
 // Point value of the asymmetric static transfer used by the ADAA integrator.
 static inline double softClipTransfer(double x, double asymmetry)
 {
@@ -513,8 +526,9 @@ public:
                 // zero-crossings and lets sustained waveform body carry more
                 // colour. Unlike the original sine shaper, this uses our
                 // polynomial ADAA transfer and keeps the MPC CPU budget low.
-                const float density = mpc::clamp(
-                    std::fabs(previousDriveInput + driveInput) * 2.0f, 0.0f, 1.0f);
+                const float densitySample = static_cast<float>(
+                    softClipTransfer(driveInput, 0.0));
+                const float density = grainDensity(previousDriveInput, densitySample);
                 const float driveWet = colour * drive * driveMix * density;
                 wet += (saturated - wet) * driveWet;
                 // Filter cutoffs remain independent of the Pultec/circuit wet-dry control.
@@ -550,7 +564,7 @@ private:
         i.name = "StrattPultek";
         i.vendor = "Stratt";
         i.uniqueId = MPC_FOURCC('S', 'o', '2', '1');
-        i.version = 1907;
+        i.version = 1908;
         i.isInstrument = false;
         i.numInputs = 2;
         i.numOutputs = 2;
