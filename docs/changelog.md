@@ -9,6 +9,12 @@
 
 # Changelog
 
+## StrattTrack 1.2.5
+
+- Precompute the 1 ms polarity-fallback coefficient and 20 ms zero-crossing timeout in `prepare()` using the validated sample rate.
+- Remove exponential evaluation and sample-rate-to-timeout conversion from the per-sample polarity-switch path; preserve zero-crossing behavior, fallback timing, parameter identity and DSP transfer.
+
+
 ## StrattPultek 1.9.5
 
 - Move parameter 0 (Output) after the fixed nonlinear valve-colour stage so the MPC host's load-time parameter nudge changes level only, not saturation or harmonic content.
