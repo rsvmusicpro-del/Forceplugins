@@ -21,8 +21,8 @@ public:
    if(order>order_){
     const int oldSections=order_/2,newSections=order/2;
     for(int i=oldSections;i<newSections;++i)sections_[i].reset();
-    if((order&1)!=0&&(order_&1)==0)firstX1_=firstY1_=0.0f;
    }
+   if((order&1)!=0&&(order_&1)==0)firstX1_=firstY1_=0.0f;
    order_=order;
   }
   firstOrder_=(order&1)!=0; sectionCount_=order/2;
