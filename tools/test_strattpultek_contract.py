@@ -19,7 +19,7 @@ expected = [
 ]
 if ids != expected:
     raise SystemExit(f"Parameter order/identity mismatch: {ids!r}")
-if manifest["version"] != "1.9.6":
+if manifest["version"] != "1.9.7":
     raise SystemExit(f"Unexpected manifest version: {manifest['version']}")
 pages = [page["name"] for page in ui["pages"]]
 if pages != ["FILTER", "EQ", "CIRCUIT"]:
@@ -32,8 +32,12 @@ referenced = {
     for control in page["controls"]
     if isinstance(control, dict) and "param" in control
 }
-if "i.version = 1906;" not in source:
+if "i.version = 1907;" not in source:
     raise SystemExit("PluginInfo version does not match the 1.9.6 manifest")
+if "calculateDriveMakeupGain" not in source or "driveMakeupTable_" not in source or "* driveMakeupGain(drive)" not in source:
+    raise SystemExit("Precomputed Drive fundamental makeup is missing from the audio path")
+if "kDriveMakeupSteps = 100" not in source or "for (int i = 0; i <= kDriveMakeupSteps; ++i)" not in source:
+    raise SystemExit("Drive makeup must be precomputed outside the audio callback")
 if "constexpr int kControlQuantum = 64;" not in source or "smoothEq(blockFrames);" not in source:
     raise SystemExit("64-frame coefficient refresh cadence is missing")
 if "channels_[ch].tubeStage(processed, dcPole_)" not in source or "tubeOutput * outGain * finalFader" not in source:
