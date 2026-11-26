@@ -10,7 +10,7 @@ assert reset_match, "StrattTrack reset block not found"
 reset_body=reset_match.group(1)
 for line in reset_body.splitlines():
     if ".snap(" in line:
-        assert any(token in line for token in ("finiteClamp(", "getBool(", "mpc::clamp(")), line
+        assert any(token in line for token in ("finiteClamp(", "getBool(", "mpc::clamp(", ".snap(1.0f)")), line
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
