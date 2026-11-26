@@ -1,5 +1,7 @@
 # StrattTrack 1.5.3
 
+Final validation build: see PR #20 checks for the tested ARM32/ARM64 and MPC host-simulator matrix.
+
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
 ## 1.3.1 stability update\nThe permanent hybrid triode stage now fails closed on non-finite upstream samples, clears its per-channel ADAA/DC memory after a corrupted sample, and bounds its input to ±64 before evaluating the antiderivative; this prevents a single invalid or extreme sample from contaminating subsequent audio. The new independent numerical regression suite differentiates the hybrid antiderivative, compares ADAA divided differences against split Gauss–Legendre integration across both valve knees, and checks short-interval stability.\n\n## Signal path
