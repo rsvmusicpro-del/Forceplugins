@@ -454,13 +454,14 @@ public:
         const float makeup=db(compMakeupDb_.next(finiteClamp(get(kCompMakeup),0,24,0),controlBlockSmooth));
         // Rebuild the static compressor curve only when its ratio changes.
         // A fourth-power overdrive grid gives dense resolution around the knee
-        // while spanning >90 dB above threshold without per-sample log/pow work.
+        // while spanning approximately 138.5 dB above threshold without per-sample log/pow work.
         // The audio loop maps overdrive to this grid with two hardware square roots.
-        constexpr float kCompCurveMaxOver=32768.0f;
+        constexpr float kCompCurveMaxOver=8388608.0f;
+        constexpr int kCompCurveIntervals=1024;
         if(ratio!=compRatioCached_) {
             const float exponent=-(1.0f-1.0f/ratio);
-            for(int i=0;i<=256;++i) {
-                const float position=static_cast<float>(i)*(1.0f/256.0f);
+            for(int i=0;i<=kCompCurveIntervals;++i) {
+                const float position=static_cast<float>(i)*(1.0f/static_cast<float>(kCompCurveIntervals));
                 const float position2=position*position;
                 const float over=1.0f+(kCompCurveMaxOver-1.0f)*position2*position2;
                 compCurve_[i]=std::pow(over,exponent);
@@ -572,12 +573,12 @@ public:
             const float over=detector_/std::fmax(compThreshold,1.0e-9f);
             // Conventional hard-knee compressor law in the amplitude domain.
             // The fourth-power grid resolves the knee accurately and keeps the
-            // ratio law valid up to 32768x threshold (about +90.3 dB).
+            // ratio law valid up to 8,388,608x threshold (about +138.5 dB).
             const float normalizedOver=finiteClamp((over-1.0f)/(kCompCurveMaxOver-1.0f),0.0f,1.0f,0.0f);
-            const float curvePos=std::sqrt(std::sqrt(normalizedOver))*256.0f;
+            const float curvePos=std::sqrt(std::sqrt(normalizedOver))*static_cast<float>(kCompCurveIntervals);
             const int curveIndex=static_cast<int>(curvePos);
             const float curveFrac=curvePos-static_cast<float>(curveIndex);
-            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
+            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<kCompCurveIntervals?curveIndex+1:kCompCurveIntervals]-compCurve_[curveIndex])*curveFrac;
             // The compressor envelope already supplies the specified attack/release.
             // Applying a second identical smoother to gain would double its timing.
             compGain_=targetComp;
@@ -615,7 +616,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1201;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1202;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -667,7 +668,7 @@ private:
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
-    float compCurve_[257]{};
+    float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
     float valveDcCoef_=0.999572f;
 };
