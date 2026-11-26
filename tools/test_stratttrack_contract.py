@@ -39,7 +39,7 @@ assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 # Fixed graphic-EQ gain smoothing and coefficient refresh share the bounded 64-frame cadence.
 assert "graphicEqGain_[band].next(" in src
 assert "finiteClamp(get(kGraphicEq01+band),-12.0f,12.0f,0.0f)" in src
-assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in src
+assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQ(graphicEqGains[band]),graphicEqGains[band]);" in src
 assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
@@ -295,7 +295,7 @@ assert freq_match and [float(x.strip().removesuffix("f")) for x in freq_match.gr
 assert "constexpr float kGraphicEqQMin=0.70710678f;" in src
 assert "constexpr float kGraphicEqQMax=2.146f;" in src
 assert "graphicEqQ(graphicEqGains[band])" in src
-assert "Proportional-Q" in readme
+assert "proportional-Q" in readme
 assert "−12 to +12 dB" in readme and "GRAPHIC-EQ-RESEARCH.md" in readme
 assert "Voxengo Marvel GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
 assert "Voxengo Overtone GEQ" in (root/"GRAPHIC-EQ-RESEARCH.md").read_text()
