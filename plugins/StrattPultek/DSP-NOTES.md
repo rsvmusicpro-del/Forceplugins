@@ -1,4 +1,4 @@
-# StrattPultek 1.9.9 DSP notes and verification plan
+# StrattPultek 1.9.10 DSP notes and verification plan
 
 ## Filter page — bx_cleansweep V2-style HP/LP
 
