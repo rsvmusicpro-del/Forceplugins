@@ -1,5 +1,9 @@
 # StrattTrack DSP notes
 
+## Console7 denormal-state hardening (1.5.3)
+
+The shared Airwindows Console7 input stage flushes recursive biquad and ADAA-history values below 1e-30 to exact zero. This avoids subnormal slowdowns on ARM during long decays and near-silence; the threshold is far below the representable audio floor and does not alter audible programme material. Existing non-finite recovery, bounded input, Airwindows MIT attribution and the EQ coefficient-stability guard remain intact. A dedicated compiled C++ regression exercises Console7 across 8.001–384 kHz, five fader positions, sustained tones, malformed host samples and recovery.
+
 ## Shared HP/LP filter standard (1.1.2)
 
 StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec and 16-band graphic EQ stages.
