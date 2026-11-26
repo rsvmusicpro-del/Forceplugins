@@ -8,13 +8,15 @@ src=(root/"src"/"StrattTrack.cpp").read_text()
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
-assert all(0<=x["parameter"]<40 for x in manifest["knobs"]+manifest["shiftKnobs"])
-assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
+assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
+assert [p["name"] for p in ui["pages"]]==["CONSOLE","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Drive","Circuit Mix","Output","Out Pan","Fader"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Fader"))
-assert len(re.findall(r"addParam\(",src))==40
+assert len(re.findall(r"addParam\(",src))==41
+assert "console.process(" in src and "kConsoleFader" in src
+assert src.index("consoleL=ch_[0].console.process") < src.index("const float a=consoleL*ig*pg*phaseL")
 for stage in ["hp.run","lp.run","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
 assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
