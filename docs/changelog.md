@@ -1,5 +1,12 @@
 # Changelog
 
+## StrattTrack 1.1.1
+
+- Remove the redundant Input trim parameter and its gain stage completely; Preamp is now the first input-page control and the only input gain stage.
+- Keep the remaining parameter IDs stable; update MPC Sample knob mapping and factory program value arrays to the 39-parameter layout.
+- Add regression assertions that the removed control cannot reappear in the UI, parameter contract or DSP path.
+
+
 ## StrattPultek 1.9.5
 
 - Move parameter 0 (Output) after the fixed nonlinear valve-colour stage so the MPC host's load-time parameter nudge changes level only, not saturation or harmonic content.
