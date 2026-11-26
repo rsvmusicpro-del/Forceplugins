@@ -1,4 +1,4 @@
-# StrattPultek — 69 calculs mathématiques et physiques (v1.9.8)
+# StrattPultek — 70 calculs mathématiques et physiques (v1.9.9)
 
 Référentiel de conception et de vérification. Les équations servent à dimensionner ou contrôler la chaîne ; elles ne signifient pas que chaque opération est exécutée à chaque échantillon. Les calculs coûteux restent au taux de contrôle ou à prepare(), conformément au budget ARM MPC.
 
@@ -166,3 +166,8 @@ d[n]=r[n]^2(3-2r[n]),\qquad
 g[n]=Grain\cdot Drive\cdot DriveMix\cdot d[n].
 \]
 This preserves the sample-density concept (sustained waveform body receives more saturation; fast transitions receive less), but makes the blend law C1-continuous at both 0 and 1. The previous implementation used a raw-sample sum with a hard clamp; the updated estimate accounts for the current waveshaper transfer and removes the clamp's slope discontinuity. It requires only one polynomial evaluation and multiplies/additions per sample; it adds no state, latency, oversampling, allocation or transcendental calls. It remains a phenomenological dynamic blend, not a psychoacoustic loudness meter or a model of a physical circuit.
+
+
+## Détecteur de densité Grain (1.9.9)
+
+70. Continuité normalisée entre les deux échantillons façonnés \(p[n-1]\) et \(x[n]\) : \(c[n]=0\) si leurs signes diffèrent ou si \(|p|+|x|\le\epsilon\), sinon \(c[n]=2\min(|p|,|x|)/(|p|+|x|)\). Le poids instantané est \(s[n]=c[n]^2(3-2c[n])\). Le détecteur attaque immédiatement vers le bas et récupère selon \(d[n]=d[n-1]+(1-e^{-1/(0.0005f_s)})(s[n]-d[n-1])\) lorsque \(s[n]\ge d[n-1]\); sinon \(d[n]=s[n]\). Le gain de saturation devient \(g[n]=Grain\cdot Drive\cdot DriveMix\cdot d[n]\). La normalisation rend la mesure indépendante du niveau absolu, et la constante de récupération de 0,5 ms est calculée à \(prepare()\), pas dans la boucle audio.
