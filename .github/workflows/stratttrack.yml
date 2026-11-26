@@ -9,6 +9,15 @@ on:
       - "tools/build.py"
       - "tools/validate.py"
       - ".github/workflows/stratttrack.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "plugins/StrattTrack/**"
+      - "tools/test_stratttrack_contract.py"
+      - "framework/**"
+      - "tools/build.py"
+      - "tools/validate.py"
+      - ".github/workflows/stratttrack.yml"
   workflow_dispatch:
 permissions:
   contents: read
