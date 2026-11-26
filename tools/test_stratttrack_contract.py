@@ -255,7 +255,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1209;" in src
+assert "x.version=1300;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -304,7 +304,7 @@ assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR)
 assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
 assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
-assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
 
 # Independent mid/side invariants: decode round-trip and mono fold-down.
 for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
@@ -362,7 +362,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1209;" in src
+assert "x.version=1300;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
@@ -500,3 +500,21 @@ valve_stage=src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)")
 assert mono_stage < valve_stage
 assert src.index("xL=monoMid+monoSide;",mono_stage) < valve_stage
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+
+# Independent Auto transfer checks: no action above threshold, gradual Side reduction below it.
+def mono_auto_gain(rho, threshold):
+    if rho <= -threshold:
+        return max(0.0,min(1.0,(1.0+rho)/max(1.0-threshold,1.0e-4)))
+    return 1.0
+assert mono_auto_gain(-0.25,0.5)==1.0
+assert mono_auto_gain(-0.5,0.5)==1.0
+assert abs(mono_auto_gain(-0.75,0.5)-0.5)<1.0e-12
+assert mono_auto_gain(-1.0,0.5)==0.0
+assert mono_auto_gain(-1.0,1.0)==0.0
+# M/S Side control never alters Mid or the mono fold-down.
+for left,right in ((1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
+    mid=(left+right)*0.5
+    side=(left-right)*0.5
+    for gain in (0.0,0.25,0.5,1.0):
+        out_l,out_r=mid+side*gain,mid-side*gain
+        assert abs((out_l+out_r)*0.5-mid)<1.0e-12
