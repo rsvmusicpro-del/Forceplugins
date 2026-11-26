@@ -15,7 +15,7 @@
 
 namespace {
 enum P {
-    kOutput=0, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
+    kOutput=0, kLegacyInputSlot, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
     kHpFreq, kLpFreq,
     kLfFreq, kLfGain, kLmFreq, kLmGain, kLmQ,
     kHmFreq, kHmGain, kHmQ, kHfFreq, kHfGain,
@@ -115,6 +115,10 @@ class StrattTrack : public mpc::Plugin {
 public:
     StrattTrack():mpc::Plugin(makeInfo()) {
         addParam(mpc::floatParam("output","Output",-24,24,0,"dB",1));
+        // Retired Input slot: inert compatibility tombstone; never shown or used by DSP.
+        mpc::Param legacyInput=mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0);
+        legacyInput.automatable=false;
+        addParam(legacyInput);
         addParam(mpc::floatParam("preamp","Preamp",-18,18,0,"dB",1));
         addParam(mpc::boolParam("phase_l","Phase L",false));
         addParam(mpc::boolParam("phase_r","Phase R",false));
@@ -154,8 +158,8 @@ public:
         addParam(mpc::floatParam("pt_bandwidth","PT Bandwidth",0,100,50,"%",0));
         addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att",{"5k","10k","20k"},1));
         addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
-        addProgram("Clean", {0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
-        addProgram("Vocal", {0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
+        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
+        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
     }
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
