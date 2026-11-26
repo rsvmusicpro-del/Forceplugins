@@ -11,6 +11,7 @@ on:
       - "tools/test_strattpultek_valve.py"
       - "tools/test_stratttrack_valve.py"
       - "tools/test_stratttrack_console7_stability.cpp"
+      - "tools/test_stratttrack_gain_reduction.cpp"
       - "framework/**"
       - "tools/build.py"
       - "tools/validate.py"
@@ -55,6 +56,10 @@ jobs:
           python-version: "3.11"
       - name: Static parameter and DSP contract
         run: python tools/test_stratttrack_contract.py
+      - name: Verify live compressor gain-reduction telemetry
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iframework -Iplugins/StrattTrack/src tools/test_stratttrack_gain_reduction.cpp -o /tmp/test_stratttrack_gain_reduction
+          /tmp/test_stratttrack_gain_reduction
       - name: Verify Airwindows Console7 transfer, ADAA and integration
         run: python tools/test_airwindows_console7.py
       - name: Verify Console7 stability, malformed-sample recovery and sample-rate range
