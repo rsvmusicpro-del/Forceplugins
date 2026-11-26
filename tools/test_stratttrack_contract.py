@@ -39,6 +39,21 @@ assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Ci
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan"))
 assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
 assert len(re.findall(r"addParam\(",src))==50
+parameter_ids=re.findall(r'addParam\(mpc::\w+Param\("([^"]+)"',src)
+assert parameter_ids==[
+    "output","input","preamp","phase_l","phase_r","pan_l","pan_r","hp_freq","lp_freq",
+    "lf_freq","lf_gain","lm_freq","lm_gain","lm_q","hm_freq","hm_gain","hm_q","hf_freq",
+    "hf_gain","gate_thresh","gate_range","gate_attack","gate_release","comp_thresh",
+    "comp_ratio","comp_attack","comp_release","comp_makeup","drive","circuit_mix","out_pan",
+    "pt_lf_freq","pt_lf_boost","pt_lf_atten","pt_hf_freq","pt_hf_boost","pt_bandwidth",
+    "pt_hf_atten_freq","pt_hf_atten","console_fader","invert_lr","width","correlation",
+    "bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order"
+], "Parameter IDs/order are a serialized host-state contract"
+programs=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',src)
+assert programs and all(len(values.split(","))==len(parameter_ids) for _,values in programs), "Preset values must match the parameter count"
+assert [(x["parameter"],x["label"]) for x in manifest["knobs"]]==[(0,"Output"),(7,"HP Freq"),(8,"LP Freq")]
+assert [(x["parameter"],x["label"]) for x in manifest["shiftKnobs"]]==[(1,"Input"),(28,"Drive"),(29,"Circuit")]
+
 assert "console.process(" in src and "kConsoleFader" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("applyPolarity(consoleL*ig*pg,0,phaseTargetL)")
