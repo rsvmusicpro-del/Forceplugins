@@ -27,16 +27,16 @@ public:
         state_ = 1.0f;
     }
 
-    float process(float previousShaped, float currentShaped)
+    float process(float previousSample, float currentSample)
     {
-        const float previousMagnitude = std::fabs(previousShaped);
-        const float currentMagnitude = std::fabs(currentShaped);
+        const float previousMagnitude = std::fabs(previousSample);
+        const float currentMagnitude = std::fabs(currentSample);
         const float magnitudeSum = previousMagnitude + currentMagnitude;
 
         float continuity = 0.0f;
         const bool samePolarity =
-            (previousShaped > 0.0f && currentShaped > 0.0f)
-            || (previousShaped < 0.0f && currentShaped < 0.0f);
+            (previousSample > 0.0f && currentSample > 0.0f)
+            || (previousSample < 0.0f && currentSample < 0.0f);
 
         if (samePolarity && magnitudeSum > 1.0e-12f)
         {
