@@ -28,3 +28,19 @@ CI independently checks Butterworth corner magnitude, neutral RBJ peak response,
 - Giannoulis, Massberg and Reiss, Digital Dynamic Range Compressor Design—A Tutorial and Analysis, JAES 2012: https://aes.org/publications/elibrary/elibrary-page/?id=16354
 
 No third-party DSP source code is copied. This original digital response model is curve-informed, not an exact component-level reconstruction; published plotted sweeps do not provide raw complex transfer data for every potentiometer position or hardware unit.
+
+## Continuous invisible valve stage
+
+StrattTrack now uses the same fixed triode-inspired valve stage as StrattPultek 1.9.9:
+a C2-continuous soft knee, an asymmetric even-harmonic term, first-order ADAA using
+closed-form antiderivatives, a stable short-interval expansion/quadrature fallback,
+and a 3 Hz DC blocker. It is permanently active, has no parameter or UI mapping,
+and is independent of the user-controlled Drive/Circuit Mix. It follows the
+channel-strip tone and dynamics stages and precedes the final output gain/fader.
+
+The intended result is subtle harmonic density, gentle peak rounding and a
+slightly richer midrange without an audible level jump or uncontrolled DC offset.
+This is a deterministic triode-inspired nonlinear model, not a component-level
+simulation of a specified valve, transformer or measured circuit. ADAA reduces
+waveshaper aliasing but is not a claim of zero aliasing; host-simulator renders
+and hardware listening remain necessary validation.
