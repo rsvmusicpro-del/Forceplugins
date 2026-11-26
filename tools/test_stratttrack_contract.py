@@ -290,7 +290,7 @@ assert len(graphic_page["controls"])==16
 assert [x["param"] for x in graphic_page["controls"]]==graphic_names
 assert all(x["widget"]=="fader" and x["polarity"]=="bipolar" for x in graphic_page["controls"])
 graphic_freq=[20.,31.5,50.,80.,125.,200.,315.,500.,800.,1250.,2000.,3150.,5000.,8000.,12500.,20000.]
-freq_match=re.search(r"kGraphicEqFrequencies\\[16\\]\\s*=\\s*\\{([^}]*)\\}",src)
+freq_match=re.search(r"kGraphicEqFrequencies\[16\]\s*=\s*\{([^}]*)\}",src)
 assert freq_match and [float(x.strip().removesuffix("f")) for x in freq_match.group(1).split(",")]==graphic_freq
 assert "constexpr float kGraphicEqQ=2.146f;" in src
 assert "−12 to +12 dB" in readme and "GRAPHIC-EQ-RESEARCH.md" in readme
