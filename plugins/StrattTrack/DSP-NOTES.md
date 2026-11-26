@@ -73,7 +73,7 @@ The 10 ms control one-pole coefficient is now calculated for one sample, because
 
 ## Input stereo field controls (1.1.6)
 
-- Invert L-R: smooth equal-power crossfade between normal and swapped channel assignment; separate from L/R polarity inversion.
+- Invert L-R: smooth M/S-domain exchange; Mid is invariant and Side is multiplied by cos(πt), yielding exact normal/swapped endpoints without a mono-level bump. It is separate from L/R polarity inversion.
 - Width: M=(L+R)/2, S=(L−R)/2, decode L=M+wS, R=M−wS. 100% is unity; 0% collapses to mono; values above 100% amplify only existing Side content.
 - Correlation: 50 ms exponentially weighted estimates of E[L²], E[R²] and E[LR], normalized to rho=E[LR]/sqrt(E[L²]E[R²]). The 0–100% amount attenuates Side proportionally to max(0,−rho). This is a negative-correlation safeguard, not phase alignment, delay estimation, a display meter, or a guarantee of compatibility.
 - Bass Mono: one-pole low-pass extraction of Side below a 20–400 Hz cutoff, then removal of that low band from Side. Mid remains intact; cutoff is smoothed and filter state is per instance.

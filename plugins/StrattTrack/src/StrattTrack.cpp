@@ -521,12 +521,14 @@ public:
             const float a=applyPolarity(consoleL*ig*pg,0,phaseTargetL);
             const float b=applyPolarity(consoleR*ig*pg,1,phaseTargetR);
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
-            // Exchange channel positions smoothly; Phase L/R remain polarity controls.
-            const float swapWeight=std::sin(invertLR*kHalfPi);
-            const float keepWeight=std::cos(invertLR*kHalfPi);
-            const float swappedL=xR, swappedR=xL;
-            xL=xL*keepWeight+swappedL*swapWeight;
-            xR=xR*keepWeight+swappedR*swapWeight;
+            // Exchange channel positions in the M/S domain: keep Mid invariant
+            // and smoothly reverse Side. This preserves mono level throughout the
+            // transition (unlike an equal-power L/R crossfade, which adds +3 dB
+            // to identical dual-mono signals at its midpoint).
+            const float swapMid=0.5f*(xL+xR);
+            const float swapSide=0.5f*(xL-xR)*std::cos(invertLR*kPi);
+            xL=swapMid+swapSide;
+            xR=swapMid-swapSide;
             // 50 ms normalized correlation estimate; only sustained negative rho
             // can trigger the optional side-channel safeguard.
             corrPowerL_+=correlationAlpha*(xL*xL-corrPowerL_);
@@ -603,7 +605,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1160;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1170;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {

@@ -1,7 +1,7 @@
 {
   "name": "StrattTrack",
   "manufacturer": "Stratt",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "format": "vst2",
   "kind": "effect",
   "uid": "S4X3",
@@ -39,7 +39,7 @@
   ],
   "file32": "VST/stratttrack-arm32.so",
   "file64": "VST/stratttrack-arm64.so",
-  "description": "StrattTrack stereo channel strip with Console7 input emulation, polarity and L/R swap, channel pan, M/S width, adaptive negative-correlation side safeguard, bass mono, EQ, linked dynamics and circuit colour.",
+  "description": "StrattTrack stereo channel strip with Console7 input emulation, mono-invariant M/S channel exchange, polarity and pan, width, correlation safeguard, bass mono, EQ, linked dynamics and circuit colour.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
