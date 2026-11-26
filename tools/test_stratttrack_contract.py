@@ -191,3 +191,17 @@ assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
 assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
 assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"]]==["Circuit Mix","Output","Out Pan","Fader"]
+
+# Independent mid/side invariants: decode round-trip and mono fold-down.
+for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
+    mid=(left+right)*0.5
+    side=(left-right)*0.5
+    for width in (0.0,0.5,1.0,1.5,2.0):
+        out_l=mid+side*width
+        out_r=mid-side*width
+        assert abs((out_l+out_r)*0.5-mid)<1.0e-12
+    assert abs((mid+side)-left)<1.0e-12
+    assert abs((mid-side)-right)<1.0e-12
+assert abs((1.0+1.0)*0.5-1.0)<1.0e-12  # mono input has zero Side, so Width cannot invent stereo
+assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
+assert "const float shapedSide=(side-bassMonoState_)*width*sideSafety;" in src
