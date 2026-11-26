@@ -9,7 +9,7 @@ StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from
 - Preamp: linear dB gain with sample-rate-invariant smoothing and finite input guards.
 - Polarity and pan: 10 ms block-compensated smoothing avoids abrupt polarity/pan discontinuities; equal-power input pan maintains constant summed source power.
 - HP/LP: shared second-order Butterworth sections (Q=1/sqrt(2)), bilinear-transform coefficients, 10 ms logarithmic smoothing and 64-frame coefficient refresh.
-- Pulse Techniques EQP-1A stage (after filters, before four-band EQ):
+- Pulse Techniques EQP-1A stage (after filters, before the 16-band graphic EQ):
   - LF boost and attenuation use first-order low shelves with selectable 20/30/60/100 Hz turnovers.
   - The attenuation turnover is offset by sqrt(2), matching the approximately half-octave higher corner visible in EQP-1A3 response sweeps.
   - A broad LF boost/attenuation interaction bell approximates the measured combined lift-and-dip contour; its depth is bounded and saturating, centred at 8× the selected LF frequency.
