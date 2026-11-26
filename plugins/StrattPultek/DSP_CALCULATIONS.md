@@ -59,8 +59,8 @@ Référentiel de conception et de vérification. Les équations servent à dimen
 44. ADAA ordre 1 : \(y[n]=\frac{I_F(x[n])-I_F(x[n-1])}{x[n]-x[n-1]}\).
 45. Limite ADAA quand \(x[n]\to x[n-1]\) : \(y[n]\to F(x[n])\).
 46. Seuil relatif de stabilité numérique : \(|\Delta x|<\epsilon\max(1,|x_n|,|x_{n-1}|)\).
-47. Densité de signal bornée : \(d[n]=\operatorname{clamp}(2|x[n]+x[n-1]|,0,1)\).
-48. Mélange de coloration : \(g[n]=Grain\cdot Drive\cdot DriveMix\cdot d[n]\).
+47. Densité de signal bornée : \\(r[n]=\\operatorname{clamp}(|u[n-1]+F(u[n])|/2,0,1)\\), puis lissage de pente \\(d[n]=r[n]^2(3-2r[n])\\).
+48. Mélange de coloration : \\(g[n]=Grain\\cdot Drive\\cdot DriveMix\\cdot d[n]\\), avec \\(d[n]\\) issu du smoothstep en (47).
 49. Filtre bloqueur DC : \(y[n]=x[n]-x[n-1]+p y[n-1]\), avec \(p=e^{-2\pi f_{DC}/f_s}\).
 50. Vérification de crête de sortie : \(P_{out}=\max_n|G_T y[n]|\), puis \(H_{out}=-20\log_{10}(P_{out})\).
 
