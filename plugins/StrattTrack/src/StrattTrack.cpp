@@ -79,10 +79,9 @@ struct Biquad {
 };
 struct Channel {
     Biquad hp,lp,lf,lm,hm,hf;
-    float detector=0.0f, gateGain=1.0f, compGain=1.0f;
     float valveDc=0.0f, valvePrev=0.0f;
     void reset(){hp.reset();lp.reset();lf.reset();lm.reset();hm.reset();hf.reset();
-        detector=0;gateGain=compGain=1;valveDc=valvePrev=0;}
+        valveDc=valvePrev=0;}
 };
 inline float coeff(float ms,float sr) {
     ms=finiteClamp(ms,0.1f,2000.0f,10.0f);
@@ -141,20 +140,27 @@ public:
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
+        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true;
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
+        hpFreq_.snap(get(kHpFreq)); lpFreq_.snap(get(kLpFreq));
+        lfFreq_.snap(get(kLfFreq)); lfGain_.snap(get(kLfGain));
+        lmFreq_.snap(get(kLmFreq)); lmGain_.snap(get(kLmGain)); lmQ_.snap(get(kLmQ));
+        hmFreq_.snap(get(kHmFreq)); hmGain_.snap(get(kHmGain)); hmQ_.snap(get(kHmQ));
+        hfFreq_.snap(get(kHfFreq)); hfGain_.snap(get(kHfGain));
     }
     void process(mpc::ProcessContext& ctx) override {
         const int n=mpc::clamp(ctx.numFrames,0,2048);
-        if(ctx.outputs==nullptr||ctx.numOutputs<1) return;
+        if(ctx.outputs==nullptr||ctx.numOutputs<1||ctx.outputs[0]==nullptr) return;
         const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         const float faderGain=db(finiteClamp(get(kFader),-60,12,0));
-        const float gateThreshold=db(get(kGateThresh));
+        const float gateThreshold=db(finiteClamp(get(kGateThresh),-80,0,-80));
         const float gateFloor=db(-finiteClamp(get(kGateRange),0,80,60));
-        const float compThreshold=db(get(kCompThresh)), ratio=finiteClamp(get(kCompRatio),1,20,1);
+        const float compThreshold=db(finiteClamp(get(kCompThresh),-40,0,0));
+        const float ratio=finiteClamp(get(kCompRatio),1,20,1);
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         const float makeup=db(get(kCompMakeup));
@@ -165,14 +171,19 @@ public:
         const float op=finiteClamp(get(kOutPan)*0.01f,-1,1,0);
         const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f;
         const float oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
-        const float hp=finiteClamp(get(kHpFreq),20,0.45f*sr_,20);
-        const float lp=finiteClamp(get(kLpFreq),1000,0.49f*sr_,0.49f*sr_);
+        const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
+        const float hp=finiteClamp(hpFreq_.next(get(kHpFreq),controlSmooth),20,0.45f*sr_,20);
+        const float lp=finiteClamp(lpFreq_.next(get(kLpFreq),controlSmooth),1000,0.49f*sr_,0.49f*sr_);
+        const float lfF=lfFreq_.next(get(kLfFreq),controlSmooth), lfG=lfGain_.next(get(kLfGain),controlSmooth);
+        const float lmF=lmFreq_.next(get(kLmFreq),controlSmooth), lmG=lmGain_.next(get(kLmGain),controlSmooth), lmQv=lmQ_.next(get(kLmQ),controlSmooth);
+        const float hmF=hmFreq_.next(get(kHmFreq),controlSmooth), hmG=hmGain_.next(get(kHmGain),controlSmooth), hmQv=hmQ_.next(get(kHmQ),controlSmooth);
+        const float hfF=hfFreq_.next(get(kHfFreq),controlSmooth), hfG=hfGain_.next(get(kHfGain),controlSmooth);
         for(int c=0;c<2;++c) {
             ch_[c].hp.pass(sr_,hp,true); ch_[c].lp.pass(sr_,lp,false);
-            ch_[c].lf.shelf(sr_,get(kLfFreq),get(kLfGain),false);
-            ch_[c].lm.bell(sr_,get(kLmFreq),get(kLmQ),get(kLmGain));
-            ch_[c].hm.bell(sr_,get(kHmFreq),get(kHmQ),get(kHmGain));
-            ch_[c].hf.shelf(sr_,get(kHfFreq),get(kHfGain),true);
+            ch_[c].lf.shelf(sr_,lfF,lfG,false);
+            ch_[c].lm.bell(sr_,lmF,lmQv,lmG);
+            ch_[c].hm.bell(sr_,hmF,hmQv,hmG);
+            ch_[c].hf.shelf(sr_,hfF,hfG,true);
         }
         const float phaseL=getBool(kPhaseL)?-1.0f:1.0f, phaseR=getBool(kPhaseR)?-1.0f:1.0f;
         for(int i=0;i<n;++i) {
@@ -192,38 +203,42 @@ public:
                 x=s.lf.run(x); x=s.lm.run(x); x=s.hm.run(x); x=s.hf.run(x);
                 *samples[ch]=x;
             }
-            const float detector=std::fmax(std::fabs(xL),std::fabs(xR));
+            // One linked-stereo dynamics detector/gain computer: both channels
+            // receive exactly the same gain reduction and gate envelope.
+            const float peak=std::fmax(std::fabs(xL),std::fabs(xR));
+            const float envCoef=peak>detector_?compAtk:compRel;
+            detector_=envCoef*detector_+(1.0f-envCoef)*peak;
+            const float over=detector_/std::fmax(compThreshold,1.0e-9f);
+            // Conventional hard-knee compressor law in the amplitude domain.
+            const float targetComp=over>1.0f?std::pow(over,-(1.0f-1.0f/ratio)):1.0f;
+            const float cc=targetComp<compGain_?compAtk:compRel;
+            compGain_=cc*compGain_+(1.0f-cc)*targetComp;
+            // 3 dB hysteresis prevents gate chatter around its opening threshold.
+            const float gateClose=gateThreshold*db(-3.0f);
+            if(gateOpen_ ? detector_<gateClose : detector_>gateThreshold) gateOpen_=!gateOpen_;
+            const float gateTarget=gateOpen_?1.0f:gateFloor;
+            const float gc=gateTarget<gateGain_?gateAtk:gateRel;
+            gateGain_=gc*gateGain_+(1.0f-gc)*gateTarget;
             for(int ch=0;ch<2;++ch) {
                 Channel &s=ch_[ch];
-                const float envCoef=detector>s.detector?compAtk:compRel;
-                s.detector=envCoef*s.detector+(1-envCoef)*detector;
-                const float above=std::fmax(0.0f,s.detector/compThreshold-1.0f);
-                // Rational approximation of the dB-domain compressor knee; avoids per-sample pow/log.
-                const float targetComp=1.0f/(1.0f+(1.0f-1.0f/ratio)*above);
-                const float cc=targetComp<s.compGain?compAtk:compRel;
-                s.compGain=cc*s.compGain+(1-cc)*targetComp;
-                const float gateTarget=s.detector>gateThreshold?1.0f:gateFloor;
-                const float gc=gateTarget<s.gateGain?gateAtk:gateRel;
-                s.gateGain=gc*s.gateGain+(1-gc)*gateTarget;
-                *samples[ch]=*samples[ch]*s.gateGain*s.compGain*makeup;
+                *samples[ch]=*samples[ch]*gateGain_*compGain_*makeup;
                 const float clean=*samples[ch];
+                // Circuit and valve transfer form one independently blended colour engine.
+                // At Mix=0 the output is mathematically the clean dynamics signal.
                 const float driveWet=circuit(clean,drive);
-                const float driven=clean+(driveWet-clean)*mix;
-                // Fixed valve-inspired transfer: always active, hidden from the UI,
-                // and grouped inside the Circuit module. Its small even-order term
-                // is DC-blocked; the low-level gain is normalised to unity.
-                const float valveIn=driven*1.04f;
+                const float valveIn=driveWet*1.04f;
                 const float valveStatic=(valveIn/(1.0f+0.035f*std::fabs(valveIn))
                                          +0.003f*valveIn*valveIn)/1.04f;
                 s.valveDc=valveDcCoef_*(s.valveDc+valveStatic-s.valvePrev);
                 s.valvePrev=valveStatic;
-                *samples[ch]=s.valveDc;
+                const float colour=s.valveDc;
+                *samples[ch]=clean+(colour-clean)*mix;
             }
             xL*=og*fg; xR*=og*fg;
             if(ctx.numOutputs==1) ctx.outputs[0][i]=0.5f*(xL+xR);
             else {
-                ctx.outputs[0][i]=xL*oL;
-                ctx.outputs[1][i]=xR*oR;
+                if(ctx.outputs[0]) ctx.outputs[0][i]=xL*oL;
+                if(ctx.outputs[1]) ctx.outputs[1][i]=xR*oR;
                 for(int c=2;c<ctx.numOutputs;++c) if(ctx.outputs[c]) ctx.outputs[c][i]=0.0f;
             }
         }
@@ -236,6 +251,10 @@ private:
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_;
+    Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
+    // Linked dynamics state is separate from per-channel filter/colour state.
+    float detector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
+    bool gateOpen_=true;
     float valveDcCoef_=0.999572f;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)
