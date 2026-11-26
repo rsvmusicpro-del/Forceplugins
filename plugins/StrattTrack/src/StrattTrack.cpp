@@ -32,7 +32,7 @@ enum P {
     kGraphicEq01, kGraphicEq02, kGraphicEq03, kGraphicEq04, kGraphicEq05, kGraphicEq06, kGraphicEq07, kGraphicEq08,
     kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCount
 };
-static const float kGraphicEqFrequencies[16] = {20.0f,31.7f,50.2f,79.6f,126.0f,200.0f,317.0f,502.0f,796.0f,1260.0f,2000.0f,3170.0f,5020.0f,7960.0f,12600.0f,20000.0f};
+static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
 constexpr float kGraphicEqQ=2.146f;
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
@@ -360,20 +360,20 @@ public:
         addParam(mpc::floatParam("mono_threshold","Mono Threshold",0,100,50,"%",0));
         // New fixed-frequency graphic EQ controls are appended after the 52 legacy slots.
         addParam(mpc::floatParam("eq_20","20 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_31_7","31.7 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_50_2","50.2 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_79_6","79.6 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_126","126 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_31_5","31.5 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_50","50 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_80","80 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_125","125 Hz",-12,12,0,"dB",1));
         addParam(mpc::floatParam("eq_200","200 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_317","317 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_502","502 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_796","796 Hz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_1260","1.26 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_315","315 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_500","500 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_800","800 Hz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_1250","1.25 kHz",-12,12,0,"dB",1));
         addParam(mpc::floatParam("eq_2000","2 kHz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_3170","3.17 kHz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_5020","5.02 kHz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_7960","7.96 kHz",-12,12,0,"dB",1));
-        addParam(mpc::floatParam("eq_12600","12.6 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_3150","3.15 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_5000","5 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_8000","8 kHz",-12,12,0,"dB",1));
+        addParam(mpc::floatParam("eq_12500","12.5 kHz",-12,12,0,"dB",1));
         addParam(mpc::floatParam("eq_20000","20 kHz",-12,12,0,"dB",1));
         addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
         addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
