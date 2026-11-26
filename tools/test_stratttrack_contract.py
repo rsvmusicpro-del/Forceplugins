@@ -46,6 +46,25 @@ assert "const float hp=smoothLog(hpFreq_.v,hpTarget,filterSmooth);" in src
 assert "const float lp=smoothLog(lpFreq_.v,lpTarget,filterSmooth);" in src
 assert "ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);" in src
 assert "x=s.hp.process(x); x=s.lp.process(x);" in src  # shared Butterworth filters
+# Once-per-host-block controls use elapsed block duration, not a one-sample coefficient.
+assert "controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)))" in src
+for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
+                "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
+                "phaseL_", "phaseR_", "lfFreq_", "lmFreq_", "hmFreq_",
+                "hfFreq_", "ptLowBoost_", "ptLowAtten_", "ptHighBoost_",
+                "ptBandwidth_", "ptHighAtten_"):
+    line = next(line for line in src.splitlines()
+                if control + ".next(" in line or control + ".v," in line)
+    assert "controlBlockSmooth" in line, (control, line)
+for sr in (44100.0, 48000.0, 96000.0):
+    for block in (32, 64, 128, 512):
+        coefficient = 1.0 - math.exp(-block/(0.010*sr))
+        count = round(0.010*sr/block)
+        reached = 1.0 - (1.0-coefficient)**count
+        elapsed = count*block/sr
+        expected = 1.0-math.exp(-elapsed/0.010)
+        assert abs(reached-expected) < 1.0e-12
+
 # Dynamics thresholds/ratio/makeup and circuit drive glide over 10 ms in dB
 # or control space; this prevents abrupt gain-computer and nonlinear-knee jumps.
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_", "compMakeupDb_", "drive_"):
