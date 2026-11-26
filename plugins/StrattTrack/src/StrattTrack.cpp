@@ -25,7 +25,7 @@ enum P {
     kCompThresh, kCompRatio, kCompAttack, kCompRelease, kCompMakeup,
     kDrive, kCircuitMix, kOutPan, kFader,
     kPtLowFreq, kPtLowBoost, kPtLowAtten, kPtHighFreq,
-    kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kConsoleFader, kCount
+    kPtHighBoost, kPtBandwidth, kPtHighAttenFreq, kPtHighAtten, kConsoleFader, kInvertLR, kWidth, kCorrelation, kBassMono, kCount
 };
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
@@ -358,8 +358,13 @@ public:
         addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att",{"5k","10k","20k"},1));
         addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
         addParam(mpc::floatParam("console_fader","Console Fader",0,1,0.772f,"",3));
-        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0,0.772f});
-        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0,0.772f});
+        // Appended controls preserve every existing parameter ID and index.
+        addParam(mpc::boolParam("invert_lr","Invert L-R",false));
+        addParam(mpc::floatParam("width","Width",0,200,100,"%",0));
+        addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0));
+        addParam(mpc::logParam("bass_mono","Bass Mono",20,400,120,"Hz",0));
+        addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0,0.772f,0,100,0,120});
+        addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0,0.772f,0,100,0,120});
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
@@ -397,6 +402,11 @@ public:
         ptBandwidth_.snap(finiteClamp(get(kPtBandwidth),0,100,50));
         ptHighAttenFreq_.snap(ptHighAttenFrequency(mpc::clamp(getInt(kPtHighAttenFreq),0,2)));
         ptHighAtten_.snap(finiteClamp(get(kPtHighAtten),0,16,0));
+        invertLR_.snap(getBool(kInvertLR)?1.0f:0.0f);
+        width_.snap(finiteClamp(get(kWidth),0,200,100)*0.01f);
+        correlation_.snap(finiteClamp(get(kCorrelation),0,100,0)*0.01f);
+        bassMonoFreq_.snap(finiteClamp(get(kBassMono),20,400,120));
+        bassMonoState_=corrPowerL_=corrPowerR_=corrCross_=0.0f;
         hpFreq_.snap(finiteClamp(get(kHpFreq),20,1000,20));
         lpFreq_.snap(finiteClamp(get(kLpFreq),1000,22000,22000));
         lfFreq_.snap(finiteClamp(get(kLfFreq),30,450,100));
@@ -466,6 +476,13 @@ public:
         const float ptHfBoost=ptHighBoost_.next(finiteClamp(get(kPtHighBoost),0,18,0),controlBlockSmooth), ptBandwidth=ptBandwidth_.next(finiteClamp(get(kPtBandwidth),0,100,50),controlBlockSmooth);
         const float ptHfAttF=smoothLog(ptHighAttenFreq_.v,ptHighAttenFrequency(getInt(kPtHighAttenFreq)),controlBlockSmooth); ptHighAttenFreq_.snap(ptHfAttF);
         const float ptHfAtten=ptHighAtten_.next(finiteClamp(get(kPtHighAtten),0,16,0),controlBlockSmooth);
+        const float invertLR=invertLR_.next(getBool(kInvertLR)?1.0f:0.0f,controlBlockSmooth);
+        const float width=width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,controlBlockSmooth);
+        const float correlation=correlation_.next(finiteClamp(get(kCorrelation),0,100,0)*0.01f,controlBlockSmooth);
+        const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),controlBlockSmooth);
+        bassMonoFreq_.snap(bassFreq);
+        const float bassMonoAlpha=1.0f-std::exp(-2.0f*kPi*bassFreq/sr_);
+        const float correlationAlpha=1.0f-std::exp(-1.0f/(0.050f*sr_));
         const float ptLowBoostAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF/sr_);
         const float ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_);
         const float ptHighAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptHfAttF/sr_);
@@ -501,6 +518,27 @@ public:
             const float a=consoleL*ig*pg*phaseL;
             const float b=consoleR*ig*pg*phaseR;
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
+            // Exchange channel positions smoothly; Phase L/R remain polarity controls.
+            const float swapWeight=std::sin(invertLR*kHalfPi);
+            const float keepWeight=std::cos(invertLR*kHalfPi);
+            const float swappedL=xR, swappedR=xL;
+            xL=xL*keepWeight+swappedL*swapWeight;
+            xR=xR*keepWeight+swappedR*swapWeight;
+            // 50 ms normalized correlation estimate; only sustained negative rho
+            // can trigger the optional side-channel safeguard.
+            corrPowerL_+=correlationAlpha*(xL*xL-corrPowerL_);
+            corrPowerR_+=correlationAlpha*(xR*xR-corrPowerR_);
+            corrCross_+=correlationAlpha*(xL*xR-corrCross_);
+            const float corrDenom=std::sqrt(std::fmax(corrPowerL_*corrPowerR_,1.0e-20f));
+            const float rho=finiteClamp(corrCross_/corrDenom,-1.0f,1.0f,0.0f);
+            const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);
+            // M/S matrix: Mid is the mono fold-down; Width scales existing Side only.
+            const float mid=0.5f*(xL+xR);
+            const float side=0.5f*(xL-xR);
+            bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);
+            const float shapedSide=(side-bassMonoState_)*width*sideSafety;
+            xL=mid+shapedSide;
+            xR=mid-shapedSide;
             float *samples[2]={&xL,&xR};
             // Clean filtering and EQ precede the linked dynamics detector.
             for(int ch=0;ch<2;++ch) {
@@ -562,13 +600,15 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1140;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1150;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     Channel ch_[2]; float sr_=44100;
     Smooth output_,input_,preamp_,fader_,circuitMix_,consoleFader_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_,phaseL_,phaseR_;
+    Smooth invertLR_,width_,correlation_,bassMonoFreq_;
+    float bassMonoState_=0.0f, corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
     Smooth ptLowFreq_,ptLowBoost_,ptLowAtten_,ptHighFreq_,ptHighBoost_,ptBandwidth_,ptHighAttenFreq_,ptHighAtten_;
     // Linked dynamics state is separate from per-channel filter/colour state.

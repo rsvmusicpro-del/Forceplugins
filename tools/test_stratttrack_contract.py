@@ -14,11 +14,11 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.1.4"
+assert manifest["version"]=="1.1.5"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
-assert [p["name"] for p in ui["pages"]]==["CONSOLE","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
+assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 filter_page=next(p for p in ui["pages"] if p["name"]=="FILTERS")
 assert filter_page["controls"]==[{"param":"HP Freq","widget":"knob"},{"param":"LP Freq","widget":"knob"},"empty","empty"]
 assert '#include "dsp/two_pole_filter.h"' in src
@@ -28,9 +28,9 @@ assert "0.010f*std::fmax(sr_,1.0f)" in src
 assert "x.version=1140;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Drive","Circuit Mix","Output","Out Pan","Fader"]
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Circuit Mix","Output","Out Pan","Fader"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Fader"))
-assert len(re.findall(r"addParam\(",src))==41
+assert len(re.findall(r"addParam\(",src))==45
 assert "console.process(" in src and "kConsoleFader" in src
 assert any(control.get("param")=="Console Fader" for page in ui["pages"] for control in page["controls"] if isinstance(control,dict))
 assert src.index("consoleL=ch_[0].console.process") < src.index("const float a=consoleL*ig*pg*phaseL")
@@ -177,3 +177,17 @@ assert abs(effective_pt_hf_peak(18,0)-18.0)<1.0e-12
 assert abs(effective_pt_hf_peak(18,100)-9.0)<1.0e-12
 assert abs(effective_pt_hf_peak(18,0)-effective_pt_hf_peak(18,100)-9.0)<1.0e-12
 print("StrattTrack contract and independent DSP equation checks OK")
+
+# Input page Q-Link contract and appended, project-safe stereo controls.
+input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
+assert [x["param"] for x in input_page["controls"] if isinstance(x,dict)][:11]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
+assert "kInvertLR, kWidth, kCorrelation, kBassMono, kCount" in src
+assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
+assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
+assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in src
+assert 'addParam(mpc::logParam("bass_mono","Bass Mono",20,400,120,"Hz",0))' in src
+assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR);" in src
+assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
+assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
+assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
+assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"]]==["Circuit Mix","Output","Out Pan","Fader"]

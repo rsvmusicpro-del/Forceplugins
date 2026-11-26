@@ -69,3 +69,14 @@ A console pass is generally used for coherent summing, subtle harmonic/intermodu
 ## Per-sample control smoothing correction (1.1.3)
 
 The 10 ms control one-pole coefficient is now calculated for one sample, because every `Smooth::next()` call occurs inside the sample loop. The previous coefficient was calculated for the entire host block and then reused for every sample, making parameter transitions block-size dependent and up to the block length faster than intended. The corrected coefficient is `alpha = 1 - exp(-1 / (0.010 * fs))`; after 10 ms the smoother reaches approximately 63.2% of a step at 44.1, 48 and 96 kHz, independently of whether the host processes 32, 128 or 512 frames per call. This affects control trajectories only; steady-state EQ, dynamics, gain curves, parameter identities, presets and signal-path topology are unchanged.
+
+
+## Input stereo field controls (1.1.5)
+
+- Invert L-R: smooth equal-power crossfade between normal and swapped channel assignment; separate from L/R polarity inversion.
+- Width: M=(L+R)/2, S=(L−R)/2, decode L=M+wS, R=M−wS. 100% is unity; 0% collapses to mono; values above 100% amplify only existing Side content.
+- Correlation: 50 ms exponentially weighted estimates of E[L²], E[R²] and E[LR], normalized to rho=E[LR]/sqrt(E[L²]E[R²]). The 0–100% amount attenuates Side proportionally to max(0,−rho). This is a negative-correlation safeguard, not phase alignment, delay estimation, a display meter, or a guarantee of compatibility.
+- Bass Mono: one-pole low-pass extraction of Side below a 20–400 Hz cutoff, then removal of that low band from Side. Mid remains intact; cutoff is smoothed and filter state is per instance.
+- Controls are smoothed; no allocations, locks, logging or I/O are introduced in process().
+
+Engineering basis: mid/side and mono-sum behaviour are described by iZotope's M/S processing guide and PatchLab's stereo/mono notes; negative correlation and low-frequency centering are discussed by sonible's mono-compatibility guide and Sweetwater's phase-meter reference. These controls do not replace auditioning the actual mono fold-down.

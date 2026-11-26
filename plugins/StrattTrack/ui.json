@@ -12,17 +12,9 @@
   },
   "pages": [
     {
-      "name": "CONSOLE",
+      "name": "INPUT",
       "background": "stratt-bg.png",
       "controls": [
-        {
-          "param": "Console Fader",
-          "widget": "knob"
-        },
-        {
-          "param": "Input",
-          "widget": "knob"
-        },
         {
           "param": "Preamp",
           "widget": "knob"
@@ -36,6 +28,10 @@
           "widget": "switch"
         },
         {
+          "param": "Invert L-R",
+          "widget": "switch"
+        },
+        {
           "param": "Pan L",
           "widget": "knob",
           "polarity": "bipolar"
@@ -44,6 +40,30 @@
           "param": "Pan R",
           "widget": "knob",
           "polarity": "bipolar"
+        },
+        {
+          "param": "Width",
+          "widget": "knob"
+        },
+        {
+          "param": "Correlation",
+          "widget": "knob"
+        },
+        {
+          "param": "Bass Mono",
+          "widget": "knob"
+        },
+        {
+          "param": "Drive",
+          "widget": "knob"
+        },
+        {
+          "param": "Console Fader",
+          "widget": "knob"
+        },
+        {
+          "param": "Input",
+          "widget": "knob"
         }
       ]
     },
@@ -197,10 +217,6 @@
       "background": "stratt-bg.png",
       "controls": [
         {
-          "param": "Drive",
-          "widget": "knob"
-        },
-        {
           "param": "Circuit Mix",
           "widget": "knob"
         },
@@ -210,7 +226,8 @@
         },
         {
           "param": "Out Pan",
-          "widget": "knob"
+          "widget": "knob",
+          "polarity": "bipolar"
         },
         {
           "param": "Fader",
