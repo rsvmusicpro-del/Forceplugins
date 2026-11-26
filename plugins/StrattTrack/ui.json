@@ -100,7 +100,7 @@
           "widget": "knob"
         },
         {
-          "param": "PT HF Att Freq",
+          "param": "PT HF Att",
           "widget": "knob",
           "overlay": "menu"
         },

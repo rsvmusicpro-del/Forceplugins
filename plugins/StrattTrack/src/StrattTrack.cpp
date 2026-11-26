@@ -153,7 +153,7 @@ public:
         addParam(mpc::choiceParam("pt_hf_freq","PT HF Freq",{"3k","4k","5k","8k","10k","12k","16k"},2));
         addParam(mpc::floatParam("pt_hf_boost","PT HF Boost",0,18,0,"dB",1));
         addParam(mpc::floatParam("pt_bandwidth","PT Bandwidth",0,100,50,"%",0));
-        addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att Freq",{"5k","10k","20k"},1));
+        addParam(mpc::choiceParam("pt_hf_atten_freq","PT HF Att",{"5k","10k","20k"},1));
         addParam(mpc::floatParam("pt_hf_atten","PT HF Atten",0,16,0,"dB",1));
         addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0,2,0,0,2,0,50,1,0});
         addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0,2,0,0,2,0,50,1,0});
