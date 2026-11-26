@@ -20,7 +20,7 @@ public:
     {
         const double sr = (std::isfinite(sampleRate) && sampleRate > 8000.0)
                         ? sampleRate : 44100.0;
-        const double frequency = std::min(20000.0, sr * 0.45);
+        const double frequency = std::min(20000.0, sr * 0.499);
         constexpr double q = 1.6180339887498948482;
         const double k = std::tan(3.14159265358979323846 * frequency / sr);
         const double norm = 1.0 / (1.0 + k / q + k * k);
