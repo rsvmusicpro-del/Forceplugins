@@ -35,16 +35,16 @@ enum P {
 static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
 constexpr float kGraphicEqQMin=0.70710678f;
 constexpr float kGraphicEqQMax=2.146f;
-// Proportional-Q response: small moves stay broad; larger cuts/boosts focus progressively.
-inline float graphicEqQ(float gainDb) {
-    const float amount=finiteClamp(std::fabs(gainDb)/12.0f,0.0f,1.0f,0.0f);
-    return kGraphicEqQMin+(kGraphicEqQMax-kGraphicEqQMin)*amount;
-}
 constexpr float kPi=3.14159265358979323846f;
 constexpr float kHalfPi=1.57079632679489661923f;
 inline float db(float x) { return std::pow(10.0f, x*0.05f); }
 inline float finiteClamp(float x,float lo,float hi,float fallback) {
     return std::isfinite(x) ? mpc::clamp(x,lo,hi) : fallback;
+}
+// Proportional-Q response: small moves stay broad; larger cuts/boosts focus progressively.
+inline float graphicEqQ(float gainDb) {
+    const float amount=finiteClamp(std::fabs(gainDb)/12.0f,0.0f,1.0f,0.0f);
+    return kGraphicEqQMin+(kGraphicEqQMax-kGraphicEqQMin)*amount;
 }
 struct Smooth {
     float v=0.0f;
