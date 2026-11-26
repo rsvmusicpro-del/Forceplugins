@@ -1,6 +1,6 @@
 // StrattTrack — transparent SSL-style stereo channel strip for MPC / Force.
 // SPDX-License-Identifier: MIT
-// Signal flow: Airwindows Console7 input stage -> input trim -> preamp -> L/R polarity -> dual input pan ->
+// Signal flow: Airwindows Console7 input stage -> preamp -> L/R polarity -> dual input pan ->
 // HP/LP -> Pulse Techniques EQP-1A curve model -> four-band EQ -> gate ->
 // compressor -> user-controlled drive colour (parallel blend) -> permanent
 // invisible ADAA valve stage -> output trim -> output balance -> fader.
@@ -17,7 +17,7 @@
 
 namespace {
 enum P {
-    kOutput=0, kInput, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
+    kOutput=0, kLegacyInputSlot, kPreamp, kPhaseL, kPhaseR, kPanL, kPanR,
     kHpFreq, kLpFreq,
     kLfFreq, kLfGain, kLmFreq, kLmGain, kLmQ,
     kHmFreq, kHmGain, kHmQ, kHfFreq, kHfGain,
@@ -317,7 +317,10 @@ class StrattTrack : public mpc::Plugin {
 public:
     StrattTrack():mpc::Plugin(makeInfo()) {
         addParam(mpc::floatParam("output","Output",-24,24,0,"dB",1));
-        addParam(mpc::floatParam("input","Input",-24,24,0,"dB",1));
+        // Retired Input slot: preserve VST indices and old state IDs without an active control.
+        mpc::Param legacyInput=mpc::floatParam("input","Unused",0.0f,0.0f,0.0f,"",0);
+        legacyInput.automatable=false;
+        addParam(legacyInput);
         addParam(mpc::floatParam("preamp","Preamp",-18,18,0,"dB",1));
         addParam(mpc::boolParam("phase_l","Phase L",false));
         addParam(mpc::boolParam("phase_r","Phase R",false));
@@ -380,7 +383,6 @@ public:
         // Host state can be restored before prepare/reset. Never seed a smoother
         // with NaN/Inf: one invalid initial value would otherwise poison it forever.
         output_.snap(db(finiteClamp(get(kOutput),-24,24,0)));
-        input_.snap(db(finiteClamp(get(kInput),-24,24,0)));
         consoleFader_.snap(finiteClamp(get(kConsoleFader),0,1,0.772f));
         preamp_.snap(db(finiteClamp(get(kPreamp),-18,18,0)));
         fader_.snap(db(finiteClamp(get(kFader),-60,12,0)));
@@ -438,7 +440,6 @@ public:
         const float sampleSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
         const float consoleSmoothing=1.0f-std::exp(-1.0f/(0.0015f*std::fmax(sr_,1.0f)));
-        const float inGain=db(finiteClamp(get(kInput),-24,24,0));
         const float preampGain=db(finiteClamp(get(kPreamp),-18,18,0));
         const float outGain=db(finiteClamp(get(kOutput),-24,24,0));
         const float faderGain=db(finiteClamp(get(kFader),-60,12,0));
@@ -521,7 +522,7 @@ public:
             for(int c=0;c<2;++c) { ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp); }
             const int blockEnd=blockStart+blockFrames;
             for(int i=blockStart;i<blockEnd;++i) {
-            const float ig=input_.next(inGain,sampleSmooth), og=output_.next(outGain,sampleSmooth);
+            const float og=output_.next(outGain,sampleSmooth);
             const float pg=preamp_.next(preampGain,sampleSmooth), fg=fader_.next(faderGain,sampleSmooth);
             const float mix=circuitMix_.next(cmix,sampleSmooth);
             const float consoleFader=consoleFader_.next(consoleTarget,consoleSmoothing);
@@ -529,8 +530,8 @@ public:
             const float r=(ctx.inputs&&ctx.numInputs>1&&ctx.inputs[1])?ctx.inputs[1][i]:0.0f;
             const float consoleL=ch_[0].console.process(finiteClamp(l,-16,16,0),consoleFader);
             const float consoleR=ch_[1].console.process(finiteClamp(r,-16,16,0),consoleFader);
-            const float a=applyPolarity(consoleL*ig*pg,0,phaseTargetL);
-            const float b=applyPolarity(consoleR*ig*pg,1,phaseTargetR);
+            const float a=applyPolarity(consoleL*pg,0,phaseTargetL);
+            const float b=applyPolarity(consoleR*pg,1,phaseTargetR);
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
             // Exchange channel positions in the M/S domain: keep Mid invariant
             // and smoothly reverse Side. This preserves mono level throughout the
@@ -618,7 +619,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1203;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1204;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -655,7 +656,7 @@ private:
         return x*phaseGain_[channel];
     }
     Channel ch_[2]; float sr_=44100;
-    Smooth output_,input_,preamp_,fader_,circuitMix_,consoleFader_;
+    Smooth output_,preamp_,fader_,circuitMix_,consoleFader_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_;
     float phaseGain_[2]={1.0f,1.0f}, phaseTarget_[2]={1.0f,1.0f}, phasePrevious_[2]={0.0f,0.0f};
