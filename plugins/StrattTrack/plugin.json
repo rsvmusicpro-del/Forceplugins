@@ -25,15 +25,15 @@
   ],
   "shiftKnobs": [
     {
-      "parameter": 1,
+      "parameter": 2,
       "label": "Preamp"
     },
     {
-      "parameter": 27,
+      "parameter": 28,
       "label": "Drive"
     },
     {
-      "parameter": 28,
+      "parameter": 29,
       "label": "Circuit"
     }
   ],
