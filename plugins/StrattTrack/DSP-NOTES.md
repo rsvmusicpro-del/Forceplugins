@@ -102,3 +102,8 @@ The compressor's static gain-computer lookup now uses a 256-interval fourth-powe
 ## Compressor gain-computer headroom (1.2.2)
 
 The compressor lookup spans 1×–8,388,608× detector overdrive using 1,024 fourth-power intervals. The previous 32,768× ceiling could saturate the lookup index when several input, preamp and EQ boosts accumulated ahead of the compressor, causing the effective ratio to collapse on extreme peaks. The expanded table preserves the analytic hard-knee amplitude law through approximately +138.5 dB above threshold. Its fourth-power coordinate is inverted with two square roots per sample; the table is rebuilt at control-block rate only while the smoothed ratio changes. Independent numerical checks cover ratios 1:1, 2:1, 4:1, 10:1 and 20:1 throughout the complete range, with relative interpolation error below 0.2%.
+
+
+## Real-time polarity fallback (1.2.3)
+
+The 1 ms polarity fallback coefficient is calculated once in `prepare()` from the validated active sample rate and reused by both channels. The per-sample `applyPolarity()` path performs only the one-pole multiply/add; it no longer calls `std::exp` while a DC/near-DC source is transitioning. The independent contract test verifies the coefficient placement, absence of transcendental work in the fallback function, and the 1 ms response at 44.1, 48 and 96 kHz. Audible timing and zero-crossing semantics are unchanged.

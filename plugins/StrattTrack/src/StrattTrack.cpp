@@ -369,6 +369,8 @@ public:
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
         valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);
+        // Prepare the click-safe polarity fallback coefficient outside process().
+        phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));
         for(auto &c:ch_) c.console.prepare(sr_);
         reset();
     }
@@ -640,8 +642,7 @@ private:
                 }
             }
             if(phaseFallback_[channel]) {
-                const float alpha=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));
-                phaseGain_[channel]+=alpha*(desired-phaseGain_[channel]);
+                phaseGain_[channel]+=phaseFallbackAlpha_*(desired-phaseGain_[channel]);
                 if(std::fabs(desired-phaseGain_[channel])<1.0e-4f) {
                     phaseGain_[channel]=desired;
                     phaseFallback_[channel]=false;
@@ -671,5 +672,6 @@ private:
     float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
     float valveDcCoef_=0.999572f;
+    float phaseFallbackAlpha_=0.0224205747f;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)

@@ -1,4 +1,4 @@
-# StrattTrack 1.2.2
+# StrattTrack 1.2.3
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -51,3 +51,8 @@ Phase L/R are discrete polarity inversions, not continuous phase rotation. A swi
 ## Compressor headroom (1.2.2)
 
 The static gain-computer now covers up to 8,388,608× detector overdrive (approximately +138.5 dB above threshold) with 1,024 fourth-power intervals. This preserves the hard-knee ratio law under extreme combined input/preamp/EQ boosts instead of pinning the gain computer at its former 32,768× ceiling. The larger table is built only when the smoothed ratio changes; per-sample processing remains two square roots plus interpolation, with independent numerical regression coverage below 0.2% relative error across ratios 1:1–20:1.
+
+
+## Real-time polarity fallback (1.2.3)
+
+The 1 ms DC/near-DC polarity fallback now reuses a sample-rate-derived one-pole coefficient calculated in `prepare()`. The previous implementation evaluated an exponential in the audio callback for every sample during the fallback transition; this version removes that per-sample transcendental work without changing the 1 ms transition law, zero-crossing behavior, timeout, parameter identities or signal path.

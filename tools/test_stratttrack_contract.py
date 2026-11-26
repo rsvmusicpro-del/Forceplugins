@@ -286,5 +286,11 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1202;" in src
+assert "x.version=1203;" in src
+# The DC/near-DC polarity fallback coefficient is prepared once per sample rate,
+# never evaluated with exp() in the real-time per-sample transition.
+assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*std::fmax(sr_,1.0f)));" in src
+polarity_body=src.split("float applyPolarity(",1)[1].split("    Channel ch_[2];",1)[0]
+assert "phaseFallbackAlpha_" in polarity_body
+assert "std::exp(" not in polarity_body
 print("StrattTrack polarity transition checks OK")
