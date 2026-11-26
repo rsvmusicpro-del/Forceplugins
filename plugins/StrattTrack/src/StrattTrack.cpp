@@ -185,9 +185,17 @@ public:
             const float a=finiteClamp(l,-16,16,0)*ig*pg*phaseL;
             const float b=finiteClamp(r,-16,16,0)*ig*pg*phaseR;
             float xL=(a*ilL+b*irL), xR=(a*ilR+b*irR);
-            float detector=std::fmax(std::fabs(xL),std::fabs(xR));
-            for(int c=0;c<2;++c) {
-                Channel &s=ch_[c];
+            float *samples[2]={&xL,&xR};
+            // Clean filtering and EQ precede the linked dynamics detector.
+            for(int ch=0;ch<2;++ch) {
+                Channel &s=ch_[ch]; float x=*samples[ch];
+                x=s.hp.run(x); x=s.lp.run(x);
+                x=s.lf.run(x); x=s.lm.run(x); x=s.hm.run(x); x=s.hf.run(x);
+                *samples[ch]=x;
+            }
+            const float detector=std::fmax(std::fabs(xL),std::fabs(xR));
+            for(int ch=0;ch<2;++ch) {
+                Channel &s=ch_[ch];
                 const float envCoef=detector>s.detector?compAtk:compRel;
                 s.detector=envCoef*s.detector+(1-envCoef)*detector;
                 const float above=std::fmax(0.0f,s.detector/compThreshold-1.0f);
@@ -198,19 +206,14 @@ public:
                 const float gateTarget=s.detector>gateThreshold?1.0f:gateFloor;
                 const float gc=gateTarget<s.gateGain?gateAtk:gateRel;
                 s.gateGain=gc*s.gateGain+(1-gc)*gateTarget;
-            }
-            float *samples[2]={&xL,&xR};
-            for(int c=0;c<2;++c) {
-                Channel &s=ch_[c]; float x=*samples[c];
-                x=s.hp.run(x); x=s.lp.run(x);
-                x=s.lf.run(x); x=s.lm.run(x); x=s.hm.run(x); x=s.hf.run(x);
-                x*=s.gateGain*s.compGain*makeup;
-                const float coloured=circuit(x,drive);
+                *samples[ch]=*samples[ch]*s.gateGain*s.compGain*makeup;
+                const float clean=*samples[ch];
+                const float coloured=circuit(clean,drive);
                 // 3 Hz DC blocker for the fixed asymmetric valve component.
                 s.valveDc=0.999572f*(s.valveDc+coloured-s.valvePrev);
                 s.valvePrev=coloured;
                 const float valve=s.valveDc;
-                *samples[c]=x+(valve-x)*mix;
+                *samples[ch]=clean+(valve-clean)*mix;
             }
             xL*=og*fg; xR*=og*fg;
             if(ctx.numOutputs==1) ctx.outputs[0][i]=0.5f*(xL+xR);
