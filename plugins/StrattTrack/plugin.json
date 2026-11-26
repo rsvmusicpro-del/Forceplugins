@@ -39,7 +39,7 @@
   ],
   "file32": "VST/stratttrack-arm32.so",
   "file64": "VST/stratttrack-arm64.so",
-  "description": "StrattTrack stereo channel strip with Airwindows Console7 input emulation, filters, Pulse Techniques EQP-1A curve model, four-band EQ, linked dynamics and circuit colour.",
+  "description": "StrattTrack stereo channel strip with Airwindows Console7 input emulation, shared second-order Butterworth HP/LP filters, Pulse Techniques EQP-1A curve model, four-band EQ, linked dynamics and circuit colour.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
