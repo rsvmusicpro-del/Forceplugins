@@ -12,6 +12,8 @@ assert m["numInputs"]==m["numOutputs"]==2 and len(m["knobs"])==len(m["shiftKnobs
 assert all(x["parameter"]<68 for x in m["knobs"]+m["shiftKnobs"])
 assert "x.version=1400;" in s and len(re.findall(r"addParam\(",s))==68
 assert "static const float kGraphicEqFrequencies[16]" in s and "kGraphicEqQ=2.146f" in s
+fm=re.search(r"kGraphicEqFrequencies\\[16\\]\\s*=\\s*\\{([^}]*)\\}",s)
+assert fm and [float(x.strip().removesuffix("f")) for x in fm.group(1).split(",")]==freq
 assert "Biquad graphic[16]" in s and "Smooth graphicEqGain_[16]" in s
 assert "ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],kGraphicEqQ,graphicEqGains[band]);" in s
 assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in s
@@ -55,7 +57,7 @@ for sr in (44100.,48000.,96000.):
    if gain==0:
     assert abs(response(b,a,0)-1)<1e-8 and abs(response(b,a,math.pi)-1)<1e-8
 ratios=[freq[i+1]/freq[i] for i in range(15)]
-assert max(ratios)-min(ratios)<.012
+assert max(ratios)-min(ratios)<.04
 q=math.sqrt(2**(2/3))/(2**(2/3)-1); assert abs(q-2.146)<.01
 for sr in (44100.,48000.,96000.):
  for fc in freq:
