@@ -46,9 +46,7 @@ Typical engineer workflow:
 
 StrattTrack's current 16-band section meets the fixed-centre, ±12 dB, stereo-linked, minimum-phase, zero-added-latency, smoothed-automation and flat-at-zero requirements. Its flat reference is all sixteen gains at 0 dB; the plugin does not currently expose a separate graphic-EQ bypass switch or built-in spectrum analyser. The section is a broad musical/corrective tool, not a substitute for a narrow parametric notch or per-channel room-correction system.
 
-## Engineer workflow and critical regions
-
-Engineers expect a graphic EQ to offer immediately legible fixed centres, predictable slider-to-response correspondence, smooth automation, stereo linking, no clicks, stable gain and a reliable bypass/flat reference. Typical work is subtractive first (rumble/subsonic, mud, boxiness, honk, harshness and sibilance), then restrained additive shaping for punch, presence and air; broad corrections suit tone balance while focused cuts address ringing or feedback. A spectrum analyser is a diagnostic aid, not a replacement for listening, level-matched A/B and checking mono compatibility.
+## Frequency-use regions
 
 | Region | Typical range | Common use / caution | Closest StrattTrack centres |
 |---|---:|---|---|
@@ -68,7 +66,6 @@ These are listening zones, not universal correction targets: instrument, microph
 - Rane GQ15/GQ30 manufacturer datasheet: https://www.ranecommercial.com/legacy/pdf/old/gqdat.pdf
 - Klark-Teknik DN332 official product overview (notes 15-band wording): https://www.klarkteknik.com/en/products/0821-ABN
 - Klark-Teknik DN332 engineering specification (2×16 ISO centres, MELT, I/O, noise, THD, headroom): https://device.report/m/788b0808486590d7bf534724d7c93fbdb5e5e33e031cf07dec0162956366bbb3.pdf
-- Klark-Teknik DN332 technical specifications (MELT, I/O, noise, THD, headroom, dimensions): https://device.report/m/788b0808486590d7bf534724d7c93fbdb5e5e33e031cf07dec0162956366bbb3.pdf
 - Pioneer DEH-P8850MP manual, 16-band centres, ±12 dB range, custom curves and front/rear/sub auto-EQ: https://www.elinfor.com/pdf/Pioneer/DEH-P8850MP_Pioneer.pdf
 - Phonic GEQ1500/GEQ3100 manufacturer cut sheet: https://www.phonic.com/index.php/download-center/category/6-english-cutsheets?download=75%3Ads-geq1500-geq3100-en-pdf&start=60
 - JB Systems GEQ215 specifications: https://musicdelivery.net/en/products/jb-systems-geq215
