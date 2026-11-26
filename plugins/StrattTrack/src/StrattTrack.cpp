@@ -138,11 +138,20 @@ public:
         addParam(mpc::floatParam("fader","Fader",-60,12,0,"dB",1));
         addProgram("Clean", {0,0,0,0,0,-100,100,20,22000,100,0,400,0,1,2500,0,1,12000,0,-80,60,1,120,0,2,10,100,0,0,0,0,0});
         addProgram("Vocal", {0,0,0,0,0,-100,100,80,18000,120,1,350,-2,1.2f,3200,2,1.1f,12000,1,-45,35,1,100,-18,3,8,90,2,12,25,0,0});
+        // Precompute 1:1..20:1 compressor curves before audio starts. Runtime
+        // ratio automation only interpolates adjacent curves; it never calls pow().
+        for(int r=0;r<20;++r) {
+            const float exponent=-(1.0f-1.0f/static_cast<float>(r+1));
+            for(int i=0;i<=256;++i) {
+                const float over=1.0f+(2047.0f/256.0f)*static_cast<float>(i);
+                compCurve_[r][i]=std::pow(over,exponent);
+            }
+        }
     }
     void prepare(double sr,int) override { sr_=(float)sr; valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_); reset(); }
     void reset() override {
         for(auto &c:ch_) c.reset();
-        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
+        detector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true;
         output_.snap(db(get(kOutput))); input_.snap(db(get(kInput)));
         preamp_.snap(db(get(kPreamp))); fader_.snap(db(get(kFader)));
         circuitMix_.snap(get(kCircuitMix)*0.01f);
@@ -166,17 +175,7 @@ public:
         const float gateAtk=coeff(get(kGateAttack),sr_), gateRel=coeff(get(kGateRelease),sr_);
         const float compAtk=coeff(get(kCompAttack),sr_), compRel=coeff(get(kCompRelease),sr_);
         const float makeup=db(finiteClamp(get(kCompMakeup),0,24,0));
-        // Rebuild the static compressor curve only when its ratio changes. The
-        // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
-        if(ratio!=compRatioCached_) {
-            const float exponent=-(1.0f-1.0f/ratio);
-            for(int i=0;i<=256;++i) {
-                const float over=1.0f+(2047.0f/256.0f)*static_cast<float>(i);
-                compCurve_[i]=std::pow(over,exponent);
-            }
-            compRatioCached_=ratio;
-        }
-        const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
+remove runtime LUT rebuild        const float drive=finiteClamp(get(kDrive)*0.01f,0,1,0);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
         const float inL=finiteClamp(get(kPanL)*0.01f,-1,1,-1), inR=finiteClamp(get(kPanR)*0.01f,-1,1,1);
         const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
@@ -225,7 +224,15 @@ public:
             const float curvePos=finiteClamp((over-1.0f)*(256.0f/2047.0f),0.0f,256.0f,0.0f);
             const int curveIndex=static_cast<int>(curvePos);
             const float curveFrac=curvePos-static_cast<float>(curveIndex);
-            const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
+            const float ratioPos=ratio-1.0f;
+            const int ratioIndex=mpc::clamp(static_cast<int>(ratioPos),0,19);
+            const float ratioFrac=ratioPos-static_cast<float>(ratioIndex);
+            const int nextRatio=ratioIndex<19?ratioIndex+1:19;
+            const float curveLo=compCurve_[ratioIndex][curveIndex]+
+                (compCurve_[ratioIndex][curveIndex<256?curveIndex+1:256]-compCurve_[ratioIndex][curveIndex])*curveFrac;
+            const float curveHi=compCurve_[nextRatio][curveIndex]+
+                (compCurve_[nextRatio][curveIndex<256?curveIndex+1:256]-compCurve_[nextRatio][curveIndex])*curveFrac;
+            const float targetComp=curveLo+(curveHi-curveLo)*ratioFrac;
             const float cc=targetComp<compGain_?compAtk:compRel;
             compGain_=cc*compGain_+(1.0f-cc)*targetComp;
             // 3 dB hysteresis prevents gate chatter around its opening threshold.
@@ -270,8 +277,7 @@ private:
     // Linked dynamics state is separate from per-channel filter/colour state.
     float detector_=0.0f, gateGain_=1.0f, compGain_=1.0f;
     bool gateOpen_=true;
-    float compCurve_[257]{};
-    float compRatioCached_=-1.0f;
+    float compCurve_[20][257]{};
     float valveDcCoef_=0.999572f;
 };
 MPC_PLUGIN_ENTRY(StrattTrack)
