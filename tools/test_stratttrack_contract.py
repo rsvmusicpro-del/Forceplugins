@@ -345,7 +345,7 @@ for sample_rate in (44100.0,48000.0,96000.0):
                 a1,a2=a
                 disc=complex(a1*a1-4.0*a2)**0.5
                 assert max(abs((-a1+disc)/2.0),abs((-a1-disc)/2.0))<1.0
-            q_curve.append(q)
+        q_curve=[graphic_eq_q(sample_rate,centre,graphic_eq_bandwidth(g,band,sample_rate)) for g in (0,3,6,9,12)]
         assert all(left<=right+1.0e-10 for left,right in zip(q_curve,q_curve[1:]))
         assert all(abs(graphic_eq_bandwidth(g,band,sample_rate)-graphic_eq_bandwidth(-g,band,sample_rate))<1.0e-12 for g in (1,3,6,9,12))
 # The frequency-warped RBJ Q must reproduce the requested half-gain bandwidth,
