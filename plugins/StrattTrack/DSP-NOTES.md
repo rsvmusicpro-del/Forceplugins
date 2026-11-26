@@ -64,3 +64,8 @@ For the MPC ARM real-time budget, the trigonometric transfer is replaced by its 
 ### What engineers seek from a console path
 
 A console pass is generally used for coherent summing, subtle harmonic/intermodulation density, gentle peak rounding, a little dynamic softening and a more cohesive spatial impression while retaining source identity, transient intelligibility and tonal balance. The selected Console7 channel curve contributes this controlled nonlinear density; no noise, arbitrary EQ tilt or aggressive compression is added. The pre-existing valve stage remains a separate output coloration stage with its own analytic ADAA transfer and DC blocker, so the input-console emulation does not replace or bypass it.
+
+
+## Per-sample control smoothing correction (1.1.3)
+
+The 10 ms control one-pole coefficient is now calculated for one sample, because every `Smooth::next()` call occurs inside the sample loop. The previous coefficient was calculated for the entire host block and then reused for every sample, making parameter transitions block-size dependent and up to the block length faster than intended. The corrected coefficient is `alpha = 1 - exp(-1 / (0.010 * fs))`; after 10 ms the smoother reaches approximately 63.2% of a step at 44.1, 48 and 96 kHz, independently of whether the host processes 32, 128 or 512 frames per call. This affects control trajectories only; steady-state EQ, dynamics, gain curves, parameter identities, presets and signal-path topology are unchanged.
