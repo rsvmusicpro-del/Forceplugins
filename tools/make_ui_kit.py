@@ -478,6 +478,8 @@ def manifest(theme_name, th, assets):
     return {
         "kitVersion": KIT_VERSION,
         "theme": theme_name,
+        "visualStyle": "osmic-mechanical x mpc-native",
+        "visualNotes": "Original procedural brushed-metal treatment inspired by the material language of Osmic Audio Knobs; MPC-native 127-frame film-strip geometry, amber value arc and fixed radial machining marks.",
         "colours": {k: argb_text(v) for k, v in th.items()},
         "assets": {name: {"file": name + ".png", "width": size[0], "height": size[1], "frames": frames}
                    for name, (_, size, frames) in assets.items()},
