@@ -144,7 +144,7 @@ for control in ("output_", "preamp_", "circuitMix_"):
     assert ",sampleSmooth)" in line, (control, line)
 assert "float next(float target,float c) {" in src  # require explicit, sample-rate-aware smoothing
 for control in ("gateThreshDb_", "gateRangeDb_", "compThreshDb_", "compRatio_",
-                "compMakeupDb_", "drive_", "panL_", "panR_", "outPan_",
+                "compMakeupDb_", "drive_",
                 "ptLowBoost_", "ptLowAtten_", "ptHighBoost_",
                 "ptBandwidth_", "ptHighAtten_"):
     line = next(line for line in src.splitlines()
@@ -254,7 +254,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1208;" in src
+assert "x.version=1209;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -316,7 +316,7 @@ for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
     assert abs((mid+side)-left)<1.0e-12
     assert abs((mid-side)-right)<1.0e-12
 assert abs((1.0+1.0)*0.5-1.0)<1.0e-12  # mono input has zero Side, so Width cannot invent stereo
-assert "bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);" in src
+assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
 assert "const float bassMonoSide=bassMonoSideHp_.run(side);" in src
 assert "const float shapedSide=bassMonoSide*width*sideSafety;" in src
 
@@ -361,7 +361,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1208;" in src
+assert "x.version=1209;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
