@@ -28,6 +28,10 @@ jobs:
         run: python tools/test_strattpultek_valve.py
       - name: Verify Drive fundamental level matching
         run: python tools/test_strattpultek_drive.py
+      - name: Verify Grain continuity detector and transient response
+        run: |
+          c++ -std=c++11 -O2 -Wall -Wextra -Werror -Iplugins/StrattPultek/src tools/test_strattpultek_grain.cpp -o /tmp/test_strattpultek_grain
+          /tmp/test_strattpultek_grain
       - name: Verify Cleansweep filter responses and cutoff safety
         run: |
           c++ -std=c++11 -O2 -Iframework tools/test_strattpultek_filters.cpp -o /tmp/test_strattpultek_filters
