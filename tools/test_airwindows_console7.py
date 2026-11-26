@@ -50,7 +50,7 @@ for i in range(1000):
 
 checked = 0
 for branch, plugin, ui_name, param_count, ver in [
-    ("feature/stratttrack", "StrattTrack", "CONSOLE", 41, "1.1.2"),
+    ("feature/stratttrack", "StrattTrack", "CONSOLE", 41, "1.1.3"),
     ("feature/strattpultek", "StrattPultek", "CONSOLE", 17, "1.9.11"),
 ]:
     project=root/"plugins"/plugin
