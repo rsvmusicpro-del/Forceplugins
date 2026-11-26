@@ -153,117 +153,59 @@ static inline double softClipTransfer(double x, double asymmetry)
     return shaped + asymmetry * shaped * shaped;
 }
 
-// Five-point Gauss-Legendre integrates polynomials through degree 9 exactly.
-// F + eta*F^2 is degree 8 in each region. Split at every knee so each
-// quadrature interval contains one polynomial branch and avoid subtracting
-// nearly equal global primitives when a tiny interval straddles a knee.
-static inline double integrateShortCrossingInterval(double lo, double hi, double eta)
+constexpr double kTriodeBlend=0.28;
+constexpr double kMediumMuScale=1.18;
+constexpr double kHighMuAsymmetry=0.032;
+constexpr double kMediumMuAsymmetry=0.060;
+
+// Normalized ECC83-like high-mu + 6SN7-like medium-mu curve blend.
+static inline double tubeTransfer(double x)
 {
-    constexpr double nodes[2] = {0.53846931010568309104, 0.90617984593866399280};
-    constexpr double weights[3] = {0.56888888888888888889,
-                                   0.47862867049936646804,
-                                   0.23692688505618908751};
-    constexpr double boundaries[4] = {-2.0, -1.0, 1.0, 2.0};
-    double integral = 0.0;
-    double start = lo;
-
-    for (double boundary : boundaries)
-    {
-        if (boundary <= start || boundary >= hi) continue;
-        const double midpoint = 0.5 * (start + boundary);
-        const double halfWidth = 0.5 * (boundary - start);
-        const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
-                           + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
-        const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
-                           + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
-        integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
-                               + weights[1] * pair0 + weights[2] * pair1);
-        start = boundary;
-    }
-
-    const double midpoint = 0.5 * (start + hi);
-    const double halfWidth = 0.5 * (hi - start);
-    const double pair0 = softClipTransfer(midpoint - nodes[0] * halfWidth, eta)
-                       + softClipTransfer(midpoint + nodes[0] * halfWidth, eta);
-    const double pair1 = softClipTransfer(midpoint - nodes[1] * halfWidth, eta)
-                       + softClipTransfer(midpoint + nodes[1] * halfWidth, eta);
-    integral += halfWidth * (weights[0] * softClipTransfer(midpoint, eta)
-                           + weights[1] * pair0 + weights[2] * pair1);
-    return integral;
+    return (1.0-kTriodeBlend)*softClipTransfer(x,kHighMuAsymmetry)
+         +kTriodeBlend*softClipTransfer(x*kMediumMuScale,kMediumMuAsymmetry)/kMediumMuScale;
+}
+static inline double tubeIntegral(double x)
+{
+    const double k=kMediumMuScale;
+    const double hi=softClipIntegral(x)+kHighMuAsymmetry*softClipSquareIntegral(x);
+    const double med=softClipIntegral(k*x)/(k*k)
+                    +kMediumMuAsymmetry*softClipSquareIntegral(k*x)/(k*k*k);
+    return (1.0-kTriodeBlend)*hi+kTriodeBlend*med;
 }
 
-// First-order antiderivative antialiasing for F_a(x)=F(x)+eta*F(x)^2.
-// Each ADAA path seeds its previous sample from the first live input after reset,
-// avoiding an artificial interval from digital silence to a non-zero first sample.
-// For very short intervals wholly inside one polynomial branch, evaluate the
-// interval average with its symmetric Taylor expansion. This avoids subtracting
-// nearly equal global primitives. The fourth-order term is exact through O(d^4);
-// the remaining O(d^6) error is negligible at the 1e-4 relative interval limit.
-// Intervals touching a knee still use the exact piecewise primitive difference.
-static inline float adaaSoftClip(float x, float previousX, float asymmetry)
+// Five-point Gauss-Legendre is exact for each degree-eight polynomial segment.
+static inline double integrateShortTubeInterval(double lo,double hi)
 {
-    const double xd = static_cast<double>(x);
-    const double pd = static_cast<double>(previousX);
-    const double delta = xd - pd;
-    const double ad = std::fabs(delta);
-    const double scale = std::fmax(1.0, std::fmax(std::fabs(xd), std::fabs(pd)));
-    const double eta = static_cast<double>(asymmetry);
-    const double midpoint = 0.5 * (xd + pd);
-
-    if (ad <= 1.0e-4 * scale)
-    {
-        const double ax = std::fabs(xd);
-        const double ap = std::fabs(pd);
-        const double d2 = delta * delta;
-        const double d4 = d2 * d2;
-
-        // In the linear branch F_a(x)=x+eta*x^2, so its interval
-        // average is available exactly (the second derivative is 2*eta).
-        if (ax <= 1.0 && ap <= 1.0)
-            return static_cast<float>(midpoint + eta * (midpoint * midpoint + d2 / 12.0));
-
-        // The plateau is constant as long as the interval stays on one side.
-        if (ax >= 2.0 && ap >= 2.0 && std::signbit(xd) == std::signbit(pd))
-        {
-            const double y = 1.5 * (std::signbit(xd) ? -1.0 : 1.0);
-            return static_cast<float>(y + eta * y * y);
-        }
-
-        // In the knee, use f(mid) + f''(mid)d^2/24 + f''''(mid)d^4/1920.
-        // The polynomial is degree four; its asymmetric square is degree eight.
-        if (ax > 1.0 && ax < 2.0 && ap > 1.0 && ap < 2.0
-            && std::signbit(xd) == std::signbit(pd))
-        {
-            const double sign = std::signbit(midpoint) ? -1.0 : 1.0;
-            const double t = std::fabs(midpoint) - 1.0;
-            const double t2 = t * t;
-            const double p = 1.0 + t - t * t2 + 0.5 * t2 * t2;
-            const double p1 = 1.0 - 3.0 * t2 + 2.0 * t2 * t;
-            const double p2 = -6.0 * t + 6.0 * t2;
-            const double p3 = -6.0 + 12.0 * t;
-            constexpr double p4 = 12.0;
-            const double f = sign * p;
-            const double f2 = sign * p2;
-            const double f4 = sign * p4;
-            const double fa = f + eta * p * p;
-            const double fa2 = f2 + eta * (2.0 * p1 * p1 + 2.0 * p * p2);
-            const double fa4 = f4 + eta * (2.0 * p * p4 + 8.0 * p1 * p3 + 6.0 * p2 * p2);
-            return static_cast<float>(fa + fa2 * d2 / 24.0 + fa4 * d4 / 1920.0);
-        }
+    constexpr double nodes[2]={0.53846931010568309104,0.90617984593866399280};
+    constexpr double weights[3]={0.56888888888888888889,0.47862867049936646804,0.23692688505618908751};
+    constexpr double boundaries[9]={-2.0,-2.0/kMediumMuScale,-1.0,-1.0/kMediumMuScale,
+                                     0.0,1.0/kMediumMuScale,1.0,2.0/kMediumMuScale,2.0};
+    double integral=0.0, start=lo;
+    for(double boundary:boundaries) {
+        if(boundary<=start||boundary>=hi) continue;
+        const double mid=0.5*(start+boundary), half=0.5*(boundary-start);
+        const double p0=tubeTransfer(mid-nodes[0]*half)+tubeTransfer(mid+nodes[0]*half);
+        const double p1=tubeTransfer(mid-nodes[1]*half)+tubeTransfer(mid+nodes[1]*half);
+        integral+=half*(weights[0]*tubeTransfer(mid)+weights[1]*p0+weights[2]*p1);
+        start=boundary;
     }
+    const double mid=0.5*(start+hi), half=0.5*(hi-start);
+    const double p0=tubeTransfer(mid-nodes[0]*half)+tubeTransfer(mid+nodes[0]*half);
+    const double p1=tubeTransfer(mid-nodes[1]*half)+tubeTransfer(mid+nodes[1]*half);
+    return integral+half*(weights[0]*tubeTransfer(mid)+weights[1]*p0+weights[2]*p1);
+}
 
-    if (ad <= 1.0e-4 * scale)
-    {
-        const double lo = std::fmin(xd, pd);
-        const double hi = std::fmax(xd, pd);
-        return static_cast<float>(integrateShortCrossingInterval(lo, hi, eta) / (hi - lo));
+// First-order ADAA, with quadrature for very short intervals to avoid cancellation.
+static inline float adaaTube(float x,float previousX)
+{
+    const double xd=x, pd=previousX, delta=xd-pd, ad=std::fabs(delta);
+    if(ad==0.0) return static_cast<float>(tubeTransfer(xd));
+    const double scale=std::fmax(1.0,std::fmax(std::fabs(xd),std::fabs(pd)));
+    if(ad<=1.0e-4*scale) {
+        const double lo=std::fmin(xd,pd), hi=std::fmax(xd,pd);
+        return static_cast<float>(integrateShortTubeInterval(lo,hi)/(hi-lo));
     }
-
-    const double currentIntegral = softClipIntegral(xd)
-                                 + eta * softClipSquareIntegral(xd);
-    const double previousIntegral = softClipIntegral(pd)
-                                  + eta * softClipSquareIntegral(pd);
-    return static_cast<float>((currentIntegral - previousIntegral) / delta);
+    return static_cast<float>((tubeIntegral(xd)-tubeIntegral(pd))/delta);
 }
 
 
@@ -279,22 +221,25 @@ struct Channel {
     float ptLowBoostState=0,ptLowAttenState=0,ptHighAttenState=0;
     float previousTubeInput=0.0f;
     bool hasPreviousTubeInput=false;
-    float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
+    float previousTubeColor=0.0f;\n    float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
     void reset(){console.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();lf.reset();lm.reset();hm.reset();hf.reset();
         ptHighBoost.reset();ptLfInteraction.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
-        previousTubeInput=previousTubeDcInput=previousTubeDcOutput=0.0f;
+        previousTubeInput=previousTubeColor=previousTubeDcInput=previousTubeDcOutput=0.0f;
         hasPreviousTubeInput=false;}
-    float tubeStage(float x,float pole) {
+    float tubeStage(float x,float pole,float hfAlpha) {
         constexpr float tubeDrive=1.15f;
-        constexpr float tubeAsymmetry=0.045f;
         const float driven=x*tubeDrive;
         const float previous=hasPreviousTubeInput?previousTubeInput:driven;
-        const float shaped=adaaSoftClip(driven,previous,tubeAsymmetry)/tubeDrive;
+        const float shaped=adaaTube(driven,previous)/tubeDrive;
         previousTubeInput=driven;
         hasPreviousTubeInput=true;
-        const float y=shaped-previousTubeDcInput+pole*previousTubeDcOutput;
-        previousTubeDcInput=shaped;
+        // Filter only the nonlinear residual; preserve the unity small-signal path.
+        const float color=shaped-x;
+        previousTubeColor+=hfAlpha*(color-previousTubeColor);
+        const float voiced=x+0.72f*previousTubeColor+0.28f*color;
+        const float y=voiced-previousTubeDcInput+pole*previousTubeDcOutput;
+        previousTubeDcInput=voiced;
         previousTubeDcOutput=y;
         return y;
     }
@@ -383,7 +328,7 @@ public:
     }
     void prepare(double sr,int) override {
         sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?static_cast<float>(sr):44100.0f;
-        valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);
+        valveDcCoef_=std::exp(-2.0f*kPi*3.0f/sr_);\n        tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);
         phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));
         phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);
         for(auto &c:ch_) c.console.prepare(sr_);
@@ -660,7 +605,7 @@ public:
             // Circuit Mix, after all tone/dynamics stages and before output gain.
             // The same ADAA triode-inspired stage is used by StrattPultek.
             for(int ch=0;ch<2;++ch)
-                *samples[ch]=ch_[ch].tubeStage(*samples[ch],valveDcCoef_);
+                *samples[ch]=ch_[ch].tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_);
             // Output balance is applied before the final master Output gain.
             if(ctx.numOutputs==1) ctx.outputs[0][i]=0.5f*(xL+xR)*og;
             else {
@@ -674,7 +619,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1206;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1207;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -728,7 +673,7 @@ private:
     bool gateOpen_=true;
     float compCurve_[1025]{};
     float compRatioCached_=-1.0f;
-    float valveDcCoef_=0.999572f;
+    float valveDcCoef_=0.999572f;\n    float tubeHfAlpha_=0.923f;
     float phaseFallbackAlpha_=0.022420575f;
     int phaseWaitLimit_=882;
 };
