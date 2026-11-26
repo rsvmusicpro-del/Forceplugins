@@ -141,3 +141,14 @@ The five-point rule is exact for polynomials through degree nine; the asymmetric
 ## Raffinement du taux de mise à jour des coefficients (1.9.6)
 
 Les cibles de paramètres sont lues une fois par bloc hôte. Les variables EQ lissées sur 15 ms sont appliquées aux filtres par segments de 64 échantillons maximum. La durée maximale entre deux mises à jour est donc Tq = 64 / fs, soit environ 1,45 ms à 44,1 kHz, au lieu de Nhost / fs (jusqu'à 11,61 ms pour 512 échantillons). Le lissage exponentiel conserve sa constante de temps : alpha_q = 1 - exp(-64 / (0,015 fs)), avec le dernier segment adapté à sa taille réelle. Le calcul trigonométrique des coefficients reste au taux de contrôle, jamais dans la boucle par échantillon. Cette modification réduit les sauts de coefficients audibles lors de l'automation sur de grands blocs, au prix d'au plus huit recalculs par bloc de 512 échantillons. Elle ne constitue pas une validation de charge CPU sur matériel physique.
+
+
+## Compensation fondamentale du Drive (1.9.7)
+
+66. Gain de commande : \\(g(d)=1+2.5d\\), avec \\(d\\in[0,1]\\). Le signal entre dans le transfert \\(F\\) à l'amplitude de référence \\(A_r g(d)\\), puis la sortie est normalisée par \\(g(d)\\), où \\(A_r=0.5\\) (sinusoïde crête à -6.02 dBFS).
+
+67. Fondamentale de la sinusoïde après le transfert impair : \\[B_1(d)=\\frac{2}{\\pi}\\int_0^\\pi F(A_r g(d)\\sin\\theta)\\sin\\theta\\,d\\theta.\\]
+
+68. Compensation : \\(C(d)=\\operatorname{clamp}(A_r g(d)/B_1(d),1,1.12)\\). L'intégrale est évaluée par Simpson composite à 256 intervalles lors de prepare(), pour chacun des 101 points de la table \\(d_i=i/100\\). Le callback audio effectue uniquement une interpolation linéaire bornée entre deux entrées de la table et multiplie le signal saturé par \\(C(d)\\).
+
+À la valeur maximale de Drive, le calcul donne \\(C(1)\\approx1.09068\\), soit environ +0.76 dB (la borne de sécurité +0.98 dB n'est pas atteinte). Pour \\(d\\le0.4\\), le sinus de référence reste dans la zone linéaire et \\(C(d)=1\\). Ce niveau de référence rend le comportement plus cohérent en niveau ; il ne prétend pas reproduire une courbe de circuit mesurée ni garantir le même niveau perçu pour tous les contenus spectraux.
