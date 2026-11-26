@@ -452,12 +452,17 @@ public:
         // removes control discontinuities after the hysteretic state decision.
         const float gateSlew=coeff(2.0f,sr_);
         const float makeup=db(compMakeupDb_.next(finiteClamp(get(kCompMakeup),0,24,0),controlBlockSmooth));
-        // Rebuild the static compressor curve only when its ratio changes. The
-        // audio loop then uses a bounded linear lookup/interpolation (no pow/log).
+        // Rebuild the static compressor curve only when its ratio changes.
+        // A fourth-power overdrive grid gives dense resolution around the knee
+        // while spanning >90 dB above threshold without per-sample log/pow work.
+        // The audio loop maps overdrive to this grid with two hardware square roots.
+        constexpr float kCompCurveMaxOver=32768.0f;
         if(ratio!=compRatioCached_) {
             const float exponent=-(1.0f-1.0f/ratio);
             for(int i=0;i<=256;++i) {
-                const float over=1.0f+(2047.0f/256.0f)*static_cast<float>(i);
+                const float position=static_cast<float>(i)*(1.0f/256.0f);
+                const float position2=position*position;
+                const float over=1.0f+(kCompCurveMaxOver-1.0f)*position2*position2;
                 compCurve_[i]=std::pow(over,exponent);
             }
             compRatioCached_=ratio;
@@ -566,7 +571,10 @@ public:
             detector_=envCoef*detector_+(1.0f-envCoef)*peak;
             const float over=detector_/std::fmax(compThreshold,1.0e-9f);
             // Conventional hard-knee compressor law in the amplitude domain.
-            const float curvePos=finiteClamp((over-1.0f)*(256.0f/2047.0f),0.0f,256.0f,0.0f);
+            // The fourth-power grid resolves the knee accurately and keeps the
+            // ratio law valid up to 32768x threshold (about +90.3 dB).
+            const float normalizedOver=finiteClamp((over-1.0f)/(kCompCurveMaxOver-1.0f),0.0f,1.0f,0.0f);
+            const float curvePos=std::sqrt(std::sqrt(normalizedOver))*256.0f;
             const int curveIndex=static_cast<int>(curvePos);
             const float curveFrac=curvePos-static_cast<float>(curveIndex);
             const float targetComp=compCurve_[curveIndex]+(compCurve_[curveIndex<256?curveIndex+1:256]-compCurve_[curveIndex])*curveFrac;
@@ -607,7 +615,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1200;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1201;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {

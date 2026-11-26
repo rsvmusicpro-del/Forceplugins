@@ -92,3 +92,8 @@ Phase L/R are polarity inversions (0°/180°), not continuous phase rotation con
 Input/output trim, preamp, final fader and parallel circuit mix now use an explicit one-pole coefficient derived from the actual sample rate, giving each control the same 10 ms time constant at 44.1, 48 and 96 kHz (and other supported rates). The smoother API no longer has a hard-coded per-sample default, so future call sites must choose a rate-correct coefficient explicitly. Console Fader retains its intentional 1.5 ms response; block-rate controls retain elapsed-block 10 ms smoothing.
 
 The StrattTrack contract test verifies the sample-rate-derived one-sample coefficient against the 10 ms response at 44.1, 48 and 96 kHz and enforces explicit coefficients at all gain-control smoother call sites.
+
+
+## Compressor transfer accuracy and headroom (1.2.1)
+
+The compressor's static gain-computer lookup now uses a 256-interval fourth-power overdrive grid spanning 1× to 32768× threshold (approximately +90.3 dB). The denser grid near unity resolves the hard-knee transition accurately, while its extended upper range prevents the compressor ratio from flattening prematurely on hot signals. The sample loop maps the normalized detector overdrive with two square roots and table interpolation; it performs no per-sample logarithm or power operation. Independent numerical checks cover ratios from 1:1 through 20:1 across the full table range, with maximum relative interpolation error below 0.2%. The plugin binary and manifest version are incremented to 1.2.1; parameter identity, order, presets, state compatibility and signal-path order are unchanged.
