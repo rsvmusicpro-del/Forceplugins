@@ -1,4 +1,6 @@
-# StrattTrack 1.5.1
+# StrattTrack 1.5.3
+
+Final validation build: see PR #20 checks for the tested ARM32/ARM64 and MPC host-simulator matrix.
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
@@ -99,3 +101,8 @@ Phase L/R remains a zero-crossing polarity inversion with a bounded DC fallback;
 ## 16-band graphic EQ (1.5.1)
 
 The former four-band parametric EQ audio path is replaced by sixteen stereo-linked RBJ peaking filters at fixed logarithmic centres: 20, 31.5, 50, 80, 125, 200, 315, 500, 800, 1250, 2000, 3150, 5000, 8000, 12500 and 20000 Hz. Each slider spans −12 to +12 dB. Gain-adaptive bandwidth follows a smoothstep law from 1.9 octaves toward each band's actual fractional-octave spacing; the RBJ bilinear-transform relation converts that bandwidth to Q using the centre frequency and sample rate, with a Nyquist-margin cap for the 20 kHz band at 44.1/48 kHz. Cuts and boosts are symmetric, and 0 dB remains exactly unity. Gain is smoothed over 10 ms and coefficients refresh every 64 frames. This is a minimum-phase IIR cascade with no added latency and no audio-thread allocation. The former ten EQ parameters remain as inert compatibility slots at their original indices; the sixteen new gain parameters are appended, preserving existing project parameter ordering. See `GRAPHIC-EQ-RESEARCH.md` for hardware/software comparisons and limitations.
+
+
+## Numerical stability update (1.5.2)
+
+The peaking-biquad design now normalizes coefficients in double precision and rejects non-finite or non-Schur-stable denominator coefficients before they reach the audio state; a rejected update retains the last valid filter. Adaptive bandwidth-to-Q conversion and bell coefficient design use double-precision intermediates, reducing rounding sensitivity in the upper bands near Nyquist. No parameters, parameter order, presets, filter topology, or nominal frequency centres change.

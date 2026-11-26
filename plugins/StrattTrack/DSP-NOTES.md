@@ -1,5 +1,9 @@
 # StrattTrack DSP notes
 
+## Console7 denormal-state hardening (1.5.3)
+
+The shared Airwindows Console7 input stage flushes recursive biquad and ADAA-history values below 1e-30 to exact zero. This avoids subnormal slowdowns on ARM during long decays and near-silence; the threshold is far below the representable audio floor and does not alter audible programme material. Existing non-finite recovery, bounded input, Airwindows MIT attribution and the EQ coefficient-stability guard remain intact. A dedicated compiled C++ regression exercises Console7 across 8.001–384 kHz, five fader positions, sustained tones, malformed host samples and recovery.
+
 ## Shared HP/LP filter standard (1.1.2)
 
 StrattTrack and StrattPultek use the same TwoPoleButterworth implementation from framework/dsp/two_pole_filter.h. Both use second-order Butterworth high-pass and low-pass sections (Q=1/sqrt(2)), RBJ bilinear-transform coefficients designed in double precision, a 10 ms logarithmic cutoff glide and 64-frame coefficient refresh. HP range is 20–1000 Hz and LP range is 1000–22000 Hz; coefficients are bounded to 0.45 × sample rate. Invalid input/output resets only the affected filter state. The sections are cascaded HP then LP before the Pultec and 16-band graphic EQ stages.
@@ -258,3 +262,8 @@ The graphic EQ uses a serial minimum-phase IIR cascade of sixteen gain-dependent
 ## Adaptive graphic-EQ bandwidth and Q (1.5.1)
 
 For band centre `f0`, sample rate `Fs`, digital radian frequency `ω0 = 2πf0/Fs`, and bandwidth `BW` in octaves, the RBJ bilinear-transform mapping is `Q = 1 / (2 sinh((ln 2 / 2) BW ω0 / sin ω0))`. This is the frequency-warp-correct conversion from octave bandwidth to the peaking-biquad Q parameter; using the analog approximation without `ω0/sin(ω0)` would make high bands progressively wider as they approach Nyquist. The adaptive target bandwidth is `BW(g) = BWbroad + (BWnarrow − BWbroad) s(t)`, with `t = clamp(|g|/12,0,1)` and `s(t)=t²(3−2t)`. `BWbroad=1.9` octaves gives Q≈0.707 at low frequencies in the low-frequency limit; `BWnarrow` is calculated from geometric midpoints between adjacent fixed centres. Both bandwidth endpoints are capped by `2 log2(Fs/(2f0))`, so a band close to Nyquist cannot request an impossible symmetric upper/lower span. The gain sign is excluded from the law, ensuring identical bandwidth for equal-magnitude cuts and boosts. Q and coefficients are calculated at the existing bounded 64-frame refresh, not per sample; the 10 ms gain smoother and independent left/right filter states remain intact.
+
+
+## Graphic-EQ numerical hardening (1.5.2)
+
+The existing proportional-Q law remains defined in octave bandwidth: (BW(g)=BW_b+(BW_n-BW_b)s(t)), with (t=\mathrm{clamp}(|g|/12,0,1)) and (s(t)=t^2(3-2t)). The digital Q inversion uses the RBJ bilinear-warp term (\omega_0/\sin(\omega_0)), now evaluated in double precision. The peaking-biquad coefficient normalizer also uses double intermediates, then validates the stored float denominator with the second-order Jury conditions (|a_2|<1), (1+a_1+a_2>0), and (1-a_1+a_2>0); non-finite or unstable updates are rejected without replacing the last valid coefficients. This guard applies to the plugin's biquad designs and adds no work to the per-sample audio loop.

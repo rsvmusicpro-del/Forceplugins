@@ -88,3 +88,8 @@ No third-party DSP code is copied. Voxengo binaries are used only as behavioural
 ## Adaptive bandwidth/Q refinement (1.5.1)
 
 The former straight-line interpolation between Q=0.707 and Q=2.146 was replaced by a smoothstep interpolation in octave bandwidth, followed by the exact RBJ digital bandwidth-to-Q conversion. This makes the control law explicit in the same unit engineers use to describe graphic-band spacing, respects the slightly non-uniform rounded centre frequencies, and compensates for bilinear-transform frequency warping as each centre approaches Nyquist. The 20 kHz band is bandwidth-limited when the sample rate cannot represent a symmetric upper skirt; it is not allowed to generate an invalid or unstable pole pair. Independent tests cover all sixteen centres, both gain polarities, monotonic focus, exact centre gain, half-gain bandwidth and pole stability at 44.1, 48 and 96 kHz.
+
+
+## Numerical hardening and validation update (1.5.2)
+
+The design continues to use the RBJ peaking-EQ bandwidth mapping; it does not change the hardware-derived fixed centres or the gain-to-bandwidth curve. The Q inversion and bell coefficient construction now retain double precision through trigonometric, hyperbolic and normalization calculations before storing float coefficients. Each normalized denominator is checked after float quantization against the second-order Jury conditions: \\(|a_2|<1\\), \\(1+a_1+a_2>0\\), and \\(1-a_1+a_2>0\\). A rejected coefficient update leaves the last known-good filter design in place. This is a numerical safety boundary, not a substitute for listening tests or a claim of zero aliasing.

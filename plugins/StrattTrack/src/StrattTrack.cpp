@@ -63,12 +63,16 @@ inline float graphicEqBandwidth(float gainDb,int band,float sr,float frequency) 
 // RBJ's exact bilinear-transform bandwidth relation: 1/Q = 2*sinh((ln2/2)*BW*w0/sin(w0)).
 inline float graphicEqQ(float sr,float frequency,float bandwidthOctaves) {
     const float fc=finiteClamp(frequency,10.0f,sr*0.45f,1000.0f);
-    const float w0=2.0f*kPi*fc/sr;
-    const float sinW0=std::sin(w0);
-    const float frequencyWarp=w0/std::fmax(sinW0,1.0e-6f);
-    const float argument=kGraphicEqLn2Half*finiteClamp(bandwidthOctaves,0.05f,2.0f,0.667f)*frequencyWarp;
-    const float q=1.0f/(2.0f*std::sinh(argument));
-    return finiteClamp(q,0.25f,8.0f,0.70710678f);
+    // Keep the bilinear-transform inversion in double precision: the upper
+    // bands operate close to Nyquist, where float cancellation in sin(w0)
+    // needlessly perturbs the adaptive bandwidth and pole locations.
+    const double w0=2.0*static_cast<double>(kPi)*fc/sr;
+    const double sinW0=std::sin(w0);
+    const double frequencyWarp=w0/std::fmax(sinW0,1.0e-12);
+    const double bandwidth=finiteClamp(bandwidthOctaves,0.05f,2.0f,0.667f);
+    const double argument=static_cast<double>(kGraphicEqLn2Half)*bandwidth*frequencyWarp;
+    const double q=1.0/(2.0*std::sinh(argument));
+    return static_cast<float>(std::isfinite(q)?std::fmax(0.25,std::fmin(8.0,q)):0.7071067811865476);
 }
 struct Smooth {
     float v=0.0f;
@@ -84,20 +88,28 @@ struct Smooth {
 };
 struct Biquad {
     float b0=1,b1=0,b2=0,a1=0,a2=0,z1=0,z2=0;
-    void set(float nb0,float nb1,float nb2,float na0,float na1,float na2) {
+    // Normalize in double precision, then apply the second-order Jury/Schur
+    // stability conditions to the coefficients that will actually be stored.
+    // Invalid designs leave the last known-good coefficients untouched.
+    void set(double nb0,double nb1,double nb2,double na0,double na1,double na2) {
         if(!std::isfinite(nb0)||!std::isfinite(nb1)||!std::isfinite(nb2)||
-           !std::isfinite(na0)||!std::isfinite(na1)||!std::isfinite(na2)||std::fabs(na0)<1.0e-12f) return;
-        const float inv=1.0f/na0;
-        b0=nb0*inv; b1=nb1*inv; b2=nb2*inv;
-        a1=na1*inv; a2=na2*inv;
+           !std::isfinite(na0)||!std::isfinite(na1)||!std::isfinite(na2)||std::fabs(na0)<1.0e-12) return;
+        const double inv=1.0/na0;
+        const float fb0=static_cast<float>(nb0*inv), fb1=static_cast<float>(nb1*inv), fb2=static_cast<float>(nb2*inv);
+        const float fa1=static_cast<float>(na1*inv), fa2=static_cast<float>(na2*inv);
+        if(!std::isfinite(fb0)||!std::isfinite(fb1)||!std::isfinite(fb2)||
+           !std::isfinite(fa1)||!std::isfinite(fa2)||
+           !(std::fabs(fa2)<1.0f && (1.0f+fa1+fa2)>1.0e-7f && (1.0f-fa1+fa2)>1.0e-7f)) return;
+        b0=fb0; b1=fb1; b2=fb2; a1=fa1; a2=fa2;
     }
     void bell(float sr,float f,float q,float gainDb) {
         f=finiteClamp(f,10.0f,sr*0.45f,1000.0f);
         q=finiteClamp(q,0.25f,8.0f,0.7071f);
-        const float A=std::pow(10.0f,gainDb/40.0f);
-        const float w=2.0f*kPi*f/sr, c=std::cos(w), s=std::sin(w);
-        const float alpha=s/(2.0f*q);
-        set(1+alpha*A,-2*c,1-alpha*A,1+alpha/A,-2*c,1-alpha/A);
+        gainDb=finiteClamp(gainDb,-24.0f,24.0f,0.0f);
+        const double A=std::pow(10.0,static_cast<double>(gainDb)/40.0);
+        const double w=2.0*static_cast<double>(kPi)*f/sr, c=std::cos(w), sn=std::sin(w);
+        const double alpha=sn/(2.0*static_cast<double>(q));
+        set(1.0+alpha*A,-2.0*c,1.0-alpha*A,1.0+alpha/A,-2.0*c,1.0-alpha/A);
     }
     // Parallel-RLC resonant boost: direct path plus a unity-peak band-pass.
     void resonantBoost(float sr,float f,float q,float gainDb) {
@@ -721,7 +733,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1501;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1503;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
