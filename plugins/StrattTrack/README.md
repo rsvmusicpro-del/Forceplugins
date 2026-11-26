@@ -1,9 +1,9 @@
-# StrattTrack 1.1.0
+# StrattTrack 1.1.1
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
 ## Signal path
-Stereo input → input trim → preamp → smoothed L/R polarity and equal-power dual input pan → 12 dB/oct Butterworth high-pass and low-pass → Pulse Techniques EQP-1A response-curve model → four-band parametric EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive and fixed valve-inspired transfer → output trim → smoothed stereo balance → fader.
+Stereo input → preamp → smoothed L/R polarity and equal-power dual input pan → 12 dB/oct Butterworth high-pass and low-pass → Pulse Techniques EQP-1A response-curve model → four-band parametric EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive and fixed valve-inspired transfer → output trim → smoothed stereo balance → fader.
 
 The dedicated PULTEC page exposes the EQP-1A controls: 20/30/60/100 Hz low boost and attenuation, 3/4/5/8/10/12/16 kHz high peak boost with sharp-to-broad bandwidth, and 5/10/20 kHz high shelving attenuation. The stage sits after HP/LP and before the four-band channel EQ. Control ranges follow Pulse Techniques' published specifications.
 
@@ -14,7 +14,7 @@ The four-band EQ uses RBJ cookbook biquads; HP/LP are second-order Butterworth s
 
 ## UI and visual identity
 
-StrattTrack follows the shared StrattPultek visual standard and repository MPC red UI kit, reflecting the native AKAI-inspired plugin palette: charcoal background (`#1E1D1E`), red focus/accent (`#D31145`), white primary text and muted grey secondary labels. It uses the shared controls from `ui-kit/mpc-red` (knobs, faders, buttons, segments and toggles) and the matching 1280×628 panel background. The same visual treatment is applied consistently to INPUT, FILTERS, PULTEC, EQ, DYNAMICS and OUTPUT pages. The OUTPUT page groups the existing circuit colour controls with the dedicated Output master trim, stereo Out Pan and final Fader, following the StrattPultek output-stage convention. These are existing DSP parameters; their stable parameter IDs and signal-path positions are unchanged. The background artwork is supplied as `assets/stratt-bg.png`, with editable vector source `assets/stratt-bg.svg`. Only presentation is shared; StrattTrack retains its own controls, signal path and DSP.
+StrattTrack follows the shared StrattPultek visual standard and repository MPC red UI kit, reflecting the native AKAI-inspired plugin palette: charcoal background (`#1E1D1E`), red focus/accent (`#D31145`), white primary text and muted grey secondary labels. It uses the shared controls from `ui-kit/mpc-red` (knobs, faders, buttons, segments and toggles) and the matching 1280×628 panel background. The same visual treatment is applied consistently to INPUT, FILTERS, PULTEC, EQ, DYNAMICS and OUTPUT pages. The INPUT page begins with Preamp; there is no separate input-trim stage or control. The OUTPUT page groups the existing circuit colour controls with the dedicated Output master trim, stereo Out Pan and final Fader, following the StrattPultek output-stage convention. These are existing DSP parameters; their stable parameter IDs and signal-path positions are unchanged. The background artwork is supplied as `assets/stratt-bg.png`, with editable vector source `assets/stratt-bg.svg`. Only presentation is shared; StrattTrack retains its own controls, signal path and DSP.
 
 ## Build and test
 ```sh
