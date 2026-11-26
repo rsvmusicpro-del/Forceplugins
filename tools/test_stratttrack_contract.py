@@ -36,7 +36,7 @@ assert any(control.get("param")=="Console Fader" for page in ui["pages"] for con
 assert src.index("consoleL=ch_[0].console.process") < src.index("const float a=consoleL*ig*pg*phaseL")
 for stage in ["hp.process","lp.process","lf.run","lm.run","hm.run","hf.run","gateGain_","compGain_","circuit(","MPC_PLUGIN_ENTRY"]:
     assert stage in src, stage
-assert src.index("x=s.hp.run") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
+assert src.index("x=s.hp.process") < src.index("s.ptLowBoostState+=") < src.index("x=s.lf.run") < src.index("const float peak=") < src.index("const float driveWet=circuit(")
 assert "const float exponent=-(1.0f-1.0f/ratio);" in src and "compCurve_[curveIndex]" in src  # hard-knee amplitude curve LUT
 assert "gateClose=gateThreshold*db(-3.0f)" in src  # hysteresis
 assert "*samples[ch]=clean+(driveWet-clean)*mix" in src  # drive colour remains independently blendable
