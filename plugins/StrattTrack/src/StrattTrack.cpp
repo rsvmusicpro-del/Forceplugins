@@ -95,9 +95,8 @@ inline float panR(float p) { return std::sin((p+1.0f)*kHalfPi*0.5f); }
 inline float circuit(float x,float drive) {
     const float d=1.0f+drive*5.0f;
     const float u=x*d;
-    const float shaped=u/(1.0f+0.22f*std::fabs(u));
-    const float valve=shaped+0.018f*shaped*shaped;
-    return valve/(1.0f+0.018f*0.75f);
+    const float shaped=u/(1.0f+0.22f*drive*std::fabs(u));
+    return shaped;
 }
 }
 
@@ -208,12 +207,17 @@ public:
                 s.gateGain=gc*s.gateGain+(1-gc)*gateTarget;
                 *samples[ch]=*samples[ch]*s.gateGain*s.compGain*makeup;
                 const float clean=*samples[ch];
-                const float coloured=circuit(clean,drive);
-                // 3 Hz DC blocker for the fixed asymmetric valve component.
-                s.valveDc=0.999572f*(s.valveDc+coloured-s.valvePrev);
-                s.valvePrev=coloured;
-                const float valve=s.valveDc;
-                *samples[ch]=clean+(valve-clean)*mix;
+                const float driveWet=circuit(clean,drive);
+                const float driven=clean+(driveWet-clean)*mix;
+                // Fixed valve-inspired transfer: always active, hidden from the UI,
+                // and grouped inside the Circuit module. Its small even-order term
+                // is DC-blocked; the low-level gain is normalised to unity.
+                const float valveIn=driven*1.04f;
+                const float valveStatic=(valveIn/(1.0f+0.035f*std::fabs(valveIn))
+                                         +0.003f*valveIn*valveIn)/1.04f;
+                s.valveDc=0.999572f*(s.valveDc+valveStatic-s.valvePrev);
+                s.valvePrev=valveStatic;
+                *samples[ch]=s.valveDc;
             }
             xL*=og*fg; xR*=og*fg;
             if(ctx.numOutputs==1) ctx.outputs[0][i]=0.5f*(xL+xR);
