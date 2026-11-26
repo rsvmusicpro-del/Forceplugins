@@ -389,7 +389,9 @@ public:
         width_.snap(finiteClamp(get(kWidth),0,200,100)*0.01f);
         correlation_.snap(finiteClamp(get(kCorrelation),0,100,0)*0.01f);
         bassMonoFreq_.snap(finiteClamp(get(kBassMono),20,400,120));
-        bassMonoState_=corrPowerL_=corrPowerR_=corrCross_=0.0f;
+        bassMonoSideHp_.reset();
+        bassMonoSideHp_.pass(sr_,bassMonoFreq_.v,true);
+        corrPowerL_=corrPowerR_=corrCross_=0.0f;
         hpFreq_.snap(finiteClamp(get(kHpFreq),20,1000,20));
         lpFreq_.snap(finiteClamp(get(kLpFreq),1000,22000,22000));
         lfFreq_.snap(finiteClamp(get(kLfFreq),30,450,100));
@@ -452,10 +454,7 @@ public:
         }
         const float drive=drive_.next(finiteClamp(get(kDrive)*0.01f,0,1,0),controlBlockSmooth);
         const float cmix=finiteClamp(get(kCircuitMix)*0.01f,0,1,0);
-        const float inL=panL_.next(finiteClamp(get(kPanL)*0.01f,-1,1,-1),controlBlockSmooth), inR=panR_.next(finiteClamp(get(kPanR)*0.01f,-1,1,1),controlBlockSmooth);
-        const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
-        const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),controlBlockSmooth);
-        const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f, oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
+
         const bool phaseTargetL=getBool(kPhaseL), phaseTargetR=getBool(kPhaseR);
         const float hpTarget=finiteClamp(get(kHpFreq),20,1000,20);
         const float lpTarget=finiteClamp(get(kLpFreq),1000,22000,22000);
@@ -469,13 +468,6 @@ public:
         const float ptHfBoost=ptHighBoost_.next(finiteClamp(get(kPtHighBoost),0,18,0),controlBlockSmooth), ptBandwidth=ptBandwidth_.next(finiteClamp(get(kPtBandwidth),0,100,50),controlBlockSmooth);
         const float ptHfAttF=smoothLog(ptHighAttenFreq_.v,ptHighAttenFrequency(getInt(kPtHighAttenFreq)),controlBlockSmooth); ptHighAttenFreq_.snap(ptHfAttF);
         const float ptHfAtten=ptHighAtten_.next(finiteClamp(get(kPtHighAtten),0,16,0),controlBlockSmooth);
-        const float invertLR=invertLR_.next(getBool(kInvertLR)?1.0f:0.0f,controlBlockSmooth);
-        const float swapSideGain=std::cos(invertLR*kPi);
-        const float width=width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,controlBlockSmooth);
-        const float correlation=correlation_.next(finiteClamp(get(kCorrelation),0,100,0)*0.01f,controlBlockSmooth);
-        const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),controlBlockSmooth);
-        bassMonoFreq_.snap(bassFreq);
-        const float bassMonoAlpha=1.0f-std::exp(-2.0f*kPi*bassFreq/sr_);
         const float correlationAlpha=1.0f-std::exp(-1.0f/(0.050f*sr_));
         const float ptLowBoostAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF/sr_);
         const float ptLowAttenAlpha=1.0f-std::exp(-2.0f*kPi*ptLfF*1.41421356f/sr_);
@@ -492,6 +484,21 @@ public:
         for(int blockStart=0;blockStart<n;blockStart+=64) {
             const int blockFrames=mpc::clamp(n-blockStart,1,64);
             const float filterSmooth=1.0f-std::exp(-static_cast<float>(blockFrames)/(0.010f*std::fmax(sr_,1.0f)));
+            // Refresh stereo-image controls every 64 frames, not once per host callback.
+            // This keeps pan, width and M/S inversion automation smooth at large block sizes.
+            const float inL=panL_.next(finiteClamp(get(kPanL)*0.01f,-1,1,-1),filterSmooth);
+            const float inR=panR_.next(finiteClamp(get(kPanR)*0.01f,-1,1,1),filterSmooth);
+            const float ilL=panL(inL), ilR=panR(inL), irL=panL(inR), irR=panR(inR);
+            const float op=outPan_.next(finiteClamp(get(kOutPan)*0.01f,-1,1,0),filterSmooth);
+            const float oL=op>0?std::cos(op*kHalfPi*0.5f):1.0f;
+            const float oR=op<0?std::cos(-op*kHalfPi*0.5f):1.0f;
+            const float invertLR=invertLR_.next(getBool(kInvertLR)?1.0f:0.0f,filterSmooth);
+            const float swapSideGain=std::cos(invertLR*kPi);
+            const float width=width_.next(finiteClamp(get(kWidth),0,200,100)*0.01f,filterSmooth);
+            const float correlation=correlation_.next(finiteClamp(get(kCorrelation),0,100,0)*0.01f,filterSmooth);
+            const float bassFreq=smoothLog(bassMonoFreq_.v,finiteClamp(get(kBassMono),20,400,120),filterSmooth);
+            bassMonoFreq_.snap(bassFreq);
+            bassMonoSideHp_.pass(sr_,bassFreq,true);
             // Refresh the four-band EQ at the same bounded 64-frame cadence as
             // HP/LP. Host-block-only coefficient updates caused audible stepping
             // on large (e.g. 512-frame) callbacks during rapid EQ automation.
@@ -562,8 +569,8 @@ public:
             // M/S matrix: Mid is the mono fold-down; Width scales existing Side only.
             const float mid=0.5f*(xL+xR);
             const float side=0.5f*(xL-xR);
-            bassMonoState_+=bassMonoAlpha*(side-bassMonoState_);
-            const float shapedSide=(side-bassMonoState_)*width*sideSafety;
+            const float bassMonoSide=bassMonoSideHp_.run(side);
+            const float shapedSide=bassMonoSide*width*sideSafety;
             xL=mid+shapedSide;
             xR=mid-shapedSide;
             float *samples[2]={&xL,&xR};
@@ -641,7 +648,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1208;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1209;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -687,7 +694,8 @@ private:
     int phaseWait_[2]={0,0};
     bool phaseFallback_[2]={false,false};
     Smooth invertLR_,width_,correlation_,bassMonoFreq_;
-    float bassMonoState_=0.0f, corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
+    Biquad bassMonoSideHp_;
+    float corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
     Smooth hpFreq_,lpFreq_,lfFreq_,lfGain_,lmFreq_,lmGain_,lmQ_,hmFreq_,hmGain_,hmQ_,hfFreq_,hfGain_;
     Smooth ptLowFreq_,ptLowBoost_,ptLowAtten_,ptHighFreq_,ptHighBoost_,ptBandwidth_,ptHighAttenFreq_,ptHighAtten_;
     // Linked dynamics state is separate from per-channel filter/colour state.
