@@ -14,7 +14,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.1.2"
+assert manifest["version"]=="1.1.3"
 assert manifest["uid"]=="S4X3" and manifest["numInputs"]==2 and manifest["numOutputs"]==2
 assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
@@ -25,7 +25,7 @@ assert '#include "dsp/two_pole_filter.h"' in src
 assert "TwoPoleButterworth hp" in src and "TwoPoleButterworth lp" in src
 assert "for(int blockStart=0;blockStart<n;blockStart+=64)" in src
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1120;" in src
+assert "x.version=1130;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Drive","Circuit Mix","Output","Out Pan","Fader"]
@@ -58,7 +58,7 @@ assert "compMakeupDb_.next(finiteClamp(get(kCompMakeup)" in src
 assert "drive_.next(finiteClamp(get(kDrive)" in src
 assert "gateThreshDb_.snap(finiteClamp(get(kGateThresh)" in src
 assert "compRatio_.snap(finiteClamp(get(kCompRatio)" in src
-assert "const float controlSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*" in src
+assert "const float controlSmooth=1.0f-std::exp(-1.0f/(0.010f*" in src
 assert "float detector_=0.0f, gateDetector_=0.0f, gateGain_=1.0f, compGain_=1.0f;" in src  # independent linked envelopes
 assert "const float gateEnvCoef=peak>gateDetector_?gateAtk:gateRel;" in src
 assert "gateDetector_=gateEnvCoef*gateDetector_+(1.0f-gateEnvCoef)*peak;" in src
@@ -109,6 +109,12 @@ for p in (-1.0, -0.75, -0.25, 0.0, 0.4, 0.8, 1.0):
 over=10.0**(6.0/20.0)
 gain=over**(-(1.0-1.0/4.0))
 assert abs(20.0*math.log10(over*gain)-1.5) < 1.0e-10
+
+# Per-sample control smoothing must reach 1-exp(-1) after 10 ms, independent of host block size.
+for sr in (44100.0, 48000.0, 96000.0):
+    alpha=1.0-math.exp(-1.0/(0.010*sr))
+    env=1.0-(1.0-alpha)**round(0.010*sr)
+    assert abs(env-(1.0-math.exp(-1.0))) < 2.0e-5
 
 # One-pole attack/release coefficient reaches 1-exp(-1) after one time constant.
 tau, sr=0.010, 48000.0
