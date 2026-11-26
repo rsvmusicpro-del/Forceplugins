@@ -3,8 +3,9 @@
 ## StrattTrack 1.1.1
 
 - Remove the redundant Input trim parameter and its gain stage completely; Preamp is now the first input-page control and the only input gain stage.
-- Keep the remaining parameter IDs stable; update MPC Sample knob mapping and factory program value arrays to the 39-parameter layout.
-- Add regression assertions that the removed control cannot reappear in the UI, parameter contract or DSP path.
+- Preserve all original VST parameter indices with an inert, non-automatable legacy slot at the retired Input position; the active Input control and gain stage are fully removed.
+- Restore the original 40-slot factory program layout and correct MPC Sample knob indices (Preamp 2, Drive 28, Circuit 29).
+- Add regression assertions for the compatibility tombstone, stable parameter indices, factory programs and the absence of any Input DSP gain path.
 
 
 ## StrattPultek 1.9.5
