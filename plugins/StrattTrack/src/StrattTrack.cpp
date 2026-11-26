@@ -430,7 +430,6 @@ public:
         // Smooth::next() is called once per sample below, so its coefficient must
         // represent one sample of a 10 ms one-pole time constant. Using the whole
         // host block here made the effective smoothing N times too fast (N=frames).
-        const float controlSmooth=1.0f-std::exp(-1.0f/(0.010f*std::fmax(sr_,1.0f)));
         // Block-rate controls need a coefficient for the elapsed host block.
         const float controlBlockSmooth=1.0f-std::exp(-static_cast<float>(n)/(0.010f*std::fmax(sr_,1.0f)));
         const float consoleTarget=finiteClamp(get(kConsoleFader),0,1,0.772f);
@@ -581,7 +580,6 @@ public:
             const float gateTarget=gateOpen_?1.0f:gateFloor;
             gateGain_=gateSlew*gateGain_+(1.0f-gateSlew)*gateTarget;
             for(int ch=0;ch<2;++ch) {
-                Channel &s=ch_[ch];
                 *samples[ch]=*samples[ch]*gateGain_*compGain_*makeup;
                 const float clean=*samples[ch];
                 // User-controlled drive colour remains a separate parallel stage.
@@ -649,6 +647,7 @@ private:
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;
     Smooth panL_,panR_,outPan_;
     float phaseGain_[2]={1.0f,1.0f}, phaseTarget_[2]={1.0f,1.0f}, phasePrevious_[2]={0.0f,0.0f};
+    bool phaseHasPrevious_[2]={false,false};
     int phaseWait_[2]={0,0};
     bool phaseFallback_[2]={false,false};
     Smooth invertLR_,width_,correlation_,bassMonoFreq_;
