@@ -23,3 +23,8 @@ python tools/package.py plugins/StrattTrack
 ```
 
 The GitHub Actions workflow builds native, ARM32 and ARM64, validates the deployable folder, and exercises the host simulator at multiple sample rates and block sizes.
+
+
+## Console emulation
+
+The input Console stage is an attributed MIT-licensed adaptation of Airwindows Console7Channel, using its reference Fader law and channel transfer with polynomial ADAA for lower aliasing on MPC ARM hardware. It is not bit-identical to the original VST, and it does not claim to reproduce the separate Console buss summing/decode stage. See `DSP-NOTES.md`.
