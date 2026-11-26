@@ -280,9 +280,12 @@
           "widget": "knob"
         },
         "empty",
-        "empty",
         {
           "param": "Comp Release",
+          "widget": "knob"
+        },
+        {
+          "param": "Comp GR",
           "widget": "knob"
         },
         {
