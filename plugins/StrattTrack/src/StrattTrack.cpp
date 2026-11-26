@@ -96,7 +96,7 @@ inline float circuit(float x,float drive) {
     const float d=1.0f+drive*5.0f;
     const float u=x*d;
     const float shaped=u/(1.0f+0.22f*drive*std::fabs(u));
-    return shaped;
+    return shaped/d; // unity small-signal gain while Drive changes only the nonlinear knee.
 }
 }
 
