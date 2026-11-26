@@ -1,7 +1,7 @@
 {
   "name": "StrattPultek",
   "manufacturer": "Stratt",
-  "version": "1.1.0",
+  "version": "1.9.9",
   "format": "vst2",
   "kind": "effect",
   "uid": "So21",
@@ -33,13 +33,13 @@
       "label": "HF Atten"
     },
     {
-      "parameter": 11,
-      "label": "Mix"
+      "parameter": 13,
+      "label": "Fader"
     }
   ],
   "file32": "VST/strattpultek-arm32.so",
   "file64": "VST/strattpultek-arm64.so",
-  "description": "Pultec-inspired passive EQ curves with low-cost harmonic warmth, stereo processing and native MPC controls.",
+  "description": "Pultec-inspired EQ, prewarped analog-prototype Cleansweep 6 dB/octave HP/LP filtering, ADAA harmonic drive and fixed valve-inspired output coloration.",
   "author": "Stratt",
   "url": "",
   "license": "MIT"
