@@ -15,8 +15,11 @@
 #include "cleansweep_cascade.h"
 #include "circuit_adaa.h"
 #include "dsp/airwindows_console7.h"
+#include <atomic>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
+#include <thread>
 
 namespace {
 enum P {
@@ -419,6 +422,12 @@ public:
         addParam(compGr);
         addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
         addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
+        // Publish telemetry off the real-time thread, matching the proven MPC FET meter pattern.
+        meterThread_ = std::thread([this] { meterLoop(); });
+    }
+    ~StrattTrack() override {
+        stopMeter_.store(true, std::memory_order_release);
+        if (meterThread_.joinable()) meterThread_.join();
     }
     // Host-facing text formatter; called by the UI, not the real-time audio callback.
     bool formatValue(int index,float plainValue,std::string& out) override {
@@ -440,7 +449,7 @@ public:
     void reset() override {
         for(auto &c:ch_) c.reset();
         detector_=gateDetector_=0.0f; gateGain_=compGain_=1.0f; gateOpen_=true; compRatioCached_=-1.0f;
-        set(kCompGR,0.0f);
+        compGrOut_.store(0.0f,std::memory_order_relaxed);
         // Host state can be restored before prepare/reset. Never seed a smoother
         // with NaN/Inf: one invalid initial value would otherwise poison it forever.
         output_.snap(db(finiteClamp(get(kOutput),-24,24,0)));
@@ -742,10 +751,25 @@ public:
             // Publish once per 64-frame UI refresh, never inside the per-sample loop.
             // This is compressor-only reduction; gate attenuation and makeup are excluded.
             const float compReductionDb = -20.0f*std::log10(finiteClamp(compGain_,1.0e-3f,1.0f,1.0f));
-            set(kCompGR,compReductionDb);
+            compGrOut_.store(compReductionDb,std::memory_order_relaxed);
         }
     }
 private:
+    // The audio callback only writes this atomic snapshot. A 30 Hz worker owns
+    // host parameter publication and notifications, keeping UI work off the RT thread.
+    void meterLoop() {
+        int lastTenths = -1;
+        while (!stopMeter_.load(std::memory_order_acquire)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(33));
+            if (stopMeter_.load(std::memory_order_acquire)) break;
+            const float reading = finiteClamp(compGrOut_.load(std::memory_order_relaxed),0.0f,60.0f,0.0f);
+            const int tenths = mpc::clamp(static_cast<int>(std::lround(reading*10.0f)),0,600);
+            if (tenths == lastTenths) continue;
+            lastTenths = tenths;
+            set(kCompGR,static_cast<float>(tenths)*0.1f);
+            notifyHostParameterChanged(kCompGR);
+        }
+    }
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
         x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1601;
@@ -785,6 +809,9 @@ private:
         return x*phaseGain_[channel];
     }
     Channel ch_[2]; float sr_=44100;
+    std::atomic<float> compGrOut_{0.0f};
+    std::atomic<bool> stopMeter_{false};
+    std::thread meterThread_;
     Smooth output_,preamp_,circuitMix_,consoleFader_;
     Smooth csHpEnable_,csHpFreq_,csLpEnable_,csLpFreq_,csHpOrderFade_,csLpOrderFade_;
     Smooth gateThreshDb_,gateRangeDb_,compThreshDb_,compRatio_,compMakeupDb_,drive_;

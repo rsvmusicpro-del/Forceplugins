@@ -1,9 +1,12 @@
 // Runtime regression for StrattTrack's live compressor gain-reduction telemetry.
 // SPDX-License-Identifier: MIT
 #include "../plugins/StrattTrack/src/StrattTrack.cpp"
+#include <chrono>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
+#include <thread>
 
 namespace {
 constexpr int kFrames = 128;
@@ -51,6 +54,28 @@ int main()
         std::fprintf(stderr, "Comp GR must reset to 0 dB\n");
         return 1;
     }
+    // The host-side formatter must remain bounded for corrupt/non-finite values
+    // and must not intercept formatting for unrelated parameters.
+    std::string safeDisplay = "unchanged";
+    if (!plugin.formatValue(kCompGR, std::numeric_limits<float>::quiet_NaN(), safeDisplay) ||
+        safeDisplay != "0.0 dB") {
+        std::fprintf(stderr, "NaN telemetry must format safely as 0.0 dB\n");
+        return 1;
+    }
+    if (!plugin.formatValue(kCompGR, std::numeric_limits<float>::infinity(), safeDisplay) ||
+        safeDisplay != "0.0 dB") {
+        std::fprintf(stderr, "infinite telemetry must format safely as 0.0 dB\n");
+        return 1;
+    }
+    if (!plugin.formatValue(kCompGR, 1000.0f, safeDisplay) || safeDisplay != "60.0 dB") {
+        std::fprintf(stderr, "telemetry formatter must clamp its upper bound\n");
+        return 1;
+    }
+    safeDisplay = "unchanged";
+    if (plugin.formatValue(kCompThresh, -24.0f, safeDisplay) || safeDisplay != "unchanged") {
+        std::fprintf(stderr, "Comp GR formatter must not intercept other parameters\n");
+        return 1;
+    }
     plugin.set(kCompThresh, -24.0f);
     plugin.set(kCompRatio, 4.0f);
     plugin.set(kCompAttack, 0.1f);
@@ -59,11 +84,13 @@ int main()
     plugin.set(kPreamp, 0.0f);
     double phase = 0.0;
     render(plugin, 0.01f, 100, phase);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // UI publisher cadence: 33 ms
     if (plugin.get(kCompGR) > 0.1f) {
         std::fprintf(stderr, "below-threshold signal must show no compressor gain reduction: %.3f dB\n", plugin.get(kCompGR));
         return 1;
     }
     render(plugin, 0.8f, 400, phase);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     const float compressed = plugin.get(kCompGR);
     if (!std::isfinite(compressed) || compressed < 2.0f || compressed > 60.0f) {
         std::fprintf(stderr, "loud signal must show bounded positive gain reduction: %.3f dB\n", compressed);
@@ -75,6 +102,7 @@ int main()
         return 1;
     }
     render(plugin, 0.0f, 500, phase);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (plugin.get(kCompGR) > 0.2f) {
         std::fprintf(stderr, "compressor release must return Comp GR near 0 dB: %.3f dB\n", plugin.get(kCompGR));
         return 1;
