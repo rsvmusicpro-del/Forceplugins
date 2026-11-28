@@ -59,7 +59,7 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
 assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
@@ -271,7 +271,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -411,7 +411,7 @@ assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR)
 assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
 assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
-assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
 
 # Independent mid/side invariants: decode round-trip and mono fold-down.
 for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
@@ -469,7 +469,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
@@ -606,7 +606,7 @@ mono_stage=src.index("// Mono Compatibility is deliberately the final stereo-ima
 valve_stage=src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)")
 assert mono_stage < valve_stage
 assert src.index("xL=monoMid+monoSide;",mono_stage) < valve_stage
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
 
 # Independent Auto transfer checks: no action above threshold, gradual Side reduction below it.
 def mono_auto_gain(rho, threshold):
