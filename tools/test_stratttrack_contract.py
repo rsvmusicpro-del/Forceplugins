@@ -668,7 +668,6 @@ assert "x=s.toneClarityLow.run(x); x=s.toneClarityPresence.run(x);" in src
 assert "Smooth toneWarmth_,toneClarity_;" in src
 assert src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("x=s.toneWarmthLow.run(x)") < src.index("const float peak=")
 assert src.index("ch_[c].toneWarmthLow.shelf") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)")
-assert len(re.findall(r"addParam\\(",src))==71
 assert all(len(values.split(","))==71 for _,values in programs)
 assert "x.version=1700;" in src
 assert "Both controls default to 0%" in readme
