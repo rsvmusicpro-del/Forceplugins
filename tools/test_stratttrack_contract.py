@@ -628,7 +628,7 @@ for left,right in ((1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
 
 # Compressor gain-reduction telemetry is appended, non-automatable and visible in DYNAMICS.
 dynamics_page=next(page for page in ui["pages"] if page["name"]=="DYNAMICS")
-assert dynamics_page["controls"][12:15]==[{"param":"Comp Release","widget":"knob"},{"param":"Comp GR","widget":"knob"},{"param":"Comp Makeup","widget":"knob"}]
+assert dynamics_page["controls"][12:15]==[{"param":"Comp Release","widget":"knob"},{"param":"Comp GR","widget":"readout"},{"param":"Comp Makeup","widget":"knob"}]
 assert 'mpc::floatParam("comp_gr","Comp GR",0,60,0,"dB",1)' in src
 assert "compGr.automatable = false;" in src
 assert "set(kCompGR,0.0f);" in src

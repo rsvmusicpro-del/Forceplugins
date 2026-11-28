@@ -163,11 +163,12 @@
                         "knob",
                         "fader",
                         "switch",
+                        "readout",
                         "empty",
                         "text"
                     ],
                     "default": "slider",
-                    "description": "\"knob\": film-strip knob with name and value (kit). \"fader\": horizontal film-strip fader under a name/value header (kit). \"switch\": toggle for a bool parameter or 2-4 captioned segment buttons for a choice parameter (kit). \"slider\": the MPC's plain generic name + value bar (works for every parameter kind, but looks out of place beside kit widgets: avoid it in a themed UI; use \"knob\" with overlay \"menu\" for long choice lists). \"empty\": leave the slot blank. \"text\": a static heading (needs \"text\")."
+                    "description": "\"knob\": film-strip knob with name and value (kit). \"fader\": horizontal film-strip fader under a name/value header (kit). \"switch\": toggle for a bool parameter or 2-4 captioned segment buttons for a choice parameter (kit). \"readout\": non-interactive live parameter name/value labels without Q-Link assignment. \"slider\": the MPC's plain generic name + value bar (works for every parameter kind, but looks out of place beside kit widgets: avoid it in a themed UI; use \"knob\" with overlay \"menu\" for long choice lists). \"empty\": leave the slot blank. \"text\": a static heading (needs \"text\")."
                 },
                 "polarity": {
                     "type": "string",

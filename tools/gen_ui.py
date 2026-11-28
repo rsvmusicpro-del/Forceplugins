@@ -52,7 +52,7 @@ DEFAULT_STYLE = {
     "muted": "ff6a6a6c",
 }
 
-WIDGETS = ("slider", "knob", "fader", "switch", "empty", "text")
+WIDGETS = ("slider", "knob", "fader", "switch", "readout", "empty", "text")
 OVERLAYS = ("knob", "menu")
 POLARITIES = ("auto", "unipolar", "bipolar")
 CONTROL_KEYS = ("param", "widget", "visibleWhen", "text", "overlay", "polarity")
@@ -220,7 +220,7 @@ class ParamTable:
 # --------------------------------------------------------------------------------------------
 class Control:
     def __init__(self, widget, param=None, text=None, visible=None, overlay="knob", polarity="auto"):
-        self.widget = widget      # slider | knob | fader | switch | empty | text
+        self.widget = widget      # slider | knob | fader | switch | readout | empty | text
         self.param = param        # Param or None
         self.text = text          # for widget "text"
         self.visible = visible    # None or (Param, choiceIndex)
@@ -240,6 +240,8 @@ class Control:
         """Name of the reusable component definition this control instantiates."""
         if self.widget == "switch":
             return "toggle" if self.param.kind == "bool" or len(self.param.choices) == 1 else "radio%d" % len(self.param.choices)
+        if self.widget == "readout":
+            return None  # a read-only Label bound directly to the telemetry parameter
         pol = "Bi" if self.bipolar else "Uni"
         base = {"slider": "sliderWithFocus", "knob": "knob" + pol, "fader": "fader" + pol}[self.widget]
         return base + ("Menu" if self.overlay == "menu" else "")
@@ -314,6 +316,10 @@ def parse_control(spec, table, where):
     visible = parse_visible_when(spec["visibleWhen"], table, where) if "visibleWhen" in spec else None
     if widget == "empty":
         return Control("empty", visible=visible)
+    if widget == "readout":
+        if "param" not in spec:
+            fail(where, '"widget": "readout" needs a "param" telemetry parameter')
+        return Control("readout", param=table.lookup(spec["param"], where), visible=visible)
     if widget == "text":
         text = spec.get("text")
         if not isinstance(text, str):
@@ -680,6 +686,16 @@ def tab_component(page, style):
             children.append(entry("text %d" % i, "Label", label_data("Text", style["text"], 30.0, "left", ctl.text),
                                   bounds, "No", "Show", "Always", invalidating=invalidating))
             continue
+        if ctl.widget == "readout":
+            # Bind two non-interactive labels to the transient telemetry parameter.
+            # formatValue() supplies the compact numeric dB string.
+            children.append(entry("readout name %d" % i, "Label", label_data("Name", style["muted"], 26.0),
+                                  "%d %d %d 36" % (SLOT_X[col], SLOT_Y[row] + 8, SLOT_W, 36),
+                                  "No", "Show", "Always", remap=[("Data", ctl.param.handle)], invalidating=invalidating))
+            children.append(entry("readout value %d" % i, "Label", label_data("Value", style["text"], 40.0, "horizontallyCentred verticallyCentred"),
+                                  "%d %d %d 54" % (SLOT_X[col], SLOT_Y[row] + 45, SLOT_W, 54),
+                                  "No", "Show", "Always", remap=[("Data", ctl.param.handle)], invalidating=invalidating))
+            continue
         children.append(entry(ctl.param.name, ctl.definition, obj(("version", 1), ("handleName", "Data")), bounds,
                               "Yes", "Hide", "Always", remap=[("Data", ctl.param.handle)], invalidating=invalidating))
         if ctl.definition.startswith("radio"):
@@ -698,7 +714,7 @@ def build_tui(pages, params, style, knob_image, frames, kit_assets, groups="colu
     used = []
     for page in pages:
         for ctl in page.controls:
-            if ctl.param is not None and ctl.definition not in used:
+            if ctl.param is not None and ctl.widget != "readout" and ctl.definition not in used:
                 used.append(ctl.definition)
     if "sliderWithFocus" not in used:
         used.insert(0, "sliderWithFocus")  # always present, so hand edits have a template to copy
@@ -772,7 +788,7 @@ def build_qlinks(pages, params, groups="columns"):
     for ti, page in enumerate(pages):
         assigned = {}
         for i, ctl in enumerate(page.controls):
-            if ctl.param is not None:
+            if ctl.param is not None and ctl.widget != "readout":
                 row, col = divmod(i, 4)
                 assigned[slot_qlink(row, col)] = ctl.param.index
         qmap = Obj(("Q-Link %d" % q, assigned.get(q, -1)) for q in range(1, 17))

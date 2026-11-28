@@ -286,7 +286,7 @@
         },
         {
           "param": "Comp GR",
-          "widget": "knob"
+          "widget": "readout"
         },
         {
           "param": "Comp Makeup",
