@@ -43,11 +43,11 @@ int main()
 {
     StrattTrack plugin;
     plugin.prepare(48000.0, kFrames);
-    if (plugin.numParams() != 69 || plugin.param(kCompGR).automatable || !plugin.param(kCompGR).transient) {
+    if (plugin.numParams() != 71 || plugin.param(kCompGR).automatable || !plugin.param(kCompGR).transient) {
         std::fprintf(stderr, "Comp GR must be the appended non-automatable parameter\n");
         return 1;
     }
-    if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
+    if (plugin.get(kToneWarmth) != 0.0f || plugin.get(kToneClarity) != 0.0f) {\n        std::fprintf(stderr, "Warmth and Clarity must default to neutral\\n");\n        return 1;\n    }\n    if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
         std::fprintf(stderr, "Comp GR must reset to 0 dB\n");
         return 1;
     }
