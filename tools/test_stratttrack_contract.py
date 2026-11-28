@@ -631,10 +631,22 @@ dynamics_page=next(page for page in ui["pages"] if page["name"]=="DYNAMICS")
 assert dynamics_page["controls"][12:15]==[{"param":"Comp Release","widget":"knob"},{"param":"Comp GR","widget":"readout"},{"param":"Comp Makeup","widget":"knob"}]
 assert 'mpc::floatParam("comp_gr","Comp GR",0,60,0,"dB",1)' in src
 assert "compGr.automatable = false;" in src
-assert "set(kCompGR,0.0f);" in src
+assert "compGrOut_.store(0.0f,std::memory_order_relaxed);" in src
 assert "const float compReductionDb = -20.0f*std::log10(finiteClamp(compGain_,1.0e-3f,1.0f,1.0f));" in src
-assert src.index("compGain_=targetComp;") < src.index("set(kCompGR,compReductionDb);")
-assert src.index("set(kCompGR,compReductionDb);") > src.index("if(ctx.numOutputs==1)")
+assert src.index("compGain_=targetComp;") < src.index("compGrOut_.store(compReductionDb,std::memory_order_relaxed);")
+assert src.index("compGrOut_.store(compReductionDb,std::memory_order_relaxed);") > src.index("if(ctx.numOutputs==1)")
+assert "std::atomic<float> compGrOut_{0.0f};" in src
+assert "std::atomic<bool> stopMeter_{false};" in src
+assert "meterThread_ = std::thread([this] { meterLoop(); });" in src
+assert "stopMeter_.store(true, std::memory_order_release);" in src and "meterThread_.join();" in src
+assert "std::this_thread::sleep_for(std::chrono::milliseconds(33));" in src
+assert "set(kCompGR,static_cast<float>(tenths)*0.1f);" in src
+assert "notifyHostParameterChanged(kCompGR);" in src
+# Telemetry is a one-way observer: only reset and the end-of-block publisher write it.
+# The audio path must never read the UI value back into a DSP decision.
+assert src.count("set(kCompGR,")==1
+assert "get(kCompGR)" not in src
+assert src.index("compGrOut_.store(compReductionDb,std::memory_order_relaxed);") > src.index("ctx.outputs[1][i]=xR*oR*og;")
 # Positive display magnitude: unity gain is 0 dB GR; a 0.5 gain is 6.0206 dB GR.
 for gain,expected in ((1.0,0.0),(0.5,20.0*math.log10(2.0)),(0.25,20.0*math.log10(4.0)),(0.001,60.0)):
     displayed=min(60.0,max(0.0,-20.0*math.log10(gain)))

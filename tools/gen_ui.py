@@ -305,6 +305,19 @@ def parse_control(spec, table, where):
     widget = spec.get("widget", "slider")
     if widget not in WIDGETS:
         fail(where, '"widget" must be one of %s, got %s' % (", ".join('"%s"' % w for w in WIDGETS), json.dumps(widget)))
+    if widget == "readout":
+        # A readout is telemetry, never an editable control. Reject options that
+        # would be silently ignored and discrete parameters that cannot be shown
+        # as a numeric live value.
+        if "overlay" in spec or "polarity" in spec:
+            fail(where, '"readout" is display-only and does not accept "overlay" or "polarity"')
+        if "param" not in spec:
+            fail(where, '"widget": "readout" needs a continuous numeric telemetry parameter')
+        param = table.lookup(spec["param"], where)
+        if param.is_discrete:
+            fail(where, '"readout" needs a continuous numeric parameter; "%s" is kind "%s".' % (param.name, param.kind))
+        visible = parse_visible_when(spec["visibleWhen"], table, where) if "visibleWhen" in spec else None
+        return Control("readout", param=param, visible=visible)
     overlay = spec.get("overlay", "menu" if widget == "switch" else "knob")
     if overlay not in OVERLAYS:
         fail(where, '"overlay" must be "knob" or "menu", got %s' % json.dumps(overlay))
@@ -316,10 +329,6 @@ def parse_control(spec, table, where):
     visible = parse_visible_when(spec["visibleWhen"], table, where) if "visibleWhen" in spec else None
     if widget == "empty":
         return Control("empty", visible=visible)
-    if widget == "readout":
-        if "param" not in spec:
-            fail(where, '"widget": "readout" needs a "param" telemetry parameter')
-        return Control("readout", param=table.lookup(spec["param"], where), visible=visible)
     if widget == "text":
         text = spec.get("text")
         if not isinstance(text, str):
@@ -648,7 +657,8 @@ def qlink_rects(page, groups="columns"):
     control and sits evenly around them (an empty slot at the end of a group is left outside).
 
     groups: "columns" (a group is a column of four slots) or "rows" (a row of four slots)."""
-    used = [(i // 4, i % 4) for i, c in enumerate(page.controls) if c.param is not None]
+    used = [(i // 4, i % 4) for i, c in enumerate(page.controls)
+            if c.param is not None and c.widget != "readout"]
     if not used:
         return []
     pad = QLINK_PAD
