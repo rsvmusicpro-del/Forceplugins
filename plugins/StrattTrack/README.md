@@ -1,10 +1,14 @@
-# StrattTrack 1.6.1
+# StrattTrack 1.7.0
 
 Stratt SSL-style stereo channel strip for Akai MPC / Force external effect hosting.
 
 ## 1.3.1 stability update\nThe permanent hybrid triode stage now fails closed on non-finite upstream samples, clears its per-channel ADAA/DC memory after a corrupted sample, and bounds its input to ±64 before evaluating the antiderivative; this prevents a single invalid or extreme sample from contaminating subsequent audio. The new independent numerical regression suite differentiates the hybrid antiderivative, compares ADAA divided differences against split Gauss–Legendre integration across both valve knees, and checks short-interval stability.\n\n## Real-time compressor gain reduction
 
 The DYNAMICS page includes a live `Comp GR` numeric readout in dB, placed between Comp Release and Comp Makeup. It reports the positive magnitude of the linked compressor's gain reduction (0.0–60.0 dB), refreshed every 64 audio frames; 0.0 dB means no compression. It is a non-automatable, transient telemetry parameter (not stored as project state) and excludes gate attenuation and makeup gain, so it reports the compressor stage itself without changing the audio path or existing parameter identities.
+
+## Warmth and Clarity tone shaping
+
+The OUTPUT page adds two independent, neutral-by-default tone controls after the 16-band graphic EQ and before linked dynamics: **Warmth** blends a broad +1.5 dB low shelf at 180 Hz with a gentle −1.25 dB high shelf at 10 kHz; **Clarity** blends a −1.5 dB low-mid bell at 280 Hz (Q 0.75) with a +1.75 dB presence bell at 3.2 kHz (Q 0.80). Both controls span 0–100%, glide over the existing 10 ms control interval and refresh stable biquad coefficients at the existing 64-frame cadence. At 0% both paths are exactly neutral; moderate settings are intended as subtle starting points, not automatic mastering. The contour is an original clean-room EQ design, not a model of a named console or proprietary plugin.
 
 ## Signal path
 Stereo input → Console7 input stage → preamp → smoothed L/R polarity and channel exchange → equal-power dual input pan → M/S width and negative-correlation side safeguard → 2nd-order Butterworth low-frequency Side high-pass (Bass Mono) → original 12 dB/oct Butterworth HP/LP → optional serial Cleansweep HP/LP (independent HP/LP enable, 20 Hz–11 kHz / 20 Hz–22 kHz, 1st–6th-order Butterworth) → Pulse Techniques EQP-1A response-curve model → fixed 16-band graphic EQ → linked-stereo gate → linked-stereo compressor → controllable circuit drive → Mono Compatibility → fixed valve-inspired transfer → smoothed stereo balance → tone-neutral Output master trim.
