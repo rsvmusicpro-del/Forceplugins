@@ -44,7 +44,7 @@ int main()
     StrattTrack plugin;
     plugin.prepare(48000.0, kFrames);
     if (plugin.numParams() != 71 || plugin.param(kCompGR).automatable || !plugin.param(kCompGR).transient) {
-        std::fprintf(stderr, "Comp GR must be the appended non-automatable parameter\n");
+        std::fprintf(stderr, "Comp GR must remain non-automatable transient telemetry\n");
         return 1;
     }
     if (plugin.get(kToneWarmth) != 0.0f || plugin.get(kToneClarity) != 0.0f) {
