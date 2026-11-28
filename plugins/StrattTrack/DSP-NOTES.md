@@ -1,3 +1,11 @@
+# StrattTrack tone controls (1.7.0)
+
+- Warmth is a complementary broad contour: +1.5 dB maximum low shelf at 180 Hz and −1.25 dB maximum high shelf at 10 kHz.
+- Clarity reduces low-mid masking by up to 1.5 dB at 280 Hz (Q 0.75) and adds up to 1.75 dB presence at 3.2 kHz (Q 0.80).
+- Each pair is stereo-linked and implemented as four independent per-channel RBJ biquads. The controls are smoothed over 10 ms and coefficients refresh at the established 64-frame cadence.
+- Both controls default to 0%, where all four filters have unity transfer. They are appended after the transient Comp GR parameter; all prior parameter IDs/indices and the six MPC Sample Knob FX mappings remain unchanged.
+- The response is a deliberately restrained clean-room tonal contour; it is not claimed to emulate a specific analogue circuit or commercial plugin.
+
 ## Console7 denormal-state hardening (1.5.3)
 
 The shared Airwindows Console7 input stage flushes recursive biquad and ADAA-history values below 1e-30 to exact zero. This avoids subnormal slowdowns on ARM during long decays and near-silence; the threshold is far below the representable audio floor and does not alter audible programme material. Existing non-finite recovery, bounded input, Airwindows MIT attribution and the EQ coefficient-stability guard remain intact. A dedicated compiled C++ regression exercises Console7 across 8.001–384 kHz, five fader positions, sustained tones, malformed host samples and recovery.

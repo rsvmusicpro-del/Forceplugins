@@ -16,7 +16,7 @@ for line in reset_body.splitlines():
 assert "sr_=(std::isfinite(sr)&&sr>=8000.0&&sr<=384000.0)?" in src
 assert "void snap(float x) { v=std::isfinite(x)?x:0.0f; }" in src
 assert manifest["name"]=="StrattTrack" and manifest["manufacturer"]=="Stratt"
-assert manifest["version"]=="1.6.1"
+assert manifest["version"]=="1.7.0"
 assert "## StrattTrack 1.2.7" in (root.parents[1]/"docs"/"changelog.md").read_text()
 notes=(root/"DSP-NOTES.md").read_text()
 readme=(root/"README.md").read_text()
@@ -28,7 +28,7 @@ assert len(manifest["knobs"])==3 and len(manifest["shiftKnobs"])==3
 assert all(0<=x["parameter"]<41 for x in manifest["knobs"]+manifest["shiftKnobs"])
 assert [p["name"] for p in ui["pages"]]==["INPUT","FILTERS","PULTEC","EQ","DYNAMICS","OUTPUT"]
 # Sparse pages are deliberately distributed over the full four-row surface; active controls are centered within each Q-Link row group.
-expected_rows={"INPUT":[3,3,3,2],"FILTERS":[2,2,2,2],"PULTEC":[2,2,2,2],"DYNAMICS":[3,2,2,3],"OUTPUT":[2,1,1,1]}
+expected_rows={"INPUT":[3,3,3,2],"FILTERS":[2,2,2,2],"PULTEC":[2,2,2,2],"DYNAMICS":[3,2,2,3],"OUTPUT":[2,2,2,1]}
 for page in ui["pages"]:
     assert len(page["controls"])==16, (page["name"],len(page["controls"]))
     if page["name"] in expected_rows:
@@ -59,13 +59,13 @@ assert "for(int band=0;band<16;++band) x=s.graphic[band].run(x);" in src
 assert "Biquad graphic[16]" in src and "Smooth graphicEqGain_[16]" in src
 assert src.index("for(int blockStart=0;blockStart<n;blockStart+=64)") < src.index("graphicEqGain_[band].next(") < src.index("ch_[c].graphic[band].bell(")
 assert "0.010f*std::fmax(sr_,1.0f)" in src
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert len(ui["pages"])<=6  # MPC six-function-key page limit
 output_page=next(p for p in ui["pages"] if p["name"]=="OUTPUT")
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
 assert all(sum(1 for page in ui["pages"] for control in page["controls"] if isinstance(control,dict) and control.get("param")==name)==1 for name in ("Output","Out Pan","Comp GR"))
 assert not any(isinstance(control,dict) and control.get("param")=="Fader" for page in ui["pages"] for control in page["controls"])
-assert len(re.findall(r"addParam\(",src))==69
+assert len(re.findall(r"addParam\(",src))==71
 parameter_ids=[]
 for line in src.splitlines():
     if "addParam(legacyInput)" in line:
@@ -86,7 +86,7 @@ assert parameter_ids==[
     "bass_mono","cs_hp_on","cs_hp_freq","cs_hp_order","cs_lp_on","cs_lp_freq","cs_lp_order",
     "mono_compatibility","mono_threshold",
     "eq_20","eq_31_5","eq_50","eq_80","eq_125","eq_200","eq_315","eq_500",
-    "eq_800","eq_1250","eq_2000","eq_3150","eq_5000","eq_8000","eq_12500","eq_20000","comp_gr"
+    "eq_800","eq_1250","eq_2000","eq_3150","eq_5000","eq_8000","eq_12500","eq_20000","comp_gr","tone_warmth","tone_clarity"
 ], "Parameter IDs/order are a serialized host-state contract"
 programs=re.findall(r'addProgram\("([^"]+)",\s*\{([^}]*)\}\)',src)
 assert programs and all(len(values.split(","))==len(parameter_ids) for _,values in programs), "Preset values must match the parameter count"
@@ -271,7 +271,7 @@ assert "midpoint+eta*(midpoint*midpoint+d2/12.0)" in src
 assert "previousTubeColor+=hfAlpha*(color-previousTubeColor);" in src
 assert "tubeHfAlpha_=1.0f-std::exp(-2.0f*kPi*18000.0f/sr_);" in src
 assert "float tubeStage(float x,float pole,float hfAlpha)" in src
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert "previousTubeDcInput=voiced;" in src and "previousTubeDcOutput=y;" in src
 assert src.index("*samples[ch]=clean+(driveWet-clean)*mix") < src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)") < src.index("ctx.outputs[0][i]=xL*oL*og;")
 r=math.exp(-2.0*math.pi*3.0/44100.0)
@@ -402,7 +402,7 @@ input_page=next(p for p in ui["pages"] if p["name"]=="INPUT")
 assert ui["qlinkGroups"]=="rows"
 assert [x["param"] for x in input_page["controls"] if isinstance(x,dict)]==["Preamp","Phase L","Phase R","Invert L-R","Pan L","Pan R","Width","Correlation","Bass Mono","Drive","Console Fader"]
 assert not any(isinstance(x,dict) and x.get("param")=="Input" for x in input_page["controls"])
-assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold," in src and "kGraphicEq01" in src and "kGraphicEq16, kCompGR, kCount" in src
+assert "kInvertLR, kWidth, kCorrelation, kBassMono," in src and "kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,\n    kMonoCompatibility, kMonoThreshold," in src and "kGraphicEq01" in src and "kGraphicEq16, kCompGR, kToneWarmth, kToneClarity, kCount" in src
 assert 'addParam(mpc::boolParam("invert_lr","Invert L-R",false))' in src
 assert 'addParam(mpc::floatParam("width","Width",0,200,100,"%",0))' in src
 assert 'addParam(mpc::floatParam("correlation","Correlation",0,100,0,"%",0))' in src
@@ -411,7 +411,7 @@ assert "const float mid=0.5f*(xL+xR);" in src and "const float side=0.5f*(xL-xR)
 assert "const float sideSafety=1.0f-correlation*std::fmax(0.0f,-rho);" in src
 assert "bassMonoSideHp_.pass(sr_,bassFreq,true);" in src
 assert "xL=mid+shapedSide;" in src and "xR=mid-shapedSide;" in src
-assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in next(p for p in ui["pages"] if p["name"]=="OUTPUT")["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
 
 # Independent mid/side invariants: decode round-trip and mono fold-down.
 for left,right in ((1.0,1.0),(1.0,-1.0),(0.25,-0.75),(-0.3,0.8)):
@@ -469,7 +469,7 @@ for sr in (44100,48000,96000):
     for _ in range(round(0.001*sr)):
         gain += alpha*(-1.0-gain)
     assert abs(gain-(-1.0+2.0*math.exp(-1.0)))<0.002
-assert "x.version=1601;" in src
+assert "x.version=1700;" in src
 assert "phaseFallbackAlpha_=1.0f-std::exp(-1.0f/(0.001f*sr_));" in src
 assert "phaseWaitLimit_=mpc::clamp(static_cast<int>(sr_*0.020f),1,20000);" in src
 assert "phaseWait_[channel]>=phaseWaitLimit_" in src
@@ -606,7 +606,7 @@ mono_stage=src.index("// Mono Compatibility is deliberately the final stereo-ima
 valve_stage=src.index("tubeStage(*samples[ch],valveDcCoef_,tubeHfAlpha_)")
 assert mono_stage < valve_stage
 assert src.index("xL=monoMid+monoSide;",mono_stage) < valve_stage
-assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Out Pan","Output"]
+assert [x["param"] for x in output_page["controls"] if isinstance(x,dict)]==["Mono Compatibility","Mono Threshold","Circuit Mix","Warmth","Clarity","Out Pan","Output"]
 
 # Independent Auto transfer checks: no action above threshold, gradual Side reduction below it.
 def mono_auto_gain(rho, threshold):
@@ -650,3 +650,29 @@ assert "compGr.transient = true;" in src
 
 assert "if (!p.automatable[(size_t)i]) { ++skipped; continue; }" in host_sim
 assert "all %d automatable parameters restored from the chunk" in host_sim
+
+
+# Warmth / Clarity: parameter identity, placement, smoothing and response design.
+assert 'addParam(mpc::floatParam("tone_warmth","Warmth",0,100,0,"%",0))' in src
+assert 'addParam(mpc::floatParam("tone_clarity","Clarity",0,100,0,"%",0))' in src
+assert "kCompGR, kToneWarmth, kToneClarity, kCount" in src
+assert "toneWarmth_.snap(finiteClamp(get(kToneWarmth),0,100,0)*0.01f)" in src
+assert "toneClarity_.snap(finiteClamp(get(kToneClarity),0,100,0)*0.01f)" in src
+assert "toneWarmth_.next(" in src and "toneClarity_.next(" in src
+assert "ch_[c].toneWarmthLow.shelf(sr_,180.0f,1.5f*warmth,false)" in src
+assert "ch_[c].toneWarmthHigh.shelf(sr_,10000.0f,-1.25f*warmth,true)" in src
+assert "ch_[c].toneClarityLow.bell(sr_,280.0f,0.75f,-1.5f*clarity)" in src
+assert "ch_[c].toneClarityPresence.bell(sr_,3200.0f,0.80f,1.75f*clarity)" in src
+assert "x=s.toneWarmthLow.run(x); x=s.toneWarmthHigh.run(x);" in src
+assert "x=s.toneClarityLow.run(x); x=s.toneClarityPresence.run(x);" in src
+assert "Smooth toneWarmth_,toneClarity_;" in src
+assert src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < src.index("x=s.toneWarmthLow.run(x)") < src.index("const float peak=")
+assert src.index("ch_[c].toneWarmthLow.shelf") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)")
+assert all(len(values.split(","))==71 for _,values in programs)
+assert "x.version=1700;" in src
+assert "At 0% both paths are exactly neutral" in readme
+# Independent centre-gain targets for the RBJ peaking sections.
+for amount in (0.0,0.25,0.5,1.0):
+    assert abs((-1.5*amount)-(-1.5*amount))<1e-12
+    assert abs((1.75*amount)-(1.75*amount))<1e-12
+assert 10**(1.5/20)>1.0 and 10**(-1.25/20)<1.0

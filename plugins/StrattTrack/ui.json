@@ -314,15 +314,21 @@
           "param": "Circuit Mix",
           "widget": "knob"
         },
+        {
+          "param": "Warmth",
+          "widget": "knob"
+        },
         "empty",
         "empty",
-        "empty",
+        {
+          "param": "Clarity",
+          "widget": "knob"
+        },
         {
           "param": "Out Pan",
           "widget": "knob",
           "polarity": "bipolar"
         },
-        "empty",
         "empty",
         "empty",
         {

@@ -1,3 +1,9 @@
+## StrattTrack 1.7.0
+
+- Add neutral-by-default Warmth and Clarity controls: broad low-body/high-shelf contour and low-mid/presence definition contour.
+- Smooth both controls over 10 ms and refresh stereo-linked RBJ biquad coefficients at the existing 64-frame cadence; preserve zero-latency processing and real-time safety.
+- Append both parameter IDs after compressor telemetry, extend presets, and retain every previous parameter index, UID and MPC Sample knob mapping.
+
 ## StrattTrack 1.6.1
 
 - Add a live, non-automatable compressor gain-reduction readout (`Comp GR`) on the DYNAMICS page, expressed as positive dB magnitude and refreshed once per 64-frame chunk.
