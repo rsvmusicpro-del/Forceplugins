@@ -635,6 +635,11 @@ assert "set(kCompGR,0.0f);" in src
 assert "const float compReductionDb = -20.0f*std::log10(finiteClamp(compGain_,1.0e-3f,1.0f,1.0f));" in src
 assert src.index("compGain_=targetComp;") < src.index("set(kCompGR,compReductionDb);")
 assert src.index("set(kCompGR,compReductionDb);") > src.index("if(ctx.numOutputs==1)")
+# Telemetry is a one-way observer: only reset and the end-of-block publisher write it.
+# The audio path must never read the UI value back into a DSP decision.
+assert src.count("set(kCompGR,")==2
+assert "get(kCompGR)" not in src
+assert src.index("set(kCompGR,compReductionDb);") > src.index("ctx.outputs[1][i]=xR*oR*og;")
 # Positive display magnitude: unity gain is 0 dB GR; a 0.5 gain is 6.0206 dB GR.
 for gain,expected in ((1.0,0.0),(0.5,20.0*math.log10(2.0)),(0.25,20.0*math.log10(4.0)),(0.001,60.0)):
     displayed=min(60.0,max(0.0,-20.0*math.log10(gain)))
