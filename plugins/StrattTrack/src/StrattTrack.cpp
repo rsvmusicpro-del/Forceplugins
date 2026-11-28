@@ -32,7 +32,7 @@ enum P {
     kCsHpEnable, kCsHpFreq, kCsHpOrder, kCsLpEnable, kCsLpFreq, kCsLpOrder,
     kMonoCompatibility, kMonoThreshold,
     kGraphicEq01, kGraphicEq02, kGraphicEq03, kGraphicEq04, kGraphicEq05, kGraphicEq06, kGraphicEq07, kGraphicEq08,
-    kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCompGR, kCount
+    kGraphicEq09, kGraphicEq10, kGraphicEq11, kGraphicEq12, kGraphicEq13, kGraphicEq14, kGraphicEq15, kGraphicEq16, kCompGR, kToneWarmth, kToneClarity, kCount
 };
 static const float kGraphicEqFrequencies[16] = {20.0f,31.5f,50.0f,80.0f,125.0f,200.0f,315.0f,500.0f,800.0f,1250.0f,2000.0f,3150.0f,5000.0f,8000.0f,12500.0f,20000.0f};
 // Local fractional-octave widths derived from geometric midpoints between adjacent centres.
@@ -279,6 +279,7 @@ struct Channel {
     mpc::dsp::TwoPoleButterworth hp{mpc::dsp::TwoPoleButterworth::Mode::Highpass};
     mpc::dsp::TwoPoleButterworth lp{mpc::dsp::TwoPoleButterworth::Mode::Lowpass};
     Biquad graphic[16],ptHighBoost,ptLfInteraction;
+    Biquad toneWarmthLow,toneWarmthHigh,toneClarityLow,toneClarityPresence;
     stratt::dsp::Console7Channel console;
     stratt::dsp::CircuitAdaa circuit;
     stratt::dsp::CleansweepButterworth csHp{stratt::dsp::CleansweepButterworth::Mode::Highpass};
@@ -292,6 +293,7 @@ struct Channel {
     float previousTubeDcInput=0.0f, previousTubeDcOutput=0.0f;
     void reset(){console.reset();circuit.reset();hp.reset();lp.reset();csHp.reset();csHpOld.reset();csLp.reset();csLpOld.reset();for(int i=0;i<16;++i) graphic[i].reset();
         ptHighBoost.reset();ptLfInteraction.reset();
+        toneWarmthLow.reset();toneWarmthHigh.reset();toneClarityLow.reset();toneClarityPresence.reset();
         ptLowBoostState=ptLowAttenState=ptHighAttenState=0;
         previousTubeInput=previousTubeColor=previousTubeDcInput=previousTubeDcOutput=0.0f;
         hasPreviousTubeInput=false;}
@@ -417,8 +419,11 @@ public:
         compGr.automatable = false;
         compGr.transient = true;
         addParam(compGr);
-        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
-        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f});
+        // Appended broad tone-shaping controls; neutral defaults preserve legacy audio.
+        addParam(mpc::floatParam("tone_warmth","Warmth",0,100,0,"%",0));
+        addParam(mpc::floatParam("tone_clarity","Clarity",0,100,0,"%",0));
+        addProgram("Clean", {0, 0, 0, 0, 0, -100, 100, 20, 22000, 100, 0, 400, 0, 1, 2500, 0, 1, 12000, 0, -80, 60, 1, 120, 0, 2, 10, 100, 0, 0, 0, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0, 0});
+        addProgram("Vocal", {0, 0, 0, 0, 0, -100, 100, 80, 18000, 120, 1, 350, -2, 1.2f, 3200, 2, 1.1f, 12000, 1, -45, 35, 1, 100, -18, 3, 8, 90, 2, 12, 25, 0, 2, 0, 0, 2, 0, 50, 1, 0, 0.772f, 0, 100, 0, 120, 0, 20, 0, 0, 22000, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f, 0, 0});
     }
     // Host-facing text formatter; called by the UI, not the real-time audio callback.
     bool formatValue(int index,float plainValue,std::string& out) override {
@@ -476,6 +481,8 @@ public:
         bassMonoFreq_.snap(finiteClamp(get(kBassMono),20,400,120));
         monoCompatibility_.snap(finiteClamp(static_cast<float>(getInt(kMonoCompatibility)),0,2,0));
         monoThreshold_.snap(finiteClamp(get(kMonoThreshold),0,100,50)*0.01f);
+        toneWarmth_.snap(finiteClamp(get(kToneWarmth),0,100,0)*0.01f);
+        toneClarity_.snap(finiteClamp(get(kToneClarity),0,100,0)*0.01f);
         monoSafety_.snap(1.0f);
         monoCorrPowerL_=monoCorrPowerR_=monoCorrCross_=0.0f;
         bassMonoSideHp_.reset();
@@ -584,6 +591,10 @@ public:
             bassMonoSideHp_.pass(sr_,bassFreq,true);
             float graphicEqGains[16];
             float graphicEqQValues[16];
+            // Warmth adds restrained low-body and softens the top; Clarity trims
+            // low-mid masking while adding a broad presence lift. Both are neutral at 0.
+            const float warmth=toneWarmth_.next(finiteClamp(get(kToneWarmth),0,100,0)*0.01f,filterSmooth);
+            const float clarity=toneClarity_.next(finiteClamp(get(kToneClarity),0,100,0)*0.01f,filterSmooth);
             for(int band=0;band<16;++band) {
                 const float bandFrequency=finiteClamp(kGraphicEqFrequencies[band],10.0f,sr_*0.45f,1000.0f);
                 graphicEqGains[band]=graphicEqGain_[band].next(finiteClamp(get(kGraphicEq01+band),-12.0f,12.0f,0.0f),filterSmooth);
@@ -599,6 +610,10 @@ public:
             for(int c=0;c<2;++c) {
                 ch_[c].hp.setCutoff(sr_,hp); ch_[c].lp.setCutoff(sr_,lp);
                 for(int band=0;band<16;++band) ch_[c].graphic[band].bell(sr_,kGraphicEqFrequencies[band],graphicEqQValues[band],graphicEqGains[band]);
+                ch_[c].toneWarmthLow.shelf(sr_,180.0f,1.5f*warmth,false);
+                ch_[c].toneWarmthHigh.shelf(sr_,10000.0f,-1.25f*warmth,true);
+                ch_[c].toneClarityLow.bell(sr_,280.0f,0.75f,-1.5f*clarity);
+                ch_[c].toneClarityPresence.bell(sr_,3200.0f,0.80f,1.75f*clarity);
                 if(csHpOrderChanged) ch_[c].csHpOld=ch_[c].csHp;
                 if(csLpOrderChanged) ch_[c].csLpOld=ch_[c].csLp;
                 ch_[c].csHp.set(sr_,csHp,csHpOrder); ch_[c].csLp.set(sr_,csLp,csLpOrder);
@@ -670,6 +685,8 @@ public:
                 x=s.ptLfInteraction.run(x); x=s.ptHighBoost.run(x);
                 s.ptHighAttenState+=ptHighAttenAlpha*(x-s.ptHighAttenState); x=s.ptHighAttenState+ptHighAttenGain*(x-s.ptHighAttenState);
                 for(int band=0;band<16;++band) x=s.graphic[band].run(x);
+                x=s.toneWarmthLow.run(x); x=s.toneWarmthHigh.run(x);
+                x=s.toneClarityLow.run(x); x=s.toneClarityPresence.run(x);
                 *samples[ch]=x;
             }
             // One linked-stereo dynamics detector/gain computer: both channels
@@ -748,7 +765,7 @@ public:
 private:
     static mpc::PluginInfo makeInfo() {
         mpc::PluginInfo x; x.name="StrattTrack"; x.vendor="Stratt";
-        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1601;
+        x.uniqueId=MPC_FOURCC('S','4','X','3'); x.version=1700;
         x.isInstrument=false; x.numInputs=2; x.numOutputs=2; x.tailSamples=1; return x;
     }
     float applyPolarity(float x,int channel,bool invert) {
@@ -795,6 +812,7 @@ private:
     bool phaseFallback_[2]={false,false};
     Smooth invertLR_,width_,correlation_,bassMonoFreq_;
     Smooth monoCompatibility_,monoThreshold_,monoSafety_;
+    Smooth toneWarmth_,toneClarity_;
     float monoCorrPowerL_=0.0f, monoCorrPowerR_=0.0f, monoCorrCross_=0.0f;
     Biquad bassMonoSideHp_;
     float corrPowerL_=0.0f, corrPowerR_=0.0f, corrCross_=0.0f;
