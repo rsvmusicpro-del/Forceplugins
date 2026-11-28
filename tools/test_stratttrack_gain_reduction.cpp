@@ -82,7 +82,8 @@ int main()
     if (plugin.get(kToneWarmth) != 0.0f || plugin.get(kToneClarity) != 0.0f) {
         std::fprintf(stderr, "Warmth and Clarity must default to neutral\n");
         return 1;
-    }\n    if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
+    }
+    if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
         std::fprintf(stderr, "Comp GR must reset to 0 dB\n");
         return 1;
     }
