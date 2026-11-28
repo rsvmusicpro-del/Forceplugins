@@ -670,7 +670,7 @@ assert src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)") < sr
 assert src.index("ch_[c].toneWarmthLow.shelf") < src.index("for(int band=0;band<16;++band) x=s.graphic[band].run(x)")
 assert all(len(values.split(","))==71 for _,values in programs)
 assert "x.version=1700;" in src
-assert "Both controls default to 0%" in readme
+assert "At 0% both paths are exactly neutral" in readme
 # Independent centre-gain targets for the RBJ peaking sections.
 for amount in (0.0,0.25,0.5,1.0):
     assert abs((-1.5*amount)-(-1.5*amount))<1e-12
