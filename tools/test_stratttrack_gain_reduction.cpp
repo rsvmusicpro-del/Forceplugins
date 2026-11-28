@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
 
 namespace {
 constexpr int kFrames = 128;
@@ -49,6 +50,28 @@ int main()
     }
     if (std::fabs(plugin.get(kCompGR)) > 1.0e-6f) {
         std::fprintf(stderr, "Comp GR must reset to 0 dB\n");
+        return 1;
+    }
+    // The host-side formatter must remain bounded for corrupt/non-finite values
+    // and must not intercept formatting for unrelated parameters.
+    std::string safeDisplay = "unchanged";
+    if (!plugin.formatValue(kCompGR, std::numeric_limits<float>::quiet_NaN(), safeDisplay) ||
+        safeDisplay != "0.0 dB") {
+        std::fprintf(stderr, "NaN telemetry must format safely as 0.0 dB\n");
+        return 1;
+    }
+    if (!plugin.formatValue(kCompGR, std::numeric_limits<float>::infinity(), safeDisplay) ||
+        safeDisplay != "0.0 dB") {
+        std::fprintf(stderr, "infinite telemetry must format safely as 0.0 dB\n");
+        return 1;
+    }
+    if (!plugin.formatValue(kCompGR, 1000.0f, safeDisplay) || safeDisplay != "60.0 dB") {
+        std::fprintf(stderr, "telemetry formatter must clamp its upper bound\n");
+        return 1;
+    }
+    safeDisplay = "unchanged";
+    if (plugin.formatValue(kCompThresh, -24.0f, safeDisplay) || safeDisplay != "unchanged") {
+        std::fprintf(stderr, "Comp GR formatter must not intercept other parameters\n");
         return 1;
     }
     plugin.set(kCompThresh, -24.0f);
